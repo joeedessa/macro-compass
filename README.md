@@ -11,9 +11,15 @@ no third-party aggregators. Each chart on the dashboard links to its underlying 
 | Coverage | Source |
 |---|---|
 | US inflation, unemployment, GDP, payrolls, Fed funds, Treasury yields | [FRED](https://fred.stlouisfed.org/) (St. Louis Fed) — original data from BLS, BEA, the Federal Reserve, and the US Treasury |
-| S&P 500, Nasdaq, Dow, VIX, broad dollar index, WTI crude | FRED — licensed from S&P Dow Jones, Nasdaq, Cboe, and the EIA |
-| Euro area HICP inflation, ECB deposit rate, EUR/USD | [ECB Data Portal](https://data.ecb.europa.eu/) |
+| S&P 500, Nasdaq, Dow, VIX, broad dollar index | FRED — licensed from S&P Dow Jones, Nasdaq, and Cboe |
+| WTI crude; copper, aluminum, nickel, uranium | FRED — EIA (crude) and IMF primary commodity prices (metals) |
+| Nikkei 225, USD/JPY, German 10-year bund yield, national share-price indices | FRED — Nikkei Inc., the Federal Reserve, and the OECD |
+| Euro area HICP inflation, ECB deposit rate, EUR/USD, Euro Stoxx 50 | [ECB Data Portal](https://data.ecb.europa.eu/) |
 | China and Japan GDP growth and CPI inflation (annual) | [World Bank Open Data](https://data.worldbank.org/) |
+
+Note on the share-price charts: these are OECD *total share price indices* (2015 = 100), a
+cross-country-comparable equity measure — not the DAX, CAC 40, TSX, or Sensex index levels
+themselves, which have no free authoritative feed. They are labelled as such on the dashboard.
 
 ## How it works
 

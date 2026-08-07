@@ -17,6 +17,7 @@
     --border:         rgba(11,11,11,0.10);
     --series-1:       #2a78d6;
     --series-2:       #eb6834;
+    --series-3:       #1baf7a;
     --neg:            #e34948;
     --delta-good:     #006300;
     --delta-bad:      #d03b3b;
@@ -33,6 +34,7 @@
       --border:         rgba(255,255,255,0.10);
       --series-1:       #3987e5;
       --series-2:       #d95926;
+      --series-3:       #199e70;
       --neg:            #e66767;
       --delta-good:     #0ca30c;
       --delta-bad:      #d03b3b;
@@ -49,6 +51,7 @@
     --border:         rgba(255,255,255,0.10);
     --series-1:       #3987e5;
     --series-2:       #d95926;
+    --series-3:       #199e70;
     --neg:            #e66767;
     --delta-good:     #0ca30c;
     --delta-bad:      #d03b3b;
@@ -169,6 +172,8 @@
     <div class="grid" id="sec-us"></div>
     <h2>Markets</h2>
     <div class="grid" id="sec-markets"></div>
+    <h2>Commodities</h2>
+    <div class="grid" id="sec-commodities"></div>
     <h2>Global</h2>
     <div class="grid" id="sec-global"></div>
   </div>
@@ -440,7 +445,7 @@
         if (i) latest.append("  ·  ");
         const strong = document.createElement("strong");
         strong.textContent = fmt(lp.p[1], digits);
-        latest.append(strong, " " + (multi ? lp.label.toLowerCase() + " " : "") + "(" + lp.p[0] + ")");
+        latest.append(strong, " " + (multi ? lp.label + " " : "") + "(" + lp.p[0] + ")");
       });
 
       // ---- hover: crosshair + all-series tooltip --------------------------
@@ -562,10 +567,21 @@
     { sec: "sec-markets", title: "Dow Jones Industrial Average", ids: ["mkt_dow"], type: "line" },
     { sec: "sec-markets", title: "VIX volatility index", ids: ["mkt_vix"], type: "line" },
     { sec: "sec-markets", title: "US dollar index, broad", ids: ["mkt_dollar"], type: "line" },
-    { sec: "sec-markets", title: "WTI crude oil", ids: ["mkt_wti"], type: "line" },
+    { sec: "sec-commodities", title: "WTI crude oil", ids: ["mkt_wti"], type: "line" },
+    { sec: "sec-commodities", title: "Copper", ids: ["cmd_copper"], type: "line" },
+    { sec: "sec-commodities", title: "Aluminum", ids: ["cmd_aluminum"], type: "line" },
+    { sec: "sec-commodities", title: "Nickel", ids: ["cmd_nickel"], type: "line" },
+    { sec: "sec-commodities", title: "Uranium", ids: ["cmd_uranium"], type: "line" },
     { sec: "sec-global", title: "Euro area HICP inflation", ids: ["ea_hicp_yoy"], type: "line", zeroLine: true },
     { sec: "sec-global", title: "ECB deposit facility rate", ids: ["ea_depo_rate"], type: "line" },
+    { sec: "sec-global", title: "German 10-year bund yield", ids: ["de_bund_10y"], type: "line" },
     { sec: "sec-global", title: "EUR/USD exchange rate", ids: ["eur_usd"], type: "line" },
+    { sec: "sec-global", title: "USD/JPY exchange rate", ids: ["usd_jpy"], type: "line" },
+    { sec: "sec-global", title: "Nikkei 225", ids: ["nikkei_225"], type: "line" },
+    { sec: "sec-global", title: "Euro Stoxx 50", ids: ["eurostoxx_50"], type: "line" },
+    { sec: "sec-global", title: "Share prices: Germany, France, UK", ids: ["shr_de", "shr_fr", "shr_gb"], type: "line" },
+    { sec: "sec-global", title: "Share prices: Canada, Australia", ids: ["shr_ca", "shr_au"], type: "line" },
+    { sec: "sec-global", title: "Share prices: China, India", ids: ["shr_cn", "shr_in"], type: "line" },
     { sec: "sec-global", title: "China: GDP growth and inflation (annual)", ids: ["cn_gdp", "cn_cpi"], type: "line", zeroLine: true, noFilter: true },
     { sec: "sec-global", title: "Japan: GDP growth and inflation (annual)", ids: ["jp_gdp", "jp_cpi"], type: "line", zeroLine: true, noFilter: true },
   ];
