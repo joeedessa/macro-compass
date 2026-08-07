@@ -1,57 +1,51 @@
-# Macro Compass
+# Macro Compass — morning read
 
-A zero-dependency macro dashboard: key economic indicators and market indices,
-refreshed daily from official sources and served as a static page via GitHub Pages.
+A macro dashboard built to be scanned in under a minute before the open: what
+regime are we in, what moved unusually, and where is money rotating. Static page,
+no build step, no server, no API keys.
+
+**Live:** https://joeedessa.github.io/macro-compass/
+
+## How it reads
+
+1. **Regime** — seven binary risk conditions (trend, volatility, credit, cyclicals,
+   copper/gold, curve) plus equity breadth. Deliberately shown as a count with each
+   component visible, so disagreement between components is readable rather than
+   averaged away into a single index.
+2. **Notable moves** — ranked by how unusual each move is against that instrument's
+   own 60-day volatility, not by raw size. A 1σ day in the dollar matters more than
+   a 3% day in silver.
+3. **Relative strength** — ratio charts for the rotations that drive positioning,
+   each stating in words what a rising line means, with a true 200-day average.
+4. **Markets** — every instrument with multi-horizon returns, trend state vs the
+   200-day average, and position in the 52-week range.
+5. **Macro fundamentals** — the slow official data underneath it all.
 
 ## Data sources
 
-Every series comes from a free, authoritative endpoint — no API keys, no scraping,
-no third-party aggregators. Each chart on the dashboard links to its underlying series.
+| Layer | Source | Freshness |
+|---|---|---|
+| Prices — equities, ETFs, futures, FX, rates | Yahoo Finance, fetched **in the browser on every page load** | Delayed quotes, not real-time |
+| Macro fundamentals — CPI, unemployment, GDP, payrolls, policy rates | [FRED](https://fred.stlouisfed.org/), [ECB](https://data.ecb.europa.eu/), [World Bank](https://data.worldbank.org/) | Refreshed hourly by CI |
 
-| Coverage | Source |
-|---|---|
-| US inflation, unemployment, GDP, payrolls, Fed funds, Treasury yields | [FRED](https://fred.stlouisfed.org/) (St. Louis Fed) — original data from BLS, BEA, the Federal Reserve, and the US Treasury |
-| S&P 500, Nasdaq, Dow, VIX, broad dollar index | FRED — licensed from S&P Dow Jones, Nasdaq, and Cboe |
-| WTI crude; copper, aluminum, nickel, uranium | FRED — EIA (crude) and IMF primary commodity prices (metals) |
-| Nikkei 225, USD/JPY, German 10-year bund yield, national share-price indices | FRED — Nikkei Inc., the Federal Reserve, and the OECD |
-| Euro area HICP inflation, ECB deposit rate, EUR/USD, Euro Stoxx 50 | [ECB Data Portal](https://data.ecb.europa.eu/) |
-| China and Japan GDP growth and CPI inflation (annual) | [World Bank Open Data](https://data.worldbank.org/) |
+Yahoo sends no CORS header, so a static page cannot call it directly; requests go
+through a keyless public CORS proxy, with fallbacks. If the price feed is
+unavailable the page degrades to the official macro data rather than breaking.
 
-Note on the share-price charts: these are OECD *total share price indices* (2015 = 100), a
-cross-country-comparable equity measure — not the DAX, CAC 40, TSX, or Sensex index levels
-themselves, which have no free authoritative feed. They are labelled as such on the dashboard.
+Instruments with no usable live feed (German bund yield, LME nickel) stay on
+official monthly data in the fundamentals section rather than being dropped.
 
-## How it works
+## Layout
 
-- `scripts/fetch_data.py` (Python stdlib only) pulls every series and writes
-  `docs/data/macro.json` with per-series source attribution.
-- `docs/index.html` is a self-contained dashboard (vanilla JS + SVG, no libraries)
-  that renders stat tiles and charts from that JSON, with time-range filters,
-  hover tooltips, per-chart data tables, and light/dark themes.
-- `.github/workflows/update-data.yml` re-runs the fetch hourly and commits only
-  when something changed, so a new close appears within the hour it is published.
-
-## How current is it?
-
-Two delays stack: how fast the source publishes, and how often this repo refreshes.
-The refresh is hourly, so the second is at most ~60 minutes. The first is the real
-constraint and varies by series — same day for policy rates, one day for equity
-indices, up to a week for the Fed's weekly H.10 FX release, and one reporting cycle
-for monthly and quarterly macro.
-
-All market figures are **official end-of-day closes, not intraday quotes**. Free
-official sources do not publish live prices; intraday would require a licensed
-market-data provider and a proxy to hold the API key (a public Pages site cannot
-safely embed one). Each chart shows the date of its own latest observation, and the
-header shows how long ago the data was pulled.
+- `docs/index.html` — structure and styling
+- `docs/app.js` — data fetching, metrics, charts (vanilla JS + SVG, no libraries)
+- `scripts/fetch_data.py` — official macro pull (Python stdlib only)
+- `.github/workflows/` — hourly data refresh, Pages deploy
 
 ## Run locally
 
 ```bash
-python3 scripts/fetch_data.py
 python3 -m http.server 8321 --directory docs
 ```
 
-Then open <http://localhost:8321>.
-
-Not investment advice; data is presented as published by its sources.
+Not investment advice.
