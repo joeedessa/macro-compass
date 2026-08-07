@@ -142,6 +142,13 @@ SERIES = [
     ("us_yield_spread", "10y minus 2y spread", "pp", "daily", "us",
      lambda: trim(fetch_fred("T10Y2Y"), 15),
      "FRED · US Treasury", FRED_URL + "T10Y2Y"),
+    # --- Credit spreads (the cleaner credit signal; HYG/IEF is only a proxy) ---
+    ("cr_hy_oas", "US high yield OAS", "pp", "daily", "credit",
+     lambda: trim(fetch_fred("BAMLH0A0HYM2"), 15),
+     "FRED · ICE BofA", FRED_URL + "BAMLH0A0HYM2"),
+    ("cr_ig_oas", "US investment grade OAS", "pp", "daily", "credit",
+     lambda: trim(fetch_fred("BAMLC0A0CM"), 15),
+     "FRED · ICE BofA", FRED_URL + "BAMLC0A0CM"),
     # --- Markets ---
     ("mkt_sp500", "S&P 500", "index", "daily", "markets",
      lambda: trim(fetch_fred("SP500"), 5),

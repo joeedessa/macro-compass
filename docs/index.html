@@ -48,6 +48,40 @@
   h2 { font-size:17px; font-weight:650; margin:36px 0 4px; }
   .lede { color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; max-width:74ch; }
 
+  /* sticky section nav */
+  .jump { position:sticky; top:0; z-index:20; display:flex; gap:6px; flex-wrap:wrap;
+    padding:9px 0; margin:14px 0 0; background:var(--page);
+    border-bottom:1px solid var(--border); }
+  .jump.inline { position:static; border-bottom:none; padding:2px 0 0; margin:0 0 4px; }
+  .jump a { font-size:12.5px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:4px 11px;
+    background:var(--surface-1); display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .jump a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .jump a.here { color:var(--text-primary); font-weight:620; border-color:var(--baseline); background:var(--surface-2); }
+  kbd { font:inherit; font-size:10.5px; color:var(--text-muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:4px; padding:0 4px; line-height:1.5; }
+  .tabbtn kbd { margin-left:6px; }
+  h2[id] { scroll-margin-top:56px; }
+
+  /* regime change strip */
+  .regime-change { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px;
+    padding-top:11px; border-top:1px solid var(--border); }
+  .regime-change .clabel { font-size:12.5px; color:var(--text-muted); }
+  .flip { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:560;
+    border:1px solid var(--border); border-radius:999px; padding:3px 10px; background:var(--surface-1); }
+  .flip .fmark { font-weight:700; }
+  .flip.gained { color:var(--up); } .flip.gained .fmark { color:var(--up); }
+  .flip.lost { color:var(--down); } .flip.lost .fmark { color:var(--down); }
+  .newtag { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    margin-left:7px; padding:1px 5px; border-radius:4px; background:var(--surface-2);
+    color:var(--text-secondary); border:1px solid var(--border); vertical-align:1px; }
+  .regime-item.flipped-today { background:var(--surface-2); }
+
+  .family-head { border-radius:12px; padding:16px 18px; border:1px solid var(--border); margin-bottom:14px; }
+  .family-head.on { background:var(--on-bg); } .family-head.off { background:var(--off-bg); }
+  .family-head.mixed { background:var(--mixed-bg); }
+  #family .infopanel { border-radius:12px; border-top:1px solid var(--border); margin:-8px 0 14px; }
+
   .icon { font:inherit; font-size:12px; line-height:1; width:22px; height:22px; display:inline-flex;
     align-items:center; justify-content:center; border:1px solid var(--border); border-radius:6px;
     background:var(--surface-2); color:var(--text-secondary); cursor:pointer; text-decoration:none;
@@ -176,22 +210,39 @@
     <button id="refresh" type="button">Refresh prices</button>
   </header>
 
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <a href="#s-regime" data-key="1">Regime<kbd>1</kbd></a>
+    <a href="#s-moves" data-key="2">Moves<kbd>2</kbd></a>
+    <a href="#s-family" data-key="3">Modern Family<kbd>3</kbd></a>
+    <a href="#s-rs" data-key="4">Relative strength<kbd>4</kbd></a>
+    <a href="#s-markets" data-key="5">Markets<kbd>5</kbd></a>
+    <a href="#s-macro" data-key="6">Macro<kbd>6</kbd></a>
+  </nav>
+
   <p id="status" hidden></p>
 
   <div id="markets" hidden>
-    <h2>Regime</h2>
+    <h2 id="s-regime">Regime</h2>
     <p class="lede">Seven risk conditions, each either met or not. Read the disagreements,
       not just the count — a high score with credit failing is a different market than one with vol failing.
       Press <strong>i</strong> on any card for how the signal is conventionally interpreted.</p>
     <div id="regime"></div>
 
-    <h2>Notable moves</h2>
+    <h2 id="s-moves">Notable moves</h2>
     <p class="lede">Ranked by how unusual each move is against that instrument's own recent daily
       volatility, not by raw size — so a quiet market making a big move outranks a noisy one drifting.
       Anything at or above 2σ is worth a second look.</p>
     <div id="movers"></div>
 
-    <h2>Relative strength</h2>
+    <h2 id="s-family">Economic Modern Family</h2>
+    <p class="lede">Six sector ETFs standing for six parts of the real economy, a framework
+      published by Mish Schneider of <a href="https://marketgauge.com/modern-family/" rel="noopener" target="_blank">MarketGauge</a>
+      (plus Bitcoin, added later). The question is whether they move together: a split family —
+      banks or transportation dropping away while semis carry the index — says the advance is
+      narrowing. Independent implementation, not affiliated with MarketGauge.</p>
+    <div id="family"></div>
+
+    <h2 id="s-rs">Relative strength</h2>
     <p class="lede">What is leading what. Each ratio states plainly what a rising line means.
       Switch the window to separate a genuine trend change from noise — a rotation visible at 1M
       but absent at 6M is usually noise.</p>
@@ -200,19 +251,20 @@
     </div>
     <div class="grid" id="ratios"></div>
 
-    <h2>Markets</h2>
+    <h2 id="s-markets">Markets</h2>
     <p class="lede">Yields move in basis points, everything else in percent.
       Colour marks the <em>direction</em> of a move, not whether it is good news — a rising
       yield or a stronger dollar is green here, and whether that helps depends on your book.</p>
     <div class="switch" role="tablist" aria-label="Markets view">
-      <button class="tabbtn" id="tab-table" role="tab" aria-selected="true" type="button">Table</button>
-      <button class="tabbtn" id="tab-charts" role="tab" aria-selected="false" type="button">Charts</button>
+      <button class="tabbtn" id="tab-table" role="tab" aria-selected="true" type="button">Table<kbd>t</kbd></button>
+      <button class="tabbtn" id="tab-charts" role="tab" aria-selected="false" type="button">Charts<kbd>c</kbd></button>
     </div>
+    <nav class="jump inline" id="groupjump" aria-label="Jump to market category"></nav>
     <div id="tables" role="tabpanel" aria-labelledby="tab-table"></div>
     <div id="charts" role="tabpanel" aria-labelledby="tab-charts" hidden></div>
   </div>
 
-  <h2>Macro fundamentals</h2>
+  <h2 id="s-macro">Macro fundamentals</h2>
   <p class="lede">Slow-moving official data — inflation, labour, growth and policy rates.
     These set the backdrop the market read sits inside.</p>
   <div class="grid" id="macro"></div>
@@ -232,7 +284,7 @@
 </div>
 <!-- Bump ?v= whenever these change: the Pages CDN and browsers cache them
      aggressively, and a stale app.js against a fresh page is a silent failure. -->
-<script src="info.js?v=20260807e"></script>
-<script src="app.js?v=20260807e"></script>
+<script src="info.js?v=20260807g"></script>
+<script src="app.js?v=20260807g"></script>
 </body>
 </html>

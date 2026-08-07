@@ -44,6 +44,11 @@ const UNIVERSE = [
   ["NVDA", "Nvidia", "mag7"],
   ["META", "Meta", "mag7"],
   ["TSLA", "Tesla", "mag7"],
+  ["XRT", "Retail", "family"],
+  ["KRE", "Regional banks", "family"],
+  ["IYT", "Transportation", "family"],
+  ["IBB", "Biotech", "family"],
+  ["BTC-USD", "Bitcoin", "family"],
   ["ACWI", "MSCI ACWI", "global"],
   ["EEM", "Emerging markets", "global"],
   ["EFA", "Developed ex-US", "global"],
@@ -107,6 +112,21 @@ const RATIOS = [
   ["HG=F", "GC=F", "Copper vs gold", "Growth expectations over fear", "Fear over growth expectations"],
   ["SMH", "SPY", "Semis vs market", "Semis leading", "Semis lagging"],
   ["SPY", "GLD", "Equities vs gold", "Equities preferred over gold", "Gold preferred over equities"],
+];
+
+/* The Economic Modern Family — a framework published by Mish Schneider of
+   MarketGauge, which reads the economy through six sector ETFs, each standing
+   for a different part of it. Implemented here from her public description;
+   this is not affiliated with or endorsed by MarketGauge.
+   Reference: https://marketgauge.com/modern-family/ */
+const FAMILY = [
+  ["IWM", "Grandpa Russell", "Small caps — the domestic economy and its access to credit"],
+  ["XRT", "Granny Retail", "Retail — the consumer, who carries most of US demand"],
+  ["KRE", "Prodigal Son", "Regional banks — credit creation, and the first to show stress"],
+  ["IYT", "Tran", "Transportation — goods actually moving, the physical economy"],
+  ["IBB", "Big Brother", "Biotech — speculative risk appetite at the frontier"],
+  ["SMH", "Sister Semiconductors", "Semiconductors — innovation and the global capex cycle"],
+  ["BTC-USD", "Cousin Crypto", "Bitcoin — the newest member, liquidity and speculative froth"],
 ];
 
 // Trading-day windows. YTD is resolved against the calendar at render time.
@@ -465,8 +485,9 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
-  if (live) { renderRegime(); renderMovers(); renderRatios(); renderTables(); }
+  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); }
   renderMacro();
+  initScrollSpy();
   if (live && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
 }
 
@@ -483,21 +504,43 @@ function renderStamp(live) {
   $("#stamp").textContent = bits.join(" · ");
 }
 
-function regimeChecks() {
+/* Evaluated at an offset in trading days, so the same function produces both
+   today's regime and yesterday's — which is what makes "what flipped overnight"
+   computable without storing any state between visits. */
+function regimeChecks(off) {
+  off = off || 0;
+  const cut = pts => (off && pts && pts.length > off) ? pts.slice(0, pts.length - off) : pts;
   const checks = [];
   const add = (label, ok, detail) => checks.push({ label, ok, detail });
-  const m = s => METRICS[s];
-  if (m("ACWI")) add("Global equity above 200-day average", m("ACWI").aboveMa, pct(m("ACWI").maGap) + " vs 200d");
-  if (m("SPY")) add("US equity above 200-day average", m("SPY").aboveMa, pct(m("SPY").maGap) + " vs 200d");
-  if (m("^VIX")) add("Volatility subdued (VIX under 20)", m("^VIX").last < 20, "VIX " + fmtNum(m("^VIX").last, 1));
-  const cr = ratioSeries(SERIES.HYG, SERIES.IEF);
-  if (cr) { const c = metrics(cr); add("Credit appetite improving (HYG/IEF)", c.m3 > 0, pct(c.m3) + " 3m"); }
-  const cy = ratioSeries(SERIES.XLY, SERIES.XLP);
-  if (cy) { const c = metrics(cy); add("Cyclicals leading defensives", c.m3 > 0, pct(c.m3) + " 3m"); }
-  const cg = ratioSeries(SERIES["HG=F"], SERIES["GC=F"]);
-  if (cg) { const c = metrics(cg); add("Copper outperforming gold", c.m3 > 0, pct(c.m3) + " 3m"); }
-  if (m("^TNX") && m("^TYX")) add("Long end not inverted", m("^TYX").last >= m("^TNX").last,
-    fmtNum(m("^TYX").last - m("^TNX").last, 2) + "pp 30y-10y");
+  const yields = new Set(["^TNX", "^TYX"]);
+  const M = sym => {
+    const p = cut(SERIES[sym]);
+    return p && p.length > 210 ? metrics(p, yields.has(sym)) : null;
+  };
+  const ratio3m = (a, b) => {
+    const r = ratioSeries(cut(SERIES[a]), cut(SERIES[b]));
+    return r ? metrics(r) : null;
+  };
+  let m;
+  if ((m = M("ACWI"))) add("Global equity above 200-day average", m.aboveMa, pct(m.maGap) + " vs 200d");
+  if ((m = M("SPY"))) add("US equity above 200-day average", m.aboveMa, pct(m.maGap) + " vs 200d");
+  if ((m = M("^VIX"))) add("Volatility subdued (VIX under 20)", m.last < 20, "VIX " + fmtNum(m.last, 1));
+
+  // Credit: the option-adjusted spread itself, with HYG/IEF only as a fallback.
+  const oas = MACRO && MACRO.series && MACRO.series.cr_hy_oas;
+  if (oas && oas.points.length > 25) {
+    const p = oas.points.slice(0, oas.points.length - Math.min(off, 2));
+    const now = p[p.length - 1][1], prior = p[p.length - 22][1];
+    add("Credit spreads not widening", now <= prior,
+      fmtNum(now, 2) + "pp HY OAS, " + (now > prior ? "+" : "") + fmtNum(now - prior, 2) + " 1m");
+  } else if ((m = ratio3m("HYG", "IEF"))) {
+    add("Credit appetite improving (HYG/IEF)", m.m3 > 0, pct(m.m3) + " 3m");
+  }
+  if ((m = ratio3m("XLY", "XLP"))) add("Cyclicals leading defensives", m.m3 > 0, pct(m.m3) + " 3m");
+  if ((m = ratio3m("HG=F", "GC=F"))) add("Copper outperforming gold", m.m3 > 0, pct(m.m3) + " 3m");
+  const tnx = M("^TNX"), tyx = M("^TYX");
+  if (tnx && tyx) add("Long end not inverted", tyx.last >= tnx.last,
+    fmtNum(tyx.last - tnx.last, 2) + "pp 30y-10y");
   return checks;
 }
 
@@ -536,14 +579,37 @@ function renderRegime() {
     b.appendChild(h("span", "breadth-text", above + " of " + eq.length + " markets above their 200-day average"));
     head.appendChild(b);
   }
+
+  /* What changed since the previous close. Recomputed from the same series
+     shifted a day, so it needs no stored state and is right on a first visit. */
+  const prev = regimeChecks(1);
+  const prevBy = new Map(prev.map(c => [c.label, c.ok]));
+  const flips = checks.filter(c => prevBy.has(c.label) && prevBy.get(c.label) !== c.ok);
+  const change = h("div", "regime-change");
+  if (flips.length) {
+    change.appendChild(h("span", "clabel", "Changed since yesterday"));
+    for (const f of flips) {
+      const t = h("span", "flip " + (f.ok ? "gained" : "lost"));
+      t.appendChild(h("span", "fmark", f.ok ? "✓" : "✕"));
+      t.appendChild(h("span", null, f.label));
+      change.appendChild(t);
+    }
+  } else {
+    change.appendChild(h("span", "clabel", "No conditions changed since yesterday"));
+  }
+  head.appendChild(change);
   box.appendChild(head);
 
   const list = h("div", "regime-list");
   for (const c of checks) {
-    const row = h("div", "regime-item " + (c.ok ? "yes" : "no"));
+    const flipped = prevBy.has(c.label) && prevBy.get(c.label) !== c.ok;
+    const row = h("div", "regime-item " + (c.ok ? "yes" : "no") + (flipped ? " flipped-today" : ""));
     row.appendChild(h("span", "mark", c.ok ? "✓" : "✕"));
     const txt = h("span", "rtext");
-    txt.appendChild(h("span", "rlabel", c.label));
+    const lab = h("span", "rlabel");
+    lab.appendChild(document.createTextNode(c.label));
+    if (flipped) lab.appendChild(h("span", "newtag", "new"));
+    txt.appendChild(lab);
     txt.appendChild(h("span", "rdetail", c.detail));
     row.appendChild(txt);
     list.appendChild(row);
@@ -619,6 +685,81 @@ function renderRatios() {
     body.appendChild(lineChart(view, { title: a + "/" + b, unit: "ratio", overlays }));
     box.appendChild(card);
   }
+}
+
+/* The framework's own question is whether the family is "in gear" — moving
+   together — or split, so the summary leads with the count and names the
+   laggards rather than showing seven charts and leaving you to compare them. */
+function renderFamily() {
+  const box = $("#family");
+  box.textContent = "";
+  const rows = FAMILY.map(([sym, nick, role]) => {
+    const m = METRICS[sym];
+    if (!m) return null;
+    const rel = ratioSeries(SERIES[sym], SERIES.SPY);
+    return { sym, nick, role, m, rel3m: rel ? metrics(rel).m3 : null };
+  }).filter(Boolean);
+  if (!rows.length) return;
+
+  const core = rows.filter(r => r.sym !== "BTC-USD");
+  const up = core.filter(r => r.m.aboveMa).length;
+  const laggards = core.filter(r => !r.m.aboveMa).map(r => r.nick);
+
+  const head = h("div", "family-head " + (up >= core.length - 1 ? "on" : up >= core.length / 2 ? "mixed" : "off"));
+  const top = h("div", "regime-top");
+  const lt = h("div");
+  lt.appendChild(h("div", "regime-label", up + " of " + core.length + " in gear"));
+  lt.appendChild(h("div", "regime-score", laggards.length
+    ? "Out of gear: " + laggards.join(", ")
+    : "Every member above its 200-day average"));
+  top.appendChild(lt);
+  const tools = h("div", "tools");
+  const ib = h("button", "icon", "i");
+  ib.type = "button"; ib.title = "About this framework";
+  ib.setAttribute("aria-label", "About the Economic Modern Family framework");
+  ib.addEventListener("click", () => { const p = $("#family-info"); p.hidden = !p.hidden; });
+  tools.appendChild(ib);
+  const a = h("a", "icon", "↗");
+  a.href = "https://marketgauge.com/modern-family/";
+  a.target = "_blank"; a.rel = "noopener noreferrer";
+  a.title = "MarketGauge — the Economic Modern Family";
+  tools.appendChild(a);
+  top.appendChild(tools);
+  head.appendChild(top);
+  box.appendChild(head);
+
+  const panel = h("div", "infopanel");
+  panel.id = "family-info"; panel.hidden = true;
+  const info = window.INFO.family;
+  for (const p of info.body) panel.appendChild(h("p", "ibody", p));
+  box.appendChild(panel);
+
+  const grid = h("div", "grid");
+  for (const r of rows) {
+    const card = makeCard(r.nick, null, YQ(r.sym), r.sym + " on Yahoo Finance");
+    card.body.appendChild(h("p", "meta", r.sym + " · " + r.role));
+    const read = h("p", "latest");
+    read.appendChild(h("strong", null, price(r.m.last)));
+    read.appendChild(document.createTextNode("  "));
+    read.appendChild(deltaEl(r.m.d1));
+    read.appendChild(document.createTextNode(" today"));
+    card.body.appendChild(read);
+    const state = h("p", "verdict " + (r.m.aboveMa ? "up" : "down"),
+      (r.m.aboveMa ? "▲ In gear — " : "▼ Out of gear — ") +
+      (r.m.aboveMa ? "above" : "below") + " its 200-day by " + pct(Math.abs(r.m.maGap)).replace("+", ""));
+    card.body.appendChild(state);
+    if (r.rel3m != null) {
+      card.body.appendChild(h("p", "meta",
+        (r.rel3m > 0 ? "Outperforming" : "Underperforming") + " SPY by " +
+        fmtNum(Math.abs(r.rel3m), 1) + "% over 3 months"));
+    }
+    card.body.appendChild(lineChart(SERIES[r.sym].slice(-252), {
+      title: r.nick, noFill: true,
+      overlays: [["SMA 200", sma(SERIES[r.sym], 200), "--text-secondary", 1.6]],
+    }));
+    grid.appendChild(card);
+  }
+  box.appendChild(grid);
 }
 
 function renderTables() {
@@ -750,6 +891,7 @@ function renderMacro() {
     ["us_gdp_growth", "US real GDP growth"], ["us_payrolls_chg", "US payrolls change"],
     ["us_fed_funds", "Fed funds target"], ["ea_hicp_yoy", "Euro area inflation"],
     ["ea_depo_rate", "ECB deposit rate"], ["us_yield_spread", "10y minus 2y spread"],
+    ["cr_hy_oas", "US high yield spread"], ["cr_ig_oas", "US investment grade spread"],
     ["de_bund_10y", "German 10-year bund yield"], ["cmd_nickel", "Nickel"],
   ];
   for (const [id, title] of PICKS) {
@@ -783,6 +925,58 @@ function renderMacro() {
   }
 })();
 
+/* Category jumps inside Markets, rebuilt per view so the anchors always point
+   at whichever of the two panels is showing. */
+function renderGroupJump() {
+  const nav = $("#groupjump");
+  nav.textContent = "";
+  const charts = $("#tab-charts").getAttribute("aria-selected") === "true";
+  const host = charts ? $("#charts") : $("#tables");
+  const titles = [...host.querySelectorAll(".tabletitle")];
+  titles.forEach((t, i) => {
+    const id = (charts ? "c-" : "t-") + i;
+    t.id = id;
+    const a = h("a", null, t.textContent);
+    a.href = "#" + id;
+    nav.appendChild(a);
+  });
+}
+
+/* Scroll-spy for the sticky nav: highlights the section you are actually in,
+   so the bar doubles as a position indicator rather than only a jump list. */
+function initScrollSpy() {
+  const links = [...document.querySelectorAll("#jump a")];
+  const mark = () => {
+    let current = links[0];
+    for (const a of links) {
+      const t = document.getElementById(a.getAttribute("href").slice(1));
+      if (t && t.getBoundingClientRect().top <= 90) current = a;
+    }
+    links.forEach(a => a.classList.toggle("here", a === current));
+  };
+  let ticking = false;
+  addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { mark(); ticking = false; });
+  }, { passive: true });
+  mark();
+}
+
+// Number keys jump between sections; t and c switch the Markets view.
+addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+  const link = document.querySelector('#jump a[data-key="' + e.key + '"]');
+  if (link) { e.preventDefault(); document.getElementById(link.getAttribute("href").slice(1)).scrollIntoView({ behavior: "smooth" }); return; }
+  if (e.key === "t" || e.key === "c") {
+    e.preventDefault();
+    selectTab(e.key === "c" ? "charts" : "table");
+    $("#s-markets").scrollIntoView({ behavior: "smooth" });
+  }
+});
+
 function selectTab(which) {
   const isCharts = which === "charts";
   $("#tab-table").setAttribute("aria-selected", String(!isCharts));
@@ -790,6 +984,7 @@ function selectTab(which) {
   $("#tables").hidden = isCharts;
   $("#charts").hidden = !isCharts;
   if (isCharts) buildCharts();
+  renderGroupJump();
 }
 $("#tab-table").addEventListener("click", () => selectTab("table"));
 $("#tab-charts").addEventListener("click", () => selectTab("charts"));

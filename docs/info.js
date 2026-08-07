@@ -127,6 +127,17 @@ window.INFO = {
     ],
   },
 
+  family: {
+    title: "The Economic Modern Family",
+    body: [
+      "A framework published by Mish Schneider, Chief Strategist at MarketGauge, which reads the economy through six sector ETFs rather than the headline index. Each member stands for a different part of the real economy: small caps for domestic business, retail for the consumer, regional banks for credit creation, transportation for goods actually moving, biotech for speculative appetite and semiconductors for the capex cycle. Bitcoin was added later as a liquidity and risk-appetite read.",
+      "The question it asks is whether the family is moving together or splitting. When every member is trending, the expansion is broad and being aggressive is better supported. When members diverge — typically banks or transportation dropping away while semiconductors carry the index — the framework treats that as a signal to reduce risk, because the index is being held up by a narrowing part of the economy.",
+      "Its appeal for a macro reader is that each member is economically interpretable rather than a statistical factor. Transportation weakening is a claim about freight; regional banks weakening is a claim about credit. That makes divergences diagnosable instead of merely observed.",
+      "Two honest caveats. Sector ETFs carry idiosyncratic composition risk — semiconductor performance is currently dominated by a handful of AI-linked names, so it reads less cleanly as a broad cycle signal than it once did. And like every trend-following measure here, the 200-day filter confirms a regime rather than anticipating it.",
+      "This is an independent implementation from the framework's public description; it is not affiliated with or endorsed by MarketGauge, and the nicknames are theirs.",
+    ],
+  },
+
   // ---- macro fundamentals ------------------------------------------------
   us_cpi_yoy: {
     title: "US CPI inflation",
@@ -181,6 +192,20 @@ window.INFO = {
     body: [
       "The most cited yield curve measure. Sustained inversion has preceded every US recession in the modern record, with long and variable lags typically measured in quarters.",
       "Two standard cautions. First, research at the Federal Reserve has argued that shorter-horizon spreads carry at least as much information as the 10y-2y. Second, the re-steepening that follows an inversion — not the inversion itself — has historically been the part that coincides with the downturn.",
+    ],
+  },
+  cr_hy_oas: {
+    title: "US high yield spread",
+    body: [
+      "The option-adjusted spread of high yield corporate bonds over Treasuries — the compensation demanded for default risk, with the effect of embedded options stripped out. This is the direct measure; the HYG/IEF ratio elsewhere on this page is only a proxy for it.",
+      "One of the most-watched inputs to financial-conditions indices, because credit availability binds on the real economy before earnings do. Spreads are mean-reverting and asymmetric: they grind tighter slowly and gap wider quickly, so a very tight level is less a bullish signal than a statement that little cushion remains.",
+    ],
+  },
+  cr_ig_oas: {
+    title: "US investment grade spread",
+    body: [
+      "The same measure for investment grade credit. It moves less than high yield but is more closely tied to the cost of capital for large borrowers, so it matters more for corporate investment decisions.",
+      "The gap between investment grade and high yield spreads is itself informative: widening concentrated in high yield points to credit-quality concern, while both widening together points to a broader liquidity or rate shock.",
     ],
   },
   de_bund_10y: {

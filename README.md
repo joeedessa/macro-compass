@@ -15,13 +15,19 @@ no build step, no server, no API keys.
 2. **Notable moves** — ranked by how unusual each move is against that instrument's
    own 60-day volatility, not by raw size. A 1σ day in the dollar matters more than
    a 3% day in silver.
-3. **Relative strength** — twelve rotation ratios, each stating in words what a rising
+3. **Economic Modern Family** — the framework published by Mish Schneider of
+   [MarketGauge](https://marketgauge.com/modern-family/): six sector ETFs standing for six
+   parts of the real economy (small caps, retail, regional banks, transportation, biotech,
+   semiconductors) plus Bitcoin. Summarised as how many members are "in gear" — trending
+   above their 200-day average — because the framework's question is whether they move
+   together or split. Independent implementation, not affiliated with or endorsed by MarketGauge.
+4. **Relative strength** — twelve rotation ratios, each stating in words what a rising
    line means, over a switchable window from 1 week to 2 years. Includes two
    concentration measures: MAGS/SPY and cap-weight versus equal-weight (SPY/RSP).
-4. **Markets** — a **Table** view (multi-horizon returns, trend state vs the 200-day
+5. **Markets** — a **Table** view (multi-horizon returns, trend state vs the 200-day
    average, position in the 52-week range) and a **Charts** view (1-year daily with
    SMA 200/150/50 and EMA 21).
-5. **Macro fundamentals** — the slow official data underneath it all.
+6. **Macro fundamentals** — the slow official data underneath it all.
 
 Every card carries two controls: **i** turns the card over to explain how that signal
 is conventionally interpreted in macro research, and **↗** opens the underlying source
