@@ -15,11 +15,20 @@ no build step, no server, no API keys.
 2. **Notable moves** — ranked by how unusual each move is against that instrument's
    own 60-day volatility, not by raw size. A 1σ day in the dollar matters more than
    a 3% day in silver.
-3. **Relative strength** — ratio charts for the rotations that drive positioning,
-   each stating in words what a rising line means, with a true 200-day average.
-4. **Markets** — every instrument with multi-horizon returns, trend state vs the
-   200-day average, and position in the 52-week range.
+3. **Relative strength** — twelve rotation ratios, each stating in words what a rising
+   line means, over a switchable window from 1 week to 2 years. Includes two
+   concentration measures: MAGS/SPY and cap-weight versus equal-weight (SPY/RSP).
+4. **Markets** — a **Table** view (multi-horizon returns, trend state vs the 200-day
+   average, position in the 52-week range) and a **Charts** view (1-year daily with
+   SMA 200/150/50 and EMA 21).
 5. **Macro fundamentals** — the slow official data underneath it all.
+
+Every card carries two controls: **i** turns the card over to explain how that signal
+is conventionally interpreted in macro research, and **↗** opens the underlying source
+— Yahoo Finance for prices, FRED or the ECB for macro series.
+
+The interpretation notes in `docs/info.js` are summaries of standard readings, not
+quotations, and each names the failure mode of the signal it describes.
 
 ## Data sources
 
