@@ -963,17 +963,30 @@ function initScrollSpy() {
   mark();
 }
 
+/* Browsers drop a smooth scroll entirely when prefers-reduced-motion is set,
+   so asking for "smooth" unconditionally means the shortcut does nothing at all
+   for anyone using that setting. Honour the preference instead. */
+function scrollToEl(target) {
+  if (!target) return;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+}
+
 // Number keys jump between sections; t and c switch the Markets view.
 addEventListener("keydown", e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  const tag = (e.target.tagName || "").toLowerCase();
-  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+  const tag = (e.target && e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || (e.target && e.target.isContentEditable)) return;
   const link = document.querySelector('#jump a[data-key="' + e.key + '"]');
-  if (link) { e.preventDefault(); document.getElementById(link.getAttribute("href").slice(1)).scrollIntoView({ behavior: "smooth" }); return; }
+  if (link) {
+    e.preventDefault();
+    scrollToEl(document.getElementById(link.getAttribute("href").slice(1)));
+    return;
+  }
   if (e.key === "t" || e.key === "c") {
     e.preventDefault();
     selectTab(e.key === "c" ? "charts" : "table");
-    $("#s-markets").scrollIntoView({ behavior: "smooth" });
+    scrollToEl($("#s-markets"));
   }
 });
 
