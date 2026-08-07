@@ -5,16 +5,18 @@
    macro fundamentals come from data/macro.json, refreshed hourly by CI, which
    also serves as the floor if the live feed is unavailable. */
 
-// ---------------------------------------------------------------- constants
 const PROXIES = [
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
 ];
 const SPARK = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=";
-const CHUNK = 10;               // Yahoo 400s on much more than this
+const CHUNK = 10;                       // Yahoo 400s on much more than this
+const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+
 const GROUPS = [
   ["us", "US equity"],
+  ["mag7", "Magnificent Seven"],
   ["global", "Global & regional equity"],
   ["europe", "Europe"],
   ["asia", "Asia-Pacific & EM"],
@@ -24,7 +26,7 @@ const GROUPS = [
   ["fx", "FX & volatility"],
 ];
 
-// symbol, display name, group. Mirrors the instruments in the Aug 1 report.
+// symbol, display name, group, kind
 const UNIVERSE = [
   ["^GSPC", "S&P 500", "us"],
   ["^IXIC", "Nasdaq Composite", "us"],
@@ -33,6 +35,15 @@ const UNIVERSE = [
   ["SPY", "S&P 500 (SPY)", "us"],
   ["QQQ", "Nasdaq 100 (QQQ)", "us"],
   ["IWM", "Russell 2000 (IWM)", "us"],
+  ["RSP", "S&P 500 equal weight", "us"],
+  ["MAGS", "Magnificent 7 (MAGS)", "mag7"],
+  ["AAPL", "Apple", "mag7"],
+  ["MSFT", "Microsoft", "mag7"],
+  ["GOOGL", "Alphabet", "mag7"],
+  ["AMZN", "Amazon", "mag7"],
+  ["NVDA", "Nvidia", "mag7"],
+  ["META", "Meta", "mag7"],
+  ["TSLA", "Tesla", "mag7"],
   ["ACWI", "MSCI ACWI", "global"],
   ["EEM", "Emerging markets", "global"],
   ["EFA", "Developed ex-US", "global"],
@@ -81,11 +92,12 @@ const UNIVERSE = [
   ["^VIX", "VIX", "fx"],
 ];
 
-/* Relative strength. Each ratio answers one positioning question, and `up`
-   names what a rising line means — the label does the interpreting, so the
-   reader never has to remember which direction is bullish. */
+/* Relative strength. `up` and `down` state in words what each direction means,
+   so the reader never has to remember which way is bullish. */
 const RATIOS = [
   ["QQQ", "SPY", "Growth vs broad market", "Growth leading", "Growth lagging"],
+  ["MAGS", "SPY", "Magnificent 7 vs market", "Mega-cap concentration rising", "Concentration easing"],
+  ["SPY", "RSP", "Cap-weight vs equal-weight", "Leadership narrowing", "Leadership broadening"],
   ["IWM", "SPY", "Small vs large cap", "Small caps leading", "Large caps leading"],
   ["QQQ", "IWM", "Nasdaq vs Russell 2000", "Mega-cap tech leading", "Small caps leading"],
   ["EEM", "SPY", "Emerging vs US", "EM leading", "US leading"],
@@ -97,11 +109,16 @@ const RATIOS = [
   ["SPY", "GLD", "Equities vs gold", "Equities preferred over gold", "Gold preferred over equities"],
 ];
 
+// Trading-day windows. YTD is resolved against the calendar at render time.
+const WINDOWS = [
+  ["1W", 5], ["1M", 21], ["3M", 63], ["6M", 126], ["YTD", "ytd"], ["1Y", 252], ["2Y", 9999],
+];
+let RS_WINDOW = "3M";
+
 // ------------------------------------------------------------------ helpers
 const $ = (s, el) => (el || document).querySelector(s);
 const NS = "http://www.w3.org/2000/svg";
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-
 function el(name, attrs, parent) {
   const n = document.createElementNS(NS, name);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
@@ -118,6 +135,7 @@ const fmtNum = (v, d) => v == null || !isFinite(v) ? "–"
   : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const price = v => v == null ? "–" : fmtNum(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) >= 10 ? 2 : 3);
 const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmtNum(v, 1) + "%";
+const bp = v => v == null ? "–" : (v > 0 ? "+" : "") + fmtNum(v, 0) + "bp";
 
 // ------------------------------------------------------------------- fetch
 async function proxiedJson(url) {
@@ -140,7 +158,7 @@ async function fetchSeries(symbols) {
       // 2y of history so the 200-day average spans the whole 1y chart window.
       const url = SPARK + c.map(encodeURIComponent).join(",") + "&range=2y&interval=1d";
       return (await proxiedJson(url)).spark?.result || [];
-    } catch { return []; }        // one bad chunk must not sink the page
+    } catch { return []; }          // one bad chunk must not sink the page
   }));
   const out = {};
   for (const row of results.flat()) {
@@ -149,19 +167,22 @@ async function fetchSeries(symbols) {
     const stamps = resp?.timestamp;
     if (!closes || !stamps) continue;
     const pts = [];
-    for (let i = 0; i < stamps.length; i++) {
-      if (closes[i] != null) pts.push([stamps[i] * 1000, closes[i]]);
-    }
+    for (let i = 0; i < stamps.length; i++) if (closes[i] != null) pts.push([stamps[i] * 1000, closes[i]]);
     if (pts.length) out[row.symbol] = pts;
   }
   return out;
 }
 
 // ------------------------------------------------------------------ metrics
-/* `pts` is the full 2-year series. Returns and the 52-week range are measured
-   over the trailing year; the 200-day average uses the longer history so it is
-   a true 200-day mean rather than whatever fits the chart. `isYield` switches
-   the change unit to basis points, which is how rates are actually read. */
+function windowSlice(pts, spec) {
+  if (spec === "ytd") {
+    const y = new Date(pts[pts.length - 1][0]).getUTCFullYear();
+    const i = pts.findIndex(p => new Date(p[0]).getUTCFullYear() === y);
+    return i > 0 ? pts.slice(i - 1) : pts;      // include the prior close as the base
+  }
+  return pts.slice(-Math.min(spec, pts.length));
+}
+
 function metrics(pts, isYield) {
   const v = pts.map(p => p[1]);
   const last = v[v.length - 1];
@@ -179,8 +200,7 @@ function metrics(pts, isYield) {
   const yv = yr.map(p => p[1]);
   const hi = Math.max(...yv), lo = Math.min(...yv);
   return {
-    isYield, last, prev: back(1),
-    d1: chg(1), w1: chg(5), m1: chg(21), m3: chg(63),
+    isYield, last, d1: chg(1), w1: chg(5), m1: chg(21), m3: chg(63),
     ytd: firstOfYear ? (isYield ? (last - firstOfYear[1]) * 100 : (last / firstOfYear[1] - 1) * 100) : null,
     ma200, aboveMa: ma200 == null ? null : last >= ma200,
     maGap: ma200 == null ? null : (last / ma200 - 1) * 100,
@@ -189,17 +209,33 @@ function metrics(pts, isYield) {
   };
 }
 
-// Align two series on shared timestamps, then divide.
 function ratioSeries(a, b) {
   if (!a || !b) return null;
   const mb = new Map(b);
   const out = [];
-  for (const [t, va] of a) {
-    const vb = mb.get(t);
-    if (vb) out.push([t, va / vb]);
-  }
+  for (const [t, va] of a) { const vb = mb.get(t); if (vb) out.push([t, va / vb]); }
   return out.length > 30 ? out : null;
 }
+
+// Rolling sum: O(n) rather than O(n × period). With sixty charts each carrying
+// three long averages, the naive version is the difference between 10s and 1s.
+const sma = (pts, n) => {
+  if (pts.length < n) return [];
+  const out = [];
+  let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    s += pts[i][1];
+    if (i >= n) s -= pts[i - n][1];
+    if (i >= n - 1) out.push([pts[i][0], s / n]);
+  }
+  return out;
+};
+const ema = (pts, n) => {
+  const k = 2 / (n + 1), out = [];
+  let prev = pts[0][1];
+  for (let i = 0; i < pts.length; i++) { prev = pts[i][1] * k + prev * (1 - k); out.push([pts[i][0], prev]); }
+  return out.slice(n);
+};
 
 // ------------------------------------------------------------------ drawing
 function sparkline(pts, w, hgt, colorVar) {
@@ -208,76 +244,89 @@ function sparkline(pts, w, hgt, colorVar) {
   const lo = Math.min(...v), hi = Math.max(...v);
   const x = i => 1 + (i / (pts.length - 1)) * (w - 6);
   const y = val => hi === lo ? hgt / 2 : 2 + (1 - (val - lo) / (hi - lo)) * (hgt - 4);
-  const d = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join("");
-  el("path", { d, fill: "none", stroke: css(colorVar || "--baseline"), "stroke-width": 1.5,
+  el("path", { d: pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join(""),
+    fill: "none", stroke: css(colorVar || "--baseline"), "stroke-width": 1.5,
     "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
-  const lastX = x(pts.length - 1), lastY = y(v[v.length - 1]);
-  el("circle", { cx: lastX, cy: lastY, r: 2.5, fill: css("--series-1"),
+  el("circle", { cx: x(pts.length - 1), cy: y(v[v.length - 1]), r: 2.5, fill: css("--series-1"),
     stroke: css("--surface-1"), "stroke-width": 1.5 }, svg);
   return svg;
 }
 
-/* Line chart with a 200-day average, crosshair tooltip and keyboard readout.
-   Used for ratio cards and the macro fundamentals. */
-function lineChart(fullPts, opts) {
+/* Line chart with optional overlays, crosshair tooltip and keyboard readout.
+   `overlays` are [label, points, cssVar, width] drawn beneath the price line. */
+function lineChart(pts, opts) {
   opts = opts || {};
-  // Draw a window of the series, but keep the full history for the average.
-  const pts = opts.visible ? fullPts.slice(-opts.visible) : fullPts;
-  const W = 520, H = 190, M = { t: 12, r: 12, b: 22, l: 46 };
+  const W = 520, H = opts.tall ? 230 : 190, M = { t: 12, r: 12, b: 22, l: 48 };
   const box = h("div", "chart");
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, box);
   el("title", {}, svg).textContent = opts.title || "";
 
-  const v = pts.map(p => p[1]);
-  let lo = Math.min(...v), hi = Math.max(...v);
+  const overlays = (opts.overlays || []).map(o => [o[0], o[1].filter(p => p[0] >= pts[0][0]), o[2], o[3]])
+    .filter(o => o[1].length > 1);
+  const all = pts.map(p => p[1]).concat(overlays.flatMap(o => o[1].map(p => p[1])));
+  let lo = Math.min(...all), hi = Math.max(...all);
   const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
   const t0 = pts[0][0], t1 = pts[pts.length - 1][0];
   const x = t => M.l + ((t - t0) / Math.max(1, t1 - t0)) * (W - M.l - M.r);
   const y = val => M.t + (1 - (val - lo) / (hi - lo)) * (H - M.t - M.b);
-  const digits = (hi - lo) >= 100 ? 0 : (hi - lo) >= 5 ? 1 : 3;
+  const rng = hi - lo;
+  const digits = rng >= 100 ? 0 : rng >= 5 ? 1 : rng >= 0.5 ? 2 : 3;
 
-  // ticks
-  const span = hi - lo, step0 = span / 4;
-  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
-  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= 4) || 10 * mag;
+  const step0 = rng / 4, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => rng / s <= 4) || 10 * mag;
   for (let tv = Math.ceil(lo / step) * step; tv <= hi; tv += step) {
     el("line", { x1: M.l, x2: W - M.r, y1: y(tv), y2: y(tv), stroke: css("--grid"), "stroke-width": 1 }, svg);
     el("text", { x: M.l - 6, y: y(tv) + 3.5, "text-anchor": "end", "font-size": 10,
-      fill: css("--text-muted"), style: "font-variant-numeric:tabular-nums" }, svg)
-      .textContent = fmtNum(tv, digits);
+      fill: css("--text-muted"), style: "font-variant-numeric:tabular-nums" }, svg).textContent = fmtNum(tv, digits);
   }
-  const d0 = new Date(t0), d1 = new Date(t1);
-  for (let m = 1; m <= 12; m++) {
-    const dt = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + m, 1);
-    if (dt > t1) break;
-    if (m % 3) continue;
+  /* Time axis: aim for about six labels whatever the span. Macro series run a
+     decade and price series run months, so month ticks have to give way to year
+     ticks or the labels collide into an unreadable smear. */
+  const days = (t1 - t0) / 864e5;
+  const d0 = new Date(t0);
+  const ticks = [];
+  if (days > 800) {
+    const years = days / 365.25;
+    const step = Math.max(1, Math.ceil(years / 6));
+    for (let y = d0.getUTCFullYear() + 1; ; y++) {
+      const dt = Date.UTC(y, 0, 1);
+      if (dt > t1) break;
+      if ((y - d0.getUTCFullYear()) % step === 0) ticks.push([dt, String(y)]);
+    }
+  } else {
+    const months = days / 30.4;
+    const step = Math.max(1, Math.round(months / 6));
+    for (let m = 1; m <= 40; m++) {
+      const dt = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + m, 1);
+      if (dt > t1) break;
+      if (m % step) continue;
+      const d = new Date(dt);
+      ticks.push([dt, days > 300
+        ? d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" })
+        : d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })]);
+    }
+  }
+  for (const [dt, label] of ticks) {
     el("text", { x: x(dt), y: H - 7, "text-anchor": "middle", "font-size": 10, fill: css("--text-muted") }, svg)
-      .textContent = new Date(dt).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+      .textContent = label;
   }
   el("line", { x1: M.l, x2: W - M.r, y1: H - M.b, y2: H - M.b, stroke: css("--baseline"), "stroke-width": 1 }, svg);
 
-  // 200-day average, drawn under the price line
-  if (opts.ma) {
-    const ma = [];
-    for (let i = 199; i < fullPts.length; i++) {
-      let s = 0; for (let k = i - 199; k <= i; k++) s += fullPts[k][1];
-      if (fullPts[i][0] >= t0) ma.push([fullPts[i][0], s / 200]);
-    }
-    if (ma.length > 2) {
-      el("path", { d: ma.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(""),
-        fill: "none", stroke: css("--text-muted"), "stroke-width": 1.5, "stroke-linecap": "round" }, svg);
-    }
+  for (const [, opts2, colorVar, width] of overlays) {
+    el("path", { d: opts2.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(""),
+      fill: "none", stroke: css(colorVar), "stroke-width": width || 1.4, "stroke-linecap": "round" }, svg);
   }
 
   const line = pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join("");
-  el("path", { d: line + `L${x(t1).toFixed(1)} ${H - M.b}L${x(t0).toFixed(1)} ${H - M.b}Z`,
-    fill: css("--series-1"), opacity: 0.09, stroke: "none" }, svg);
+  if (!opts.noFill) {
+    el("path", { d: line + `L${x(t1).toFixed(1)} ${H - M.b}L${x(t0).toFixed(1)} ${H - M.b}Z`,
+      fill: css("--series-1"), opacity: 0.09, stroke: "none" }, svg);
+  }
   el("path", { d: line, fill: "none", stroke: css("--series-1"), "stroke-width": 2,
     "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
-  el("circle", { cx: x(t1), cy: y(v[v.length - 1]), r: 4, fill: css("--series-1"),
+  el("circle", { cx: x(t1), cy: y(pts[pts.length - 1][1]), r: 4, fill: css("--series-1"),
     stroke: css("--surface-1"), "stroke-width": 2 }, svg);
 
-  // hover layer
   const tip = h("div", "tooltip");
   box.appendChild(tip);
   const cross = el("line", { y1: M.t, y2: H - M.b, stroke: css("--baseline"), "stroke-width": 1, visibility: "hidden" }, svg);
@@ -293,12 +342,23 @@ function lineChart(fullPts, opts) {
     tip.textContent = "";
     tip.appendChild(h("div", "tdate", new Date(p[0]).toISOString().slice(0, 10)));
     const row = h("div", "trow");
+    row.appendChild(h("span", "tkey"));
     row.appendChild(h("span", "tval", fmtNum(p[1], digits)));
     row.appendChild(h("span", "tname", opts.unit || ""));
     tip.appendChild(row);
+    for (const [label, series, colorVar] of overlays) {
+      let nearest = null, nd = Infinity;
+      for (const q of series) { const dd = Math.abs(q[0] - p[0]); if (dd < nd) { nd = dd; nearest = q; } }
+      if (!nearest || nd > 5 * 864e5) continue;
+      const r2 = h("div", "trow");
+      const k = h("span", "tkey"); k.style.borderTopColor = css(colorVar); r2.appendChild(k);
+      r2.appendChild(h("span", "tval", fmtNum(nearest[1], digits)));
+      r2.appendChild(h("span", "tname", label));
+      tip.appendChild(r2);
+    }
     tip.style.display = "block";
     const bw = box.clientWidth;
-    tip.style.left = Math.min(Math.max(0, (x(p[0]) / W) * bw + 10), bw - tip.offsetWidth) + "px";
+    tip.style.left = Math.min(Math.max(0, (x(p[0]) / W) * bw + 10), Math.max(0, bw - tip.offsetWidth)) + "px";
     tip.style.top = "6px";
   }
   const hide = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.style.display = "none"; };
@@ -318,8 +378,6 @@ function lineChart(fullPts, opts) {
 }
 
 // -------------------------------------------------------------- components
-const bp = v => v == null ? "–" : (v > 0 ? "+" : "") + fmtNum(v, 0) + "bp";
-
 function deltaEl(value, isYield) {
   const s = h("span", "delta", isYield ? bp(value) : pct(value));
   const flat = value == null || Math.abs(value) < (isYield ? 0.5 : 0.05);
@@ -327,36 +385,63 @@ function deltaEl(value, isYield) {
   return s;
 }
 
-/* Regime scorecard: seven binary risk conditions. Stated as a count, not a
-   single index, so a reader can see which components disagree. */
-function regime(series, M) {
-  const checks = [];
-  const add = (label, ok, detail) => checks.push({ label, ok, detail });
-  const m = s => M[s];
-  if (m("ACWI")) add("Global equity above 200-day average", m("ACWI").aboveMa, pct(m("ACWI").maGap) + " vs 200d");
-  if (m("SPY")) add("US equity above 200-day average", m("SPY").aboveMa, pct(m("SPY").maGap) + " vs 200d");
-  if (m("^VIX")) add("Volatility subdued (VIX under 20)", m("^VIX").last < 20, "VIX " + fmtNum(m("^VIX").last, 1));
-  const cr = ratioSeries(series.HYG, series.IEF);
-  if (cr) { const c = metrics(cr); add("Credit appetite improving (HYG/IEF)", c.m3 > 0, pct(c.m3) + " 3m"); }
-  const cy = ratioSeries(series.XLY, series.XLP);
-  if (cy) { const c = metrics(cy); add("Cyclicals leading defensives", c.m3 > 0, pct(c.m3) + " 3m"); }
-  const cg = ratioSeries(series["HG=F"], series["GC=F"]);
-  if (cg) { const c = metrics(cg); add("Copper outperforming gold", c.m3 > 0, pct(c.m3) + " 3m"); }
-  if (m("^TNX") && m("^TYX")) add("Long end not inverted", m("^TYX").last >= m("^TNX").last,
-    fmtNum(m("^TYX").last - m("^TNX").last, 2) + "pp 30y-10y");
-  return checks;
+/* A card with a front face and an info face. The [i] button turns the card
+   over; the ↗ button opens the underlying source in a new tab. */
+function makeCard(title, infoKey, sourceUrl, sourceLabel) {
+  const card = h("div", "card");
+  const inner = h("div", "card-inner");
+  const front = h("div", "face front");
+  const head = h("div", "card-head");
+  head.appendChild(h("h3", null, title));
+  const tools = h("div", "tools");
+  const info = window.INFO && window.INFO[infoKey];
+  if (info) {
+    const b = h("button", "icon", "i");
+    b.type = "button";
+    b.title = "How this signal is read";
+    b.setAttribute("aria-label", "How this signal is read: " + title);
+    b.addEventListener("click", () => card.classList.add("flipped"));
+    tools.appendChild(b);
+  }
+  if (sourceUrl) {
+    const a = h("a", "icon", "↗");
+    a.href = sourceUrl; a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.title = "Open source" + (sourceLabel ? ": " + sourceLabel : "");
+    a.setAttribute("aria-label", "Open source data for " + title);
+    tools.appendChild(a);
+  }
+  head.appendChild(tools);
+  front.appendChild(head);
+  inner.appendChild(front);
+
+  if (info) {
+    const back = h("div", "face back");
+    const bh = h("div", "card-head");
+    bh.appendChild(h("h3", null, info.title));
+    const close = h("button", "icon", "✕");
+    close.type = "button";
+    close.title = "Back to the chart";
+    close.setAttribute("aria-label", "Back to the chart");
+    close.addEventListener("click", () => card.classList.remove("flipped"));
+    const bt = h("div", "tools"); bt.appendChild(close);
+    bh.appendChild(bt);
+    back.appendChild(bh);
+    for (const para of info.body) back.appendChild(h("p", "ibody", para));
+    inner.appendChild(back);
+  }
+  card.appendChild(inner);
+  card.body = front;                       // callers append content here
+  return card;
 }
 
 // -------------------------------------------------------------------- boot
-let SERIES = {}, METRICS = {}, MACRO = null;
+let SERIES = {}, METRICS = {}, MACRO = null, CHARTS_BUILT = false;
 
 async function load() {
   const status = $("#status");
   status.textContent = "Fetching live prices…";
   status.hidden = false;
 
-  // Macro paints as soon as it lands rather than waiting on the price feed —
-  // the official data is one small file and the quotes take several seconds.
   const macroP = fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
     .then(r => r.ok ? r.json() : null).catch(() => null);
   macroP.then(m => { if (m) { MACRO = m; renderMacro(); } });
@@ -378,13 +463,11 @@ async function load() {
     status.hidden = true;
     $("#markets").hidden = false;
   }
-  render(live);
-}
-
-function render(live) {
+  CHARTS_BUILT = false;
   renderStamp(live);
   if (live) { renderRegime(); renderMovers(); renderRatios(); renderTables(); }
   renderMacro();
+  if (live && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
 }
 
 function renderStamp(live) {
@@ -400,8 +483,26 @@ function renderStamp(live) {
   $("#stamp").textContent = bits.join(" · ");
 }
 
+function regimeChecks() {
+  const checks = [];
+  const add = (label, ok, detail) => checks.push({ label, ok, detail });
+  const m = s => METRICS[s];
+  if (m("ACWI")) add("Global equity above 200-day average", m("ACWI").aboveMa, pct(m("ACWI").maGap) + " vs 200d");
+  if (m("SPY")) add("US equity above 200-day average", m("SPY").aboveMa, pct(m("SPY").maGap) + " vs 200d");
+  if (m("^VIX")) add("Volatility subdued (VIX under 20)", m("^VIX").last < 20, "VIX " + fmtNum(m("^VIX").last, 1));
+  const cr = ratioSeries(SERIES.HYG, SERIES.IEF);
+  if (cr) { const c = metrics(cr); add("Credit appetite improving (HYG/IEF)", c.m3 > 0, pct(c.m3) + " 3m"); }
+  const cy = ratioSeries(SERIES.XLY, SERIES.XLP);
+  if (cy) { const c = metrics(cy); add("Cyclicals leading defensives", c.m3 > 0, pct(c.m3) + " 3m"); }
+  const cg = ratioSeries(SERIES["HG=F"], SERIES["GC=F"]);
+  if (cg) { const c = metrics(cg); add("Copper outperforming gold", c.m3 > 0, pct(c.m3) + " 3m"); }
+  if (m("^TNX") && m("^TYX")) add("Long end not inverted", m("^TYX").last >= m("^TNX").last,
+    fmtNum(m("^TYX").last - m("^TNX").last, 2) + "pp 30y-10y");
+  return checks;
+}
+
 function renderRegime() {
-  const checks = regime(SERIES, METRICS);
+  const checks = regimeChecks();
   const on = checks.filter(c => c.ok).length;
   const box = $("#regime");
   box.textContent = "";
@@ -409,11 +510,21 @@ function renderRegime() {
   const cls = on >= 5 ? "on" : on >= 3 ? "mixed" : "off";
 
   const head = h("div", "regime-head " + cls);
-  head.appendChild(h("div", "regime-label", label));
-  head.appendChild(h("div", "regime-score", on + " of " + checks.length + " risk conditions met"));
+  const top = h("div", "regime-top");
+  const lt = h("div");
+  lt.appendChild(h("div", "regime-label", label));
+  lt.appendChild(h("div", "regime-score", on + " of " + checks.length + " risk conditions met"));
+  top.appendChild(lt);
+  const tools = h("div", "tools");
+  const ib = h("button", "icon", "i");
+  ib.type = "button"; ib.title = "How the regime score is built";
+  ib.setAttribute("aria-label", "How the regime score is built");
+  ib.addEventListener("click", () => $("#regime-info").hidden = !$("#regime-info").hidden);
+  tools.appendChild(ib);
+  top.appendChild(tools);
+  head.appendChild(top);
 
-  // Breadth: participation across the equity universe, not just the megacaps.
-  const eq = UNIVERSE.filter(u => ["us", "global", "europe", "asia", "sector"].includes(u[2]) && METRICS[u[0]]);
+  const eq = UNIVERSE.filter(u => ["us", "mag7", "global", "europe", "asia", "sector"].includes(u[2]) && METRICS[u[0]]);
   const above = eq.filter(u => METRICS[u[0]].aboveMa).length;
   if (eq.length) {
     const b = h("div", "breadth");
@@ -422,8 +533,7 @@ function renderRegime() {
     fill.style.width = Math.round((above / eq.length) * 100) + "%";
     bar.appendChild(fill);
     b.appendChild(bar);
-    b.appendChild(h("span", "breadth-text",
-      above + " of " + eq.length + " equity markets above their 200-day average"));
+    b.appendChild(h("span", "breadth-text", above + " of " + eq.length + " markets above their 200-day average"));
     head.appendChild(b);
   }
   box.appendChild(head);
@@ -439,11 +549,17 @@ function renderRegime() {
     list.appendChild(row);
   }
   box.appendChild(list);
+
+  const panel = h("div", "infopanel");
+  panel.id = "regime-info"; panel.hidden = true;
+  for (const key of ["regime", "breadth"]) {
+    const info = window.INFO[key];
+    panel.appendChild(h("h4", null, info.title));
+    for (const p of info.body) panel.appendChild(h("p", "ibody", p));
+  }
+  box.appendChild(panel);
 }
 
-/* Ranked by how unusual the move is, not its raw size: a 1% day in the dollar
-   index matters more than a 1% day in silver. Scored as the move divided by
-   the instrument's own recent daily volatility. */
 function renderMovers() {
   const rows = UNIVERSE.filter(u => METRICS[u[0]] && METRICS[u[0]].d1 != null).map(u => {
     const m = METRICS[u[0]], pts = SERIES[u[0]];
@@ -460,7 +576,8 @@ function renderMovers() {
   const box = $("#movers");
   box.textContent = "";
   for (const r of rows.slice(0, 7)) {
-    const t = h("div", "mover");
+    const t = h("a", "mover");
+    t.href = YQ(r.sym); t.target = "_blank"; t.rel = "noopener noreferrer";
     t.appendChild(h("div", "mname", r.name));
     const d = deltaEl(r.m.d1, r.m.isYield);
     d.classList.add("mbig");
@@ -476,23 +593,30 @@ function renderMovers() {
 function renderRatios() {
   const box = $("#ratios");
   box.textContent = "";
+  const spec = WINDOWS.find(w => w[0] === RS_WINDOW)[1];
   for (const [a, b, question, upMeans, downMeans] of RATIOS) {
-    const pts = ratioSeries(SERIES[a], SERIES[b]);
-    if (!pts) continue;
-    const m = metrics(pts);
-    const card = h("div", "card");
-    card.appendChild(h("h3", null, a + " / " + b));
-    card.appendChild(h("p", "meta", question));
+    const full = ratioSeries(SERIES[a], SERIES[b]);
+    if (!full) continue;
+    const view = windowSlice(full, spec);
+    if (view.length < 3) continue;
+    const change = (view[view.length - 1][1] / view[0][1] - 1) * 100;
+
+    const card = makeCard(a + " / " + b, a + "/" + b, YQ(a), a + " on Yahoo Finance");
+    const body = card.body;
+    body.appendChild(h("p", "meta", question));
     const read = h("p", "latest");
-    read.appendChild(h("strong", null, fmtNum(m.last, 3)));
+    read.appendChild(h("strong", null, fmtNum(view[view.length - 1][1], 3)));
     read.appendChild(document.createTextNode("  "));
-    read.appendChild(deltaEl(m.m3));
-    read.appendChild(document.createTextNode(" over 3 months"));
-    card.appendChild(read);
-    const rising = m.m3 > 0;
-    card.appendChild(h("p", "verdict " + (rising ? "up" : "down"),
+    read.appendChild(deltaEl(change));
+    read.appendChild(document.createTextNode(" over " + RS_WINDOW));
+    body.appendChild(read);
+    const rising = change > 0;
+    body.appendChild(h("p", "verdict " + (rising ? "up" : "down"),
       (rising ? "▲ " : "▼ ") + (rising ? upMeans : downMeans)));
-    card.appendChild(lineChart(pts, { title: a + "/" + b, ma: true, unit: "ratio", visible: 252 }));
+    // The 200-day average is only meaningful once the window is long enough.
+    const showMa = spec === 9999 || spec === "ytd" || spec >= 126;
+    const overlays = showMa ? [["200d avg", sma(full, 200), "--text-muted", 1.5]] : [];
+    body.appendChild(lineChart(view, { title: a + "/" + b, unit: "ratio", overlays }));
     box.appendChild(card);
   }
 }
@@ -507,35 +631,29 @@ function renderTables() {
     const wrap = h("div", "tablewrap");
     const table = h("table", "mkt");
     const thead = h("thead"), hr = h("tr");
-    ["Instrument", "Last", "1d", "1w", "1m", "3m", "YTD", "vs 200d", "52w range", "1y"].forEach((c, i) => {
-      const th = h("th", i === 0 ? "left" : null, c);
-      hr.appendChild(th);
-    });
+    ["Instrument", "Last", "1d", "1w", "1m", "3m", "YTD", "vs 200d", "52w range", "1y"].forEach((c, i) =>
+      hr.appendChild(h("th", i === 0 ? "left" : null, c)));
     thead.appendChild(hr); table.appendChild(thead);
     const tb = h("tbody");
     for (const [sym, name] of rows) {
       const m = METRICS[sym];
       const tr = h("tr");
       const nameCell = h("td", "left");
-      nameCell.appendChild(h("span", "iname", name));
+      const link = h("a", "iname", name);
+      link.href = YQ(sym); link.target = "_blank"; link.rel = "noopener noreferrer";
+      nameCell.appendChild(link);
       nameCell.appendChild(h("span", "isym", sym));
       tr.appendChild(nameCell);
       tr.appendChild(h("td", "num", price(m.last)));
       [m.d1, m.w1, m.m1, m.m3, m.ytd].forEach(v => {
-        const td = h("td", "num");
-        td.appendChild(deltaEl(v, m.isYield));
-        tr.appendChild(td);
+        const td = h("td", "num"); td.appendChild(deltaEl(v, m.isYield)); tr.appendChild(td);
       });
       const ma = h("td", "num");
       if (m.aboveMa == null) ma.textContent = "–";
-      else {
-        const tag = h("span", "trend " + (m.aboveMa ? "up" : "down"), (m.aboveMa ? "above " : "below ") + pct(m.maGap).replace("+", ""));
-        ma.appendChild(tag);
-      }
+      else ma.appendChild(h("span", "trend " + (m.aboveMa ? "up" : "down"),
+        (m.aboveMa ? "above " : "below ") + pct(m.maGap).replace("+", "")));
       tr.appendChild(ma);
-      const rng = h("td", "num");
-      rng.appendChild(rangeBar(m));
-      tr.appendChild(rng);
+      const rng = h("td", "num"); rng.appendChild(rangeBar(m)); tr.appendChild(rng);
       const sp = h("td", "num");
       sp.appendChild(sparkline(SERIES[sym], 70, 22, m.aboveMa ? "--series-1" : "--text-muted"));
       tr.appendChild(sp);
@@ -547,18 +665,82 @@ function renderTables() {
   }
 }
 
+/* Markets → Charts tab. One 1-year daily chart per instrument with SMA 200/150/50
+   and EMA 21. Built on first view and rendered lazily as cards scroll in, since
+   sixty charts at once is a lot of SVG. */
+function buildCharts() {
+  if (CHARTS_BUILT) return;
+  const box = $("#charts");
+  box.textContent = "";
+  const pending = [];
+  for (const [key, title] of GROUPS) {
+    const rows = UNIVERSE.filter(u => u[2] === key && SERIES[u[0]]);
+    if (!rows.length) continue;
+    box.appendChild(h("h3", "tabletitle", title));
+    const grid = h("div", "grid");
+    for (const [sym, name] of rows) {
+      const card = makeCard(name, key === "mag7" ? "mag7" : "movingAverages", YQ(sym), sym + " on Yahoo Finance");
+      const m = METRICS[sym];
+      const meta = h("p", "meta", sym);
+      card.body.appendChild(meta);
+      const read = h("p", "latest");
+      read.appendChild(h("strong", null, price(m.last)));
+      read.appendChild(document.createTextNode("  "));
+      read.appendChild(deltaEl(m.d1, m.isYield));
+      read.appendChild(document.createTextNode(" today"));
+      card.body.appendChild(read);
+      const slot = h("div", "chartslot");
+      card.body.appendChild(slot);
+      pending.push([slot, sym]);
+      grid.appendChild(card);
+    }
+    box.appendChild(grid);
+  }
+  const draw = slotSym => {
+    const [slot, sym] = slotSym;
+    if (slot.dataset.done) return;
+    slot.dataset.done = "1";
+    const full = SERIES[sym];
+    const view = full.slice(-252);
+    slot.appendChild(lineChart(view, {
+      title: sym, tall: true, noFill: true,
+      overlays: [
+        ["EMA 21", ema(full, 21), "--series-2", 1.3],
+        ["SMA 50", sma(full, 50), "--series-3", 1.3],
+        ["SMA 150", sma(full, 150), "--ma150", 1.3],
+        ["SMA 200", sma(full, 200), "--text-secondary", 1.7],
+      ],
+    }));
+    const legend = h("div", "legend");
+    [["Price", "--series-1"], ["EMA 21", "--series-2"], ["SMA 50", "--series-3"],
+     ["SMA 150", "--ma150"], ["SMA 200", "--text-secondary"]].forEach(([lab, v]) => {
+      const k = h("span", "key");
+      const sw = h("span", "swatch"); sw.style.borderTopColor = css(v);
+      k.appendChild(sw); k.appendChild(h("span", null, lab));
+      legend.appendChild(k);
+    });
+    slot.appendChild(legend);
+  };
+  /* Drawn synchronously. Deferred schemes were tried and rejected: scroll-based
+     lazy loading renders nothing where the viewport measures zero height, and
+     rAF batching stalls outright in a background tab. With the rolling-sum
+     averages the whole set costs a few tens of milliseconds, so the simple
+     thing is also the correct one. */
+  pending.forEach(draw);
+  CHARTS_BUILT = true;
+}
+
 function rangeBar(m) {
   const w = 74, hgt = 16;
   const svg = el("svg", { viewBox: `0 0 ${w} ${hgt}`, width: w, height: hgt, role: "img" });
-  el("title", {}, svg).textContent = `52-week range ${price(m.lo)} to ${price(m.hi)}; now ${Math.round(m.rangePos)}% of the way up`;
+  el("title", {}, svg).textContent =
+    `52-week range ${price(m.lo)} to ${price(m.hi)}; now ${Math.round(m.rangePos)}% of the way up`;
   el("line", { x1: 3, x2: w - 3, y1: hgt / 2, y2: hgt / 2, stroke: css("--grid"), "stroke-width": 4, "stroke-linecap": "round" }, svg);
-  const cx = 3 + (m.rangePos / 100) * (w - 6);
-  el("circle", { cx, cy: hgt / 2, r: 4, fill: css(m.rangePos >= 50 ? "--series-1" : "--series-2"),
-    stroke: css("--surface-1"), "stroke-width": 2 }, svg);
+  el("circle", { cx: 3 + (m.rangePos / 100) * (w - 6), cy: hgt / 2, r: 4,
+    fill: css(m.rangePos >= 50 ? "--series-1" : "--series-2"), stroke: css("--surface-1"), "stroke-width": 2 }, svg);
   return svg;
 }
 
-// Official macro fundamentals — slower-moving context below the market read.
 function renderMacro() {
   const box = $("#macro");
   box.textContent = "";
@@ -568,29 +750,48 @@ function renderMacro() {
     ["us_gdp_growth", "US real GDP growth"], ["us_payrolls_chg", "US payrolls change"],
     ["us_fed_funds", "Fed funds target"], ["ea_hicp_yoy", "Euro area inflation"],
     ["ea_depo_rate", "ECB deposit rate"], ["us_yield_spread", "10y minus 2y spread"],
-    // Instruments the report tracks that have no usable live feed — kept here
-    // on official monthly data rather than dropped.
     ["de_bund_10y", "German 10-year bund yield"], ["cmd_nickel", "Nickel"],
   ];
   for (const [id, title] of PICKS) {
     const s = MACRO.series[id];
     if (!s) continue;
     const pts = s.points.map(p => [new Date(p[0].length === 7 ? p[0] + "-15" : p[0]).getTime(), p[1]]).slice(-140);
-    const card = h("div", "card");
-    card.appendChild(h("h3", null, title));
-    const meta = h("p", "meta");
-    meta.appendChild(document.createTextNode(s.unit + " · "));
-    const a = h("a", null, s.source); a.href = s.source_url; a.rel = "noopener";
-    meta.appendChild(a);
-    card.appendChild(meta);
+    const card = makeCard(title, id, s.source_url, s.source);
+    card.body.appendChild(h("p", "meta", s.unit + " · " + s.source));
     const read = h("p", "latest");
     read.appendChild(h("strong", null, fmtNum(s.points[s.points.length - 1][1], 2)));
     read.appendChild(document.createTextNode(" (" + s.points[s.points.length - 1][0] + ")"));
-    card.appendChild(read);
-    card.appendChild(lineChart(pts, { title, unit: s.unit }));
+    card.body.appendChild(read);
+    card.body.appendChild(lineChart(pts, { title, unit: s.unit }));
     box.appendChild(card);
   }
 }
 
+// ------------------------------------------------------------------- wiring
+(function initWindows() {
+  const box = $("#rswindows");
+  for (const [label] of WINDOWS) {
+    const b = h("button", "rangebtn", label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(label === RS_WINDOW));
+    b.addEventListener("click", () => {
+      RS_WINDOW = label;
+      [...box.children].forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+      renderRatios();
+    });
+    box.appendChild(b);
+  }
+})();
+
+function selectTab(which) {
+  const isCharts = which === "charts";
+  $("#tab-table").setAttribute("aria-selected", String(!isCharts));
+  $("#tab-charts").setAttribute("aria-selected", String(isCharts));
+  $("#tables").hidden = isCharts;
+  $("#charts").hidden = !isCharts;
+  if (isCharts) buildCharts();
+}
+$("#tab-table").addEventListener("click", () => selectTab("table"));
+$("#tab-charts").addEventListener("click", () => selectTab("charts"));
 $("#refresh").addEventListener("click", () => load());
 load();
