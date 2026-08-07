@@ -705,7 +705,7 @@ function renderFamily() {
   const up = core.filter(r => r.m.aboveMa).length;
   const laggards = core.filter(r => !r.m.aboveMa).map(r => r.nick);
 
-  const head = h("div", "family-head " + (up >= core.length - 1 ? "on" : up >= core.length / 2 ? "mixed" : "off"));
+  const head = h("div", "regime-head " + (up >= core.length - 1 ? "on" : up >= core.length / 2 ? "mixed" : "off"));
   const top = h("div", "regime-top");
   const lt = h("div");
   lt.appendChild(h("div", "regime-label", up + " of " + core.length + " in gear"));
@@ -726,40 +726,87 @@ function renderFamily() {
   tools.appendChild(a);
   top.appendChild(tools);
   head.appendChild(top);
+
+  // Attribution stays visible rather than hidden behind the info button.
+  const cred = h("div", "regime-change");
+  cred.appendChild(h("span", "clabel",
+    "Framework by Mish Schneider, MarketGauge · independent implementation, unaffiliated"));
+  head.appendChild(cred);
   box.appendChild(head);
 
   const panel = h("div", "infopanel");
   panel.id = "family-info"; panel.hidden = true;
-  const info = window.INFO.family;
-  for (const p of info.body) panel.appendChild(h("p", "ibody", p));
+  for (const p of window.INFO.family.body) panel.appendChild(h("p", "ibody", p));
   box.appendChild(panel);
 
-  const grid = h("div", "grid");
+  /* Same condition-list shape as the regime block. Each member's chart lives
+     behind its row, built on first expand so seven charts are not drawn for a
+     reader who only wants the pass/fail summary. */
+  const list = h("div", "family-list");
   for (const r of rows) {
-    const card = makeCard(r.nick, null, YQ(r.sym), r.sym + " on Yahoo Finance");
-    card.body.appendChild(h("p", "meta", r.sym + " · " + r.role));
-    const read = h("p", "latest");
-    read.appendChild(h("strong", null, price(r.m.last)));
-    read.appendChild(document.createTextNode("  "));
-    read.appendChild(deltaEl(r.m.d1));
-    read.appendChild(document.createTextNode(" today"));
-    card.body.appendChild(read);
-    const state = h("p", "verdict " + (r.m.aboveMa ? "up" : "down"),
-      (r.m.aboveMa ? "▲ In gear — " : "▼ Out of gear — ") +
-      (r.m.aboveMa ? "above" : "below") + " its 200-day by " + pct(Math.abs(r.m.maGap)).replace("+", ""));
-    card.body.appendChild(state);
+    const rowBtn = h("button", "family-row " + (r.m.aboveMa ? "yes" : "no"));
+    rowBtn.type = "button";
+    rowBtn.setAttribute("aria-expanded", "false");
+    rowBtn.appendChild(h("span", "mark", r.m.aboveMa ? "✓" : "✕"));
+    const txt = h("span", "rtext");
+    const lab = h("span", "rlabel");
+    lab.appendChild(document.createTextNode(r.nick));
+    lab.appendChild(h("span", "tick", r.sym));
+    txt.appendChild(lab);
+    const bits = [(r.m.aboveMa ? "above" : "below") + " 200-day by " +
+      fmtNum(Math.abs(r.m.maGap), 1) + "%"];
     if (r.rel3m != null) {
-      card.body.appendChild(h("p", "meta",
-        (r.rel3m > 0 ? "Outperforming" : "Underperforming") + " SPY by " +
-        fmtNum(Math.abs(r.rel3m), 1) + "% over 3 months"));
+      bits.push((r.rel3m > 0 ? "outperforming" : "underperforming") + " SPY by " +
+        fmtNum(Math.abs(r.rel3m), 1) + "% over 3m");
     }
-    card.body.appendChild(lineChart(SERIES[r.sym].slice(-252), {
-      title: r.nick, noFill: true,
-      overlays: [["SMA 200", sma(SERIES[r.sym], 200), "--text-secondary", 1.6]],
-    }));
-    grid.appendChild(card);
+    txt.appendChild(h("span", "rdetail", r.role));
+    txt.appendChild(h("span", "rdetail", bits.join(" · ")));
+    rowBtn.appendChild(txt);
+    const right = h("span", "rowright");
+    const d = deltaEl(r.m.d1);
+    right.appendChild(d);
+    right.appendChild(h("span", "chev", "▾"));
+    rowBtn.appendChild(right);
+
+    const panelEl = h("div", "family-chart");
+    panelEl.hidden = true;
+    rowBtn.addEventListener("click", () => {
+      const open = rowBtn.getAttribute("aria-expanded") === "true";
+      rowBtn.setAttribute("aria-expanded", String(!open));
+      panelEl.hidden = open;
+      if (!open && !panelEl.dataset.done) {
+        panelEl.dataset.done = "1";
+        panelEl.appendChild(lineChart(SERIES[r.sym].slice(-252), {
+          title: r.nick, noFill: true,
+          overlays: [["SMA 200", sma(SERIES[r.sym], 200), "--text-secondary", 1.6]],
+        }));
+        const leg = h("div", "legend");
+        [["Price", "--series-1"], ["SMA 200", "--text-secondary"]].forEach(([lb, v]) => {
+          const k = h("span", "key");
+          const sw = h("span", "swatch"); sw.style.borderTopColor = css(v);
+          k.append(sw, h("span", null, lb));
+          leg.appendChild(k);
+        });
+        panelEl.appendChild(leg);
+      }
+    });
+    list.appendChild(rowBtn);
+    list.appendChild(panelEl);
   }
-  box.appendChild(grid);
+  box.appendChild(list);
+
+  const all = h("button", "expandall", "Expand all charts");
+  all.type = "button";
+  all.addEventListener("click", () => {
+    const rowsEls = [...list.querySelectorAll(".family-row")];
+    // If anything is still closed, the button opens everything; otherwise it closes.
+    const shouldOpen = rowsEls.some(b => b.getAttribute("aria-expanded") === "false");
+    rowsEls.forEach(b => {
+      if ((b.getAttribute("aria-expanded") === "true") !== shouldOpen) b.click();
+    });
+    all.textContent = shouldOpen ? "Collapse all charts" : "Expand all charts";
+  });
+  box.appendChild(all);
 }
 
 function renderTables() {
