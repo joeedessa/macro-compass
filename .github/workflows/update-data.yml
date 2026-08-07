@@ -2,8 +2,10 @@ name: Update data
 
 on:
   schedule:
-    # Daily at 06:20 UTC — after FRED's overnight update cycle
-    - cron: "20 6 * * *"
+    # Hourly. Sources publish end-of-day, so most runs find nothing changed and
+    # commit nothing; the point is to pick up a new close within the hour it
+    # lands rather than waiting for the next morning.
+    - cron: "20 * * * *"
   workflow_dispatch:
 
 permissions:

@@ -67,6 +67,7 @@
   header h1 { font-size: 26px; font-weight: 650; letter-spacing: -0.01em; }
   header .sub { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
   header .sub a { color: inherit; }
+  header .sub.note { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
 
   .filters {
     display: flex; align-items: center; gap: 6px;
@@ -150,11 +151,13 @@
 <div class="wrap">
   <header>
     <h1>Macro Compass</h1>
-    <p class="sub">Key macroeconomic indicators and market indices, pulled daily from official sources —
+    <p class="sub">Key macroeconomic indicators and market indices from official sources —
       <a href="https://fred.stlouisfed.org/" rel="noopener">FRED</a>,
       <a href="https://data.ecb.europa.eu/" rel="noopener">ECB</a>, and the
       <a href="https://data.worldbank.org/" rel="noopener">World Bank</a>.
       <span id="updated"></span></p>
+    <p class="sub note">Market figures are official end-of-day closes, not intraday quotes — every
+      chart shows the date of its own latest observation.</p>
   </header>
 
   <div class="filters" id="filters" role="group" aria-label="Time range">
@@ -193,7 +196,8 @@
   const status = $("#status");
   let DATA;
   try {
-    const resp = await fetch("data/macro.json", { cache: "no-store" });
+    // Cache-bust so the CDN edge can't hand back a stale copy on open.
+    const resp = await fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" });
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     DATA = await resp.json();
   } catch (e) {
@@ -202,7 +206,17 @@
   }
   status.hidden = true;
   $("#app").hidden = false;
-  $("#updated").textContent = "Updated " + DATA.generated_at.slice(0, 10) + " UTC.";
+  // Freshness: how long ago the data was pulled from source, in plain words.
+  (function () {
+    const mins = Math.max(0, Math.round((Date.now() - new Date(DATA.generated_at)) / 60000));
+    const ago = mins < 2 ? "just now"
+      : mins < 60 ? mins + " minutes ago"
+      : mins < 120 ? "1 hour ago"
+      : mins < 1440 ? Math.round(mins / 60) + " hours ago"
+      : Math.round(mins / 1440) + " days ago";
+    $("#updated").textContent = "Pulled from source " + ago + "; refreshed hourly.";
+    $("#updated").title = DATA.generated_at;
+  })();
 
   const S = DATA.series;
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();

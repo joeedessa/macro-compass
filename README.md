@@ -28,8 +28,22 @@ themselves, which have no free authoritative feed. They are labelled as such on 
 - `docs/index.html` is a self-contained dashboard (vanilla JS + SVG, no libraries)
   that renders stat tiles and charts from that JSON, with time-range filters,
   hover tooltips, per-chart data tables, and light/dark themes.
-- `.github/workflows/update-data.yml` re-runs the fetch daily and commits the
-  result, so GitHub Pages always serves fresh data.
+- `.github/workflows/update-data.yml` re-runs the fetch hourly and commits only
+  when something changed, so a new close appears within the hour it is published.
+
+## How current is it?
+
+Two delays stack: how fast the source publishes, and how often this repo refreshes.
+The refresh is hourly, so the second is at most ~60 minutes. The first is the real
+constraint and varies by series — same day for policy rates, one day for equity
+indices, up to a week for the Fed's weekly H.10 FX release, and one reporting cycle
+for monthly and quarterly macro.
+
+All market figures are **official end-of-day closes, not intraday quotes**. Free
+official sources do not publish live prices; intraday would require a licensed
+market-data provider and a proxy to hold the API key (a public Pages site cannot
+safely embed one). Each chart shows the date of its own latest observation, and the
+header shows how long ago the data was pulled.
 
 ## Run locally
 
