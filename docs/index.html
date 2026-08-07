@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Macro Compass — morning read</title>
+<!-- SVG for modern browsers; the .ico fallback is what Safari and older
+     browsers show in the tab, so both are needed to lose the default globe. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0f1b2d">
+<meta name="description" content="Macro morning read: regime, relative strength and global markets from official and live sources.">
+<link rel="manifest" href="site.webmanifest">
 <style>
   :root {
     color-scheme: light dark;
@@ -241,7 +249,8 @@
     <a href="#s-family" data-key="3">Modern Family<kbd>3</kbd></a>
     <a href="#s-rs" data-key="4">Relative strength<kbd>4</kbd></a>
     <a href="#s-markets" data-key="5">Markets<kbd>5</kbd></a>
-    <a href="#s-macro" data-key="6">Macro<kbd>6</kbd></a>
+    <a href="#s-official" data-key="6">Official flows<kbd>6</kbd></a>
+    <a href="#s-macro" data-key="7">Macro<kbd>7</kbd></a>
   </nav>
 
   <p id="status" hidden></p>
@@ -281,6 +290,12 @@
     <div id="charts" role="tabpanel" aria-labelledby="tab-charts" hidden></div>
   </div>
 
+  <h2 id="s-official">Official flows</h2>
+  <p class="lede">Who is actually financing the US deficit, and what the largest reserve managers
+    hold. Auction bid-to-cover and the indirect bidder share are the closest public read on
+    foreign official demand — no country publishes the currency breakdown of its own reserves.</p>
+  <div class="grid" id="official"></div>
+
   <h2 id="s-macro">Macro fundamentals</h2>
   <p class="lede">Slow-moving official data — inflation, labour, growth and policy rates.
     These set the backdrop the market read sits inside.</p>
@@ -301,7 +316,7 @@
 </div>
 <!-- Bump ?v= whenever these change: the Pages CDN and browsers cache them
      aggressively, and a stale app.js against a fresh page is a silent failure. -->
-<script src="info.js?v=20260807k"></script>
-<script src="app.js?v=20260807k"></script>
+<script src="info.js?v=20260807p"></script>
+<script src="app.js?v=20260807p"></script>
 </body>
 </html>

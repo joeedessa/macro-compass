@@ -138,6 +138,55 @@ window.INFO = {
     ],
   },
 
+  // ---- official flows ----------------------------------------------------
+  cb_foreign_custody: {
+    title: "Foreign official Treasuries held at the Fed",
+    body: [
+      "Marketable Treasuries the New York Fed holds in custody for foreign central banks and international institutions. Published weekly, which makes it the most timely public read on official foreign demand — TIC data on the same question arrives with roughly a two-month lag.",
+      "Read the trend, not the level. Sustained declines are watched as evidence of reserve diversification or of central banks selling dollars to defend their currencies; the two have very different implications and this series cannot distinguish them.",
+      "A major caveat: custody is not ownership of the whole stock. Reserve managers increasingly hold Treasuries through commercial custodians in London, Belgium and elsewhere, so holdings can shift between custodians without any change in underlying demand.",
+    ],
+  },
+  cb_fed_treasuries: {
+    title: "Fed Treasury holdings",
+    body: [
+      "The Treasury portfolio on the Federal Reserve's own balance sheet — the direct measure of quantitative easing and tightening. A falling line means the Fed is letting securities run off, so the private market must absorb more issuance.",
+      "This matters for term premium: when the largest price-insensitive buyer steps back, duration has to be taken down by investors who demand compensation for it. Balance sheet runoff is generally treated as a slow, background tightening rather than an event.",
+    ],
+  },
+  cb_foreign_held: {
+    title: "Federal debt held by foreign investors",
+    body: [
+      "The total stock of US federal debt held outside the country, official and private combined. Quarterly and slow-moving, so it is context rather than signal.",
+      "The share matters more than the level: foreign investors have funded a declining proportion of a rapidly growing debt stock, which shifts the marginal buyer toward domestic and price-sensitive investors, and is one structural argument for higher term premium.",
+    ],
+  },
+  auc_ind_10y: {
+    title: "Indirect bidders at auction",
+    body: [
+      "The share of an auction taken by indirect bidders — bids placed through a primary dealer on behalf of someone else. This category is dominated by foreign central banks and other official accounts, so it is the standard real-time proxy for official demand.",
+      "It is a proxy and not a clean one: indirect also captures domestic asset managers bidding through dealers, and the classification depends on how a bid was routed rather than who ultimately owns the bond. Read a run of auctions, not one.",
+      "A weak auction shows up as low indirect participation with dealers left holding an outsized share, which they then typically hedge — one reason a poor auction can move the whole curve.",
+    ],
+  },
+  auc_btc_10y: {
+    title: "Bid-to-cover ratio",
+    body: [
+      "Total bids divided by the amount sold. The headline gauge of auction demand: higher means the sale was covered comfortably, lower means it struggled to clear.",
+      "Judge it against the recent average for the same tenor rather than in absolute terms, since each maturity has its own normal range. The other things to watch alongside it are the tail — the gap between the auction yield and the market yield beforehand — and the dealer share.",
+      "Auction quality has become a live macro variable as issuance has grown: a series of poor long-end auctions is read as the market demanding more term premium to absorb supply.",
+    ],
+  },
+  res_china: {
+    title: "Official FX reserves",
+    body: [
+      "Foreign exchange reserves excluding gold, as reported to the IMF. For China and Japan these are among the largest official pools of capital in the world, so their direction affects global demand for reserve assets.",
+      "Two mechanical caveats before reading a move as a policy decision. Reserves are reported in dollars, so a stronger dollar mechanically shrinks the reported value of euro and yen holdings without anything being bought or sold. And valuation changes on the bond portfolio move the total as yields move.",
+      "The currency composition of any individual country's reserves is not published — China in particular does not disclose it. The IMF's COFER data gives currency shares only for the world in aggregate. Anyone claiming to know one country's precise breakdown is estimating.",
+      "Gold is excluded here by construction. Official gold buying has been a significant part of reserve accumulation in recent years, so a flat FX reserve line can coexist with rising total reserves.",
+    ],
+  },
+
   // ---- macro fundamentals ------------------------------------------------
   us_cpi_yoy: {
     title: "US CPI inflation",

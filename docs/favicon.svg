@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Compass needle as four bold quadrants. No thin strokes and no outer ring:
+       anything finer turns to mush when the browser scales this to 16px. -->
+  <rect width="64" height="64" rx="14" fill="#0b182b"/>
+  <path d="M32 6.4 L17 32 L32 32 Z" fill="#7ab6ff"/>
+  <path d="M32 6.4 L47 32 L32 32 Z" fill="#3987e5"/>
+  <path d="M32 57.6 L17 32 L32 32 Z" fill="#284a7a"/>
+  <path d="M32 57.6 L47 32 L32 32 Z" fill="#1a3458"/>
+</svg>

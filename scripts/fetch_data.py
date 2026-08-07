@@ -88,6 +88,51 @@ def fetch_worldbank(country, indicator, years=25):
     return points
 
 
+def fetch_auctions(term, field="bidToCoverRatio", years=6):
+    """Treasury auction results direct from TreasuryDirect (official, no key).
+
+    `term` is a securityTerm string such as "10-Year". Returns
+    [(auction_date, value), ...]. `field` picks the metric: bid-to-cover, or
+    "indirect" for the share of the auction taken by indirect bidders — the
+    closest public proxy for foreign official demand.
+    """
+    sec_type = "Bond" if term in ("20-Year", "30-Year") else "Note"
+    url = (
+        "https://www.treasurydirect.gov/TA_WS/securities/auctioned"
+        f"?format=json&type={sec_type}&pagesize=600"
+    )
+    rows = json.loads(http_get(url))
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=365 * years)).strftime("%Y-%m-%d")
+    out = {}
+    for r in rows:
+        # Reopenings carry a fractional securityTerm ("9-Year 11-Month"), so
+        # match originalSecurityTerm or the whole reopening cycle is dropped.
+        if (r.get("originalSecurityTerm") or r.get("securityTerm")) != term:
+            continue
+        date = (r.get("auctionDate") or "")[:10]
+        if not date or date < cutoff:
+            continue
+        try:
+            if field == "indirect":
+                accepted = float(r.get("totalAccepted") or 0)
+                indirect = float(r.get("indirectBidderAccepted") or 0)
+                if accepted <= 0:
+                    continue
+                val = round(indirect / accepted * 100, 1)
+            else:
+                raw = r.get(field)
+                if raw in (None, ""):
+                    continue
+                val = round(float(raw), 2)
+        except (TypeError, ValueError):
+            continue
+        out[date] = val          # dedupe reopenings on the same date
+    points = sorted(out.items())
+    if not points:
+        raise RuntimeError(f"TreasuryDirect {term}/{field}: no data parsed")
+    return points
+
+
 def yoy_percent(points):
     """Year-over-year % change for a monthly index series."""
     by_date = dict(points)
@@ -142,6 +187,48 @@ SERIES = [
     ("us_yield_spread", "10y minus 2y spread", "pp", "daily", "us",
      lambda: trim(fetch_fred("T10Y2Y"), 15),
      "FRED · US Treasury", FRED_URL + "T10Y2Y"),
+    # --- Official demand for Treasuries ---
+    ("cb_foreign_custody", "Foreign official Treasuries at the Fed", "$m", "weekly", "official",
+     lambda: trim(fetch_fred("WMTSECL1"), 15),
+     "FRED · Federal Reserve", FRED_URL + "WMTSECL1"),
+    ("cb_fed_treasuries", "Fed Treasury holdings", "$m", "weekly", "official",
+     lambda: trim(fetch_fred("TREAST"), 15),
+     "FRED · Federal Reserve", FRED_URL + "TREAST"),
+    ("cb_foreign_held", "Federal debt held by foreign investors", "$bn", "quarterly", "official",
+     lambda: trim(fetch_fred("FDHBFIN"), 15),
+     "FRED · US Treasury", FRED_URL + "FDHBFIN"),
+    # --- Treasury auction demand (TreasuryDirect) ---
+    ("auc_btc_2y", "2-year auction bid-to-cover", "ratio", "per auction", "official",
+     lambda: fetch_auctions("2-Year"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    ("auc_btc_5y", "5-year auction bid-to-cover", "ratio", "per auction", "official",
+     lambda: fetch_auctions("5-Year"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    ("auc_btc_10y", "10-year auction bid-to-cover", "ratio", "per auction", "official",
+     lambda: fetch_auctions("10-Year"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    ("auc_btc_30y", "30-year auction bid-to-cover", "ratio", "per auction", "official",
+     lambda: fetch_auctions("30-Year"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    ("auc_ind_10y", "10-year auction indirect bidders", "% of accepted", "per auction", "official",
+     lambda: fetch_auctions("10-Year", "indirect"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    ("auc_ind_30y", "30-year auction indirect bidders", "% of accepted", "per auction", "official",
+     lambda: fetch_auctions("30-Year", "indirect"),
+     "TreasuryDirect", "https://www.treasurydirect.gov/auctions/auction-query/"),
+    # --- Official reserves ---
+    ("res_china", "China FX reserves (ex gold)", "$m", "monthly", "official",
+     lambda: trim(fetch_fred("TRESEGCNM052N"), 15),
+     "FRED · IMF", FRED_URL + "TRESEGCNM052N"),
+    ("res_japan", "Japan FX reserves (ex gold)", "$m", "monthly", "official",
+     lambda: trim(fetch_fred("TRESEGJPM052N"), 15),
+     "FRED · IMF", FRED_URL + "TRESEGJPM052N"),
+    ("res_uk", "UK FX reserves (ex gold)", "$m", "monthly", "official",
+     lambda: trim(fetch_fred("TRESEGGBM052N"), 15),
+     "FRED · IMF", FRED_URL + "TRESEGGBM052N"),
+    ("res_euro", "Euro area total reserves", "$ (annual)", "annual", "official",
+     lambda: fetch_worldbank("EMU", "FI.RES.TOTL.CD"),
+     "World Bank", "https://data.worldbank.org/indicator/FI.RES.TOTL.CD?locations=XC"),
     # --- Credit spreads (the cleaner credit signal; HYG/IEF is only a proxy) ---
     ("cr_hy_oas", "US high yield OAS", "pp", "daily", "credit",
      lambda: trim(fetch_fred("BAMLH0A0HYM2"), 15),

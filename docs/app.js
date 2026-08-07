@@ -22,6 +22,7 @@ const GROUPS = [
   ["asia", "Asia-Pacific & EM"],
   ["sector", "Sectors"],
   ["commodities", "Commodities"],
+  ["miners", "Miners"],
   ["rates", "Rates & credit"],
   ["fx", "FX & volatility"],
 ];
@@ -84,6 +85,14 @@ const UNIVERSE = [
   ["URA", "Uranium (URA)", "commodities"],
   ["BCI", "Broad commodities", "commodities"],
   ["GLD", "Gold (GLD)", "commodities"],
+  ["GDX", "Gold miners", "miners"],
+  ["GDXJ", "Junior gold miners", "miners"],
+  ["SIL", "Silver miners", "miners"],
+  ["SILJ", "Junior silver miners", "miners"],
+  ["COPX", "Copper miners", "miners"],
+  ["URNM", "Uranium miners", "miners"],
+  ["XME", "Metals & mining", "miners"],
+  ["REMX", "Rare earth & strategic metals", "miners"],
   ["^TNX", "US 10-year yield", "rates", "yield"],
   ["^TYX", "US 30-year yield", "rates", "yield"],
   ["TLT", "20y+ Treasuries", "rates"],
@@ -112,6 +121,9 @@ const RATIOS = [
   ["HG=F", "GC=F", "Copper vs gold", "Growth expectations over fear", "Fear over growth expectations"],
   ["SMH", "SPY", "Semis vs market", "Semis leading", "Semis lagging"],
   ["SPY", "GLD", "Equities vs gold", "Equities preferred over gold", "Gold preferred over equities"],
+  ["GDX", "GLD", "Gold miners vs gold", "Miners leading the metal", "Miners lagging the metal"],
+  ["GDXJ", "GDX", "Junior vs senior gold miners", "Risk appetite within miners rising", "Juniors being derisked"],
+  ["COPX", "HG=F", "Copper miners vs copper", "Miners leading the metal", "Miners lagging the metal"],
 ];
 
 /* The Economic Modern Family — a framework published by Mish Schneider of
@@ -156,6 +168,28 @@ const fmtNum = (v, d) => v == null || !isFinite(v) ? "–"
 const price = v => v == null ? "–" : fmtNum(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) >= 10 ? 2 : 3);
 const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmtNum(v, 1) + "%";
 const bp = v => v == null ? "–" : (v > 0 ? "+" : "") + fmtNum(v, 0) + "bp";
+
+// Axis labels for big series: 3,482,385 is wider than the gutter, 3.5M is not.
+function compact(v, digits) {
+  const a = Math.abs(v);
+  if (a >= 1e12) return fmtNum(v / 1e12, 1) + "T";
+  if (a >= 1e9) return fmtNum(v / 1e9, 1) + "B";
+  if (a >= 1e6) return fmtNum(v / 1e6, 1) + "M";
+  return fmtNum(v, digits);
+}
+
+/* Headline value for an official-flows series. The unit decides the scale:
+   FRED reports these in millions of dollars, the World Bank in raw dollars,
+   and treating one as the other is off by six orders of magnitude. */
+function scaledValue(value, unit) {
+  const inMillions = /\$m/i.test(unit || "");
+  const dollars = inMillions ? value * 1e6 : value;
+  if (!/\$/.test(unit || "")) return fmtNum(value, 2);
+  const a = Math.abs(dollars);
+  if (a >= 1e12) return "$" + fmtNum(dollars / 1e12, 2) + "tn";
+  if (a >= 1e9) return "$" + fmtNum(dollars / 1e9, 1) + "bn";
+  return "$" + fmtNum(dollars / 1e6, 0) + "m";
+}
 
 // ------------------------------------------------------------------- fetch
 async function proxiedJson(url) {
@@ -229,11 +263,19 @@ function metrics(pts, isYield) {
   };
 }
 
+/* Aligned on calendar date rather than raw timestamp: futures and ETFs carry
+   different session times, so an exact timestamp join silently produces no
+   overlap at all for a pair like COPX / HG=F. */
 function ratioSeries(a, b) {
   if (!a || !b) return null;
-  const mb = new Map(b);
+  const day = t => new Date(t).toISOString().slice(0, 10);
+  const mb = new Map();
+  for (const [t, v] of b) mb.set(day(t), v);
   const out = [];
-  for (const [t, va] of a) { const vb = mb.get(t); if (vb) out.push([t, va / vb]); }
+  for (const [t, va] of a) {
+    const vb = mb.get(day(t));
+    if (vb) out.push([t, va / vb]);
+  }
   return out.length > 30 ? out : null;
 }
 
@@ -297,7 +339,7 @@ function lineChart(pts, opts) {
   for (let tv = Math.ceil(lo / step) * step; tv <= hi; tv += step) {
     el("line", { x1: M.l, x2: W - M.r, y1: y(tv), y2: y(tv), stroke: css("--grid"), "stroke-width": 1 }, svg);
     el("text", { x: M.l - 6, y: y(tv) + 3.5, "text-anchor": "end", "font-size": 10,
-      fill: css("--text-muted"), style: "font-variant-numeric:tabular-nums" }, svg).textContent = fmtNum(tv, digits);
+      fill: css("--text-muted"), style: "font-variant-numeric:tabular-nums" }, svg).textContent = compact(tv, digits);
   }
   /* Time axis: aim for about six labels whatever the span. Macro series run a
      decade and price series run months, so month ticks have to give way to year
@@ -464,7 +506,7 @@ async function load() {
 
   const macroP = fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
     .then(r => r.ok ? r.json() : null).catch(() => null);
-  macroP.then(m => { if (m) { MACRO = m; renderMacro(); } });
+  macroP.then(m => { if (m) { MACRO = m; renderMacro(); renderOfficial(); } });
 
   const [series, macro] = await Promise.all([
     fetchSeries(UNIVERSE.map(u => u[0])).catch(() => ({})),
@@ -487,6 +529,7 @@ async function load() {
   renderStamp(live);
   if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); }
   renderMacro();
+  renderOfficial();
   initScrollSpy();
   if (live && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
 }
@@ -927,6 +970,57 @@ function rangeBar(m) {
   el("circle", { cx: 3 + (m.rangePos / 100) * (w - 6), cy: hgt / 2, r: 4,
     fill: css(m.rangePos >= 50 ? "--series-1" : "--series-2"), stroke: css("--surface-1"), "stroke-width": 2 }, svg);
   return svg;
+}
+
+/* Official flows: who is buying Treasuries, how auctions are clearing, and what
+   the big reserve managers hold. Built from the same macro.json as the
+   fundamentals below, just grouped separately because it answers its own
+   question — official demand, rather than the state of the economy. */
+function renderOfficial() {
+  const box = $("#official");
+  box.textContent = "";
+  if (!MACRO) return;
+  const PICKS = [
+    ["cb_foreign_custody", "Foreign official Treasuries held at the Fed"],
+    ["cb_fed_treasuries", "Fed Treasury holdings (QT pace)"],
+    ["cb_foreign_held", "Federal debt held by foreign investors"],
+    ["auc_ind_10y", "10-year auction: indirect bidders"],
+    ["auc_ind_30y", "30-year auction: indirect bidders"],
+    ["auc_btc_2y", "2-year auction bid-to-cover"],
+    ["auc_btc_5y", "5-year auction bid-to-cover"],
+    ["auc_btc_10y", "10-year auction bid-to-cover"],
+    ["auc_btc_30y", "30-year auction bid-to-cover"],
+    ["res_china", "China FX reserves"],
+    ["res_japan", "Japan FX reserves"],
+    ["res_uk", "UK FX reserves"],
+    ["res_euro", "Euro area total reserves"],
+  ];
+  for (const [id, title] of PICKS) {
+    const s = MACRO.series[id];
+    if (!s || !s.points.length) continue;
+    const pts = s.points.map(p => [
+      new Date(p[0].length === 4 ? p[0] + "-06-30" : p[0].length === 7 ? p[0] + "-15" : p[0]).getTime(),
+      p[1],
+    ]).slice(-160);
+    // Several series share one note (all four bid-to-cover tenors, all reserves).
+    const infoKey = id.startsWith("auc_btc_") ? "auc_btc_10y"
+      : id.startsWith("auc_ind_") ? "auc_ind_10y"
+      : id.startsWith("res_") ? "res_china" : id;
+    const card = makeCard(title, infoKey, s.source_url, s.source);
+    card.body.appendChild(h("p", "meta", s.unit + " · " + s.freq + " · " + s.source));
+    const last = s.points[s.points.length - 1];
+    const read = h("p", "latest");
+    read.appendChild(h("strong", null, scaledValue(last[1], s.unit)));
+    read.appendChild(document.createTextNode(" (" + last[0] + ")"));
+    if (s.points.length > 2) {
+      const prev = s.points[s.points.length - 2][1];
+      read.appendChild(document.createTextNode("  "));
+      read.appendChild(deltaEl(prev ? (last[1] / prev - 1) * 100 : null));
+    }
+    card.body.appendChild(read);
+    card.body.appendChild(lineChart(pts, { title, unit: s.unit }));
+    box.appendChild(card);
+  }
 }
 
 function renderMacro() {

@@ -27,7 +27,17 @@ no build step, no server, no API keys.
 5. **Markets** — a **Table** view (multi-horizon returns, trend state vs the 200-day
    average, position in the 52-week range) and a **Charts** view (1-year daily with
    SMA 200/150/50 and EMA 21).
-6. **Macro fundamentals** — the slow official data underneath it all.
+6. **Official flows** — who is financing the US deficit and what the big reserve managers
+   hold: foreign official Treasuries in custody at the Fed (weekly), the Fed's own holdings
+   (QT pace), Treasury auction bid-to-cover and indirect-bidder share for 2/5/10/30-year
+   straight from [TreasuryDirect](https://www.treasurydirect.gov/auctions/auction-query/),
+   and FX reserves for China, Japan, the UK and the euro area.
+7. **Macro fundamentals** — the slow official data underneath it all.
+
+Note on reserve composition: no country publishes the currency breakdown of its own
+reserves, and the IMF's COFER data gives currency shares only in global aggregate. The
+auction indirect-bidder share and the Fed custody series are the closest public reads on
+official demand, and both are proxies with documented limitations — see their info cards.
 
 Every card carries two controls: **i** turns the card over to explain how that signal
 is conventionally interpreted in macro research, and **↗** opens the underlying source
