@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809b">
+<link rel="stylesheet" href="styles.css?v=20260809c">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -105,6 +105,16 @@
   td input.cellEdit { font:inherit; font-size:12.5px; width:76px; text-align:right;
     color:var(--text-primary); background:var(--surface-2); border:1px solid var(--baseline);
     border-radius:6px; padding:2px 6px; }
+  /* wide-table ergonomics: top scroller synced with the table, sticky symbol column */
+  .tablewrap.wl { overflow:visible; border:none; background:none; }
+  .topscroll { overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:2px; }
+  .topscroll > div { height:1px; }
+  .scrollbody { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; scrollbar-width:thin; }
+  table.wl th.left, table.wl td.left { position:sticky; left:0; z-index:2;
+    background:var(--surface-1); box-shadow:2px 0 0 var(--grid); }
+  table.wl thead th.left { z-index:3; }
+  table.wl tbody tr:hover td.left { background:var(--surface-2); }
 </style>
 </head>
 <body>
@@ -626,7 +636,22 @@
       tb.appendChild(tr);
     }
     table.appendChild(tb);
-    wrap.appendChild(table);
+
+    /* Synced scrollbar above the table: wide tables otherwise only expose a
+       scrollbar at the very bottom, unreachable while reading the top rows.
+       The scroller is a sibling ABOVE the overflow container, ghost-width
+       matched to the table. No rAF - it stalls in background tabs. */
+    const top = h("div", "topscroll");
+    const ghost = h("div");
+    top.appendChild(ghost);
+    const body = h("div", "scrollbody");
+    body.appendChild(table);
+    wrap.appendChild(top);
+    wrap.appendChild(body);
+    ghost.style.width = table.scrollWidth + "px";
+    let lock = false;
+    top.addEventListener("scroll", () => { if (lock) return; lock = true; body.scrollLeft = top.scrollLeft; lock = false; });
+    body.addEventListener("scroll", () => { if (lock) return; lock = true; top.scrollLeft = body.scrollLeft; lock = false; });
   }
 
   /* Alerts: (1) new transitions sealed by the most recent settled close, and
