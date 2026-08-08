@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809c">
+<link rel="stylesheet" href="styles.css?v=20260809f">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -107,10 +107,18 @@
     border-radius:6px; padding:2px 6px; }
   /* wide-table ergonomics: top scroller synced with the table, sticky symbol column */
   .tablewrap.wl { overflow:visible; border:none; background:none; }
-  .topscroll { overflow-x:auto; overflow-y:hidden; height:14px; margin-bottom:2px; }
-  .topscroll > div { height:1px; }
+  /* Custom always-visible yellow scroller: native scrollbar styling is
+     unreliable (Chrome ignores ::-webkit-scrollbar once scrollbar-color is
+     set; macOS overlay bars auto-hide), so the track and thumb are plain
+     divs driven by JS. */
+  .topscroll { position:relative; height:14px; margin-bottom:6px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:7px; }
+  .topscroll .thumb { position:absolute; top:1px; bottom:1px; border-radius:6px;
+    background:#eda100; cursor:grab; min-width:40px; }
+  .topscroll .thumb:hover, .topscroll .thumb.drag { background:#fab219; cursor:grabbing; }
+  .topscroll.idle { display:none; }         /* hidden when the table fits */
   .scrollbody { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
-    border-radius:12px; scrollbar-width:thin; }
+    border-radius:12px; scrollbar-color:#eda100 var(--surface-2); }
   table.wl th.left, table.wl td.left { position:sticky; left:0; z-index:2;
     background:var(--surface-1); box-shadow:2px 0 0 var(--grid); }
   table.wl thead th.left { z-index:3; }
@@ -637,21 +645,56 @@
     }
     table.appendChild(tb);
 
-    /* Synced scrollbar above the table: wide tables otherwise only expose a
-       scrollbar at the very bottom, unreachable while reading the top rows.
-       The scroller is a sibling ABOVE the overflow container, ghost-width
-       matched to the table. No rAF - it stalls in background tabs. */
-    const top = h("div", "topscroll");
-    const ghost = h("div");
-    top.appendChild(ghost);
+    /* Custom yellow scroller above the table: a draggable thumb div synced
+       with the overflow container. Wide tables otherwise only expose a
+       scrollbar at the very bottom, unreachable while reading the top rows. */
+    const track = h("div", "topscroll");
+    const thumb = h("div", "thumb");
+    track.appendChild(thumb);
     const body = h("div", "scrollbody");
     body.appendChild(table);
-    wrap.appendChild(top);
+    wrap.appendChild(track);
     wrap.appendChild(body);
-    ghost.style.width = table.scrollWidth + "px";
-    let lock = false;
-    top.addEventListener("scroll", () => { if (lock) return; lock = true; body.scrollLeft = top.scrollLeft; lock = false; });
-    body.addEventListener("scroll", () => { if (lock) return; lock = true; top.scrollLeft = body.scrollLeft; lock = false; });
+    function layoutThumb() {
+      const frac = body.clientWidth / body.scrollWidth;
+      if (frac >= 0.999) { track.classList.add("idle"); return; }
+      track.classList.remove("idle");
+      const tw = Math.min(Math.max(40, track.clientWidth * frac), Math.max(40, track.clientWidth - 2));
+      thumb.style.width = tw + "px";
+      const maxScroll = Math.max(0, body.scrollWidth - body.clientWidth);
+      const maxThumb = Math.max(0, track.clientWidth - tw - 2);
+      const pos = 1 + (maxScroll ? body.scrollLeft / maxScroll : 0) * maxThumb;
+      thumb.style.left = Math.max(1, Math.min(pos, 1 + maxThumb)) + "px";
+    }
+    layoutThumb();
+    // Re-measure after layout settles; setTimeout (not rAF) so it also runs
+    // in background tabs.
+    setTimeout(layoutThumb, 0);
+    setTimeout(layoutThumb, 250);
+    body.addEventListener("scroll", layoutThumb, { passive: true });
+    addEventListener("resize", layoutThumb, { passive: true });
+    let dragX = null, startLeft = 0;
+    thumb.addEventListener("pointerdown", e => {
+      dragX = e.clientX; startLeft = body.scrollLeft;
+      thumb.classList.add("drag");
+      thumb.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    thumb.addEventListener("pointermove", e => {
+      if (dragX == null) return;
+      const maxScroll = body.scrollWidth - body.clientWidth;
+      const maxThumb = track.clientWidth - thumb.offsetWidth - 2;
+      body.scrollLeft = startLeft + (e.clientX - dragX) * (maxScroll / Math.max(1, maxThumb));
+    });
+    const endDrag = () => { dragX = null; thumb.classList.remove("drag"); };
+    thumb.addEventListener("pointerup", endDrag);
+    thumb.addEventListener("pointercancel", endDrag);
+    track.addEventListener("pointerdown", e => {
+      if (e.target === thumb) return;
+      const rect = track.getBoundingClientRect();
+      const maxScroll = body.scrollWidth - body.clientWidth;
+      body.scrollLeft = ((e.clientX - rect.left) / rect.width) * maxScroll;
+    });
   }
 
   /* Alerts: (1) new transitions sealed by the most recent settled close, and
