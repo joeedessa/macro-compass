@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808m">
+<link rel="stylesheet" href="styles.css?v=20260809a">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -92,6 +92,19 @@
   tr.epsrow td { background:var(--surface-2); font-size:12.5px; color:var(--text-secondary);
     white-space:normal; }
   td.soon { color:var(--series-2); font-weight:620; }
+  #alerts { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .albox { border:1px solid var(--border); border-radius:10px; padding:9px 14px; font-size:13px; }
+  .albox.new { background:var(--on-bg); }
+  .albox.warn { background:var(--mixed-bg); }
+  .albox.bad { background:var(--off-bg); }
+  .albox strong { font-weight:650; }
+  tr.filters th { padding:4px 8px 8px; }
+  tr.filters input, tr.filters select { font:inherit; font-size:12px; width:100%;
+    color:var(--text-primary); background:var(--surface-2); border:1px solid var(--border);
+    border-radius:6px; padding:3px 7px; min-width:70px; }
+  td input.cellEdit { font:inherit; font-size:12.5px; width:76px; text-align:right;
+    color:var(--text-primary); background:var(--surface-2); border:1px solid var(--baseline);
+    border-radius:6px; padding:2px 6px; }
 </style>
 </head>
 <body>
@@ -144,9 +157,13 @@
     <input id="importfile" type="file" accept="application/json" hidden>
   </div>
 
+  <div id="alerts"></div>
+
   <h2>Watchlist</h2>
-  <p class="lede">Setups waiting for their trigger. A close beyond the breakout level — above for
-    longs, below for shorts — moves the trade to Confirmed breakouts automatically.</p>
+  <p class="lede"><strong>Live</strong> is the latest price (delayed ~15 min and possibly mid-session);
+    <strong>Prev close</strong> is the last settled daily close. State changes use settled closes only
+    — a stock trading beyond its trigger intraday shows an amber alert above, and moves to Confirmed
+    breakouts when a close seals it. Click a header to sort; use the filter row to narrow.</p>
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
     <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
     Import JSON, or add a single setup with the form above.</p>
@@ -188,27 +205,30 @@
     if (text !== undefined) n.textContent = text;
     return n;
   };
-  /* Storage model: the shared list ships in the repo (data/watchlist.json) so
-     every device sees it. localStorage holds only a personal overlay - extra
-     setups, negation edits, manual moves, deletions - keyed by sym|dir.
-     States are NOT stored: they are replayed from price history on every load,
-     so all devices agree without any syncing. */
+  /* Storage model: the shared list ships in the repo (data/watchlist.json).
+     localStorage holds a personal overlay keyed sym|dir — added setups, level
+     overrides (trigger/negation/target), manual moves, hides. States are never
+     stored: they are replayed from settled closes on every load. */
   const KEY = "macro-compass-watch-overlay-v2";
   const loadOverlay = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
     catch { return { added: [], over: {} }; }
   };
   const saveOverlay = () => localStorage.setItem(KEY, JSON.stringify(OV));
-  const fmt = v => v == null ? "–" : v.toLocaleString("en-US", { maximumFractionDigits: Math.abs(v) >= 100 ? 1 : 2 });
-  const today = () => new Date().toISOString().slice(0, 10);
+  const fmt = v => v == null || !isFinite(v) ? "–" : v.toLocaleString("en-US", { maximumFractionDigits: Math.abs(v) >= 100 ? 1 : 2 });
   const idOf = p => p.sym + "|" + p.dir;
 
   const PROXIES = [
     u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   ];
-  /* Full daily history for a year, so the state machine can be replayed from
-     each entry's creation date rather than trusting a stored state. */
+  /* Daily history plus session metadata. The last point of a spark series is
+     the LIVE tick while the session runs; it only becomes a settled close once
+     the regular session has ended. We keep both views:
+       pts        — all points (last one may be intraday)
+       settled    — points that are final daily closes
+     A point is treated as settled when the session-end time from the exchange
+     metadata has passed, or when its date is before the newest point's date. */
   async function fetchHistory(symbols) {
     if (!symbols.length) return {};
     const out = {};
@@ -227,9 +247,22 @@
             const stamps = resp?.timestamp || [];
             const pts = [];
             for (let k = 0; k < stamps.length; k++) {
-              if (closes[k] != null) pts.push([new Date(stamps[k] * 1000).toISOString().slice(0, 10), closes[k]]);
+              if (closes[k] != null) pts.push([new Date(stamps[k] * 1000).toISOString().slice(0, 10), closes[k], stamps[k]]);
             }
-            if (pts.length) out[row.symbol] = { pts, currency: resp?.meta?.currency || "" };
+            if (!pts.length) continue;
+            const meta = resp.meta || {};
+            const regEnd = meta.currentTradingPeriod?.regular?.end || null;
+            const nowSec = Date.now() / 1000;
+            const last = pts[pts.length - 1];
+            // Last point is live unless the regular session has ended.
+            const lastSettled = regEnd ? nowSec >= regEnd : last[2] < nowSec - 6 * 3600;
+            out[row.symbol] = {
+              pts,
+              settled: lastSettled ? pts : pts.slice(0, -1),
+              live: last[1],
+              liveDate: last[0],
+              currency: meta.currency || "",
+            };
           }
           break;
         } catch { /* next proxy */ }
@@ -238,16 +271,14 @@
     return out;
   }
 
-  /* Replay from creation date. Rules on daily closes:
-       watch    --close beyond breakthrough (long >, short <)-->  breakout
-       watch/breakout/target --close beyond negation-->           failed
-       breakout --close at/beyond target-->                       target
-     Negation outranks the others on the same close. Target is not terminal. */
+  /* Replay on SETTLED closes only:
+       watch    --close beyond trigger (long >, short <)-->  breakout
+       any      --close beyond negation-->                   failed (outranks all)
+       breakout --close at/beyond target-->                  target (not terminal)
+     Entries with `confirmed` (imported from the source's breakout list) start
+     in the breakout state on that date. */
   function replay(p, hist) {
     const st = { state: "watch", breakout: null, targetHit: null, failed: null };
-    /* Entries imported from the source's breakout list carry `confirmed`: they
-       enter the machine already in the breakout state on that date, and only
-       negation and target are evaluated from there. */
     if (p.confirmed) {
       st.state = "breakout";
       st.breakout = { when: p.confirmed, close: null };
@@ -255,7 +286,7 @@
     if (!hist) return st;
     const long = p.dir === "long";
     const from = p.confirmed || p.created;
-    for (const [date, c] of hist.pts) {
+    for (const [date, c] of hist.settled) {
       if (from && date < from) continue;
       const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
       if (negHit) {
@@ -263,7 +294,7 @@
           reason: st.state === "watch" ? "negated before trigger" :
                   st.state === "target" ? "negated after reaching target" : "failed breakout" };
         st.state = "failed";
-        break;                       // failure ends the pattern
+        break;
       }
       if (st.state === "watch" && p.breakthrough != null &&
           (long ? c > p.breakthrough : c < p.breakthrough)) {
@@ -282,13 +313,17 @@
 
   let OV = loadOverlay();
   let SHARED = [], HIST = {}, EVENTS = {};
+  const EDITING = new Set();          // ids currently in edit mode
 
   function workingList() {
     const list = [];
     for (const p of SHARED) {
       const o = OV.over[idOf(p)] || {};
       if (o.deleted) continue;
-      list.push({ ...p, negation: o.negation !== undefined ? o.negation : p.negation,
+      list.push({ ...p,
+        negation: o.negation !== undefined ? o.negation : p.negation,
+        breakthrough: o.breakthrough !== undefined ? o.breakthrough : p.breakthrough,
+        target: o.target !== undefined ? o.target : p.target,
         manualState: o.manualState || null, shared: true });
     }
     for (const p of OV.added) list.push({ ...p, shared: false });
@@ -298,19 +333,20 @@
   const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
   const pct1 = v => v == null ? null : Math.round(v * 10) / 10;
 
-  /* One row per setup. `rowsOf` builds sortable value objects; the status
-     column carries the per-section detail (confirmation, target, failure). */
   function rowData(p, st) {
     const hist = HIST[p.sym];
-    const last = hist ? hist.pts[hist.pts.length - 1][1] : null;
-    const gap = (last != null && p.breakthrough != null && st.state === "watch")
-      ? pct1((p.dir === "long" ? p.breakthrough / last - 1 : 1 - p.breakthrough / last) * 100)
+    const prev = hist && hist.settled.length ? hist.settled[hist.settled.length - 1] : null;
+    const live = hist ? hist.live : null;
+    const gap = (prev && p.breakthrough != null && st.state === "watch")
+      ? pct1((p.dir === "long" ? p.breakthrough / prev[1] - 1 : 1 - p.breakthrough / prev[1]) * 100)
       : null;
     const ev = EVENTS[p.sym] || {};
     const todayStr = new Date().toISOString().slice(0, 10);
-    return { p, st, last,
+    return { p, st, live,
+      liveDate: hist ? hist.liveDate : "",
+      prevClose: prev ? prev[1] : null,
+      prevDate: prev ? prev[0] : "",
       currency: hist ? hist.currency : "",
-      closeDate: hist ? hist.pts[hist.pts.length - 1][0] : "",
       gap, ev,
       earnings: ev.earnings || null,
       exdiv: (ev.ex_div && ev.ex_div >= todayStr) ? ev.ex_div : null,
@@ -320,24 +356,29 @@
   }
 
   const COLS = {
-    watch:    [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["gap","To trigger"],["negation","Negation"],["target","Target"],
-               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["when","Confirmed"],["negation","Negation"],["target","Target"],
-               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["when","Reached"],["target","Target"],["negation","Negation"],
-               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    failed:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["when","Failed"],["negation","Negation"],["","Reason","nosort"],["","Actions","nosort"]],
+    watch:    [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+               ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["gap","To trigger"],
+               ["negation","Negation"],["target","Target"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
+    breakout: [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+               ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Confirmed"],
+               ["negation","Negation"],["target","Target"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
+    target:   [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+               ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Reached"],
+               ["target","Target"],["negation","Negation"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
+    failed:   [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+               ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Failed"],
+               ["negation","Negation"],["","Reason","nosort"],["","Actions","nosort"]],
   };
   const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false], failed: ["when", false] };
+  const FILTERS = {};   // per section: {sym:"", dir:"", pattern:""}
 
   function sortVal(r, key) {
     if (key === "sym" || key === "dir") return r.p[key] || "";
+    if (key === "pattern") return r.p.pattern || "";
+    if (key === "dur") return r.p.duration_m;
     if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
-    if (key === "last") return r.last;
+    if (key === "live") return r.live;
+    if (key === "prev") return r.prevClose;
     if (key === "gap") return r.gap;
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
@@ -345,49 +386,71 @@
     return null;
   }
 
-  function actionsCell(p) {
+  function saveEdit(p, fields) {
+    if (p.shared) {
+      OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), ...fields };
+    } else {
+      const mine = OV.added.find(x => idOf(x) === idOf(p));
+      if (mine) Object.assign(mine, fields);
+    }
+    saveOverlay();
+  }
+
+  function actionsCell(p, tr) {
     const td = document.createElement("td");
     const box = h("div", "wact");
-    const long = p.dir === "long";
-    const neg = h("button", null, p.negation != null ? "Neg…" : "Set neg");
-    neg.title = "Set or edit the negation level";
-    neg.addEventListener("click", () => {
-      const v = prompt("Negation level for " + p.sym + " (close " + (long ? "below" : "above") +
-        " it fails the pattern). Empty to clear.", p.negation ?? "");
-      if (v === null) return;
-      const nv = v.trim() === "" ? null : Number(v);
-      if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), negation: nv };
-      else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) mine.negation = nv; }
-      saveOverlay(); render();
+    const editing = EDITING.has(idOf(p));
+    const edit = h("button", null, editing ? "Save" : "Edit");
+    edit.title = editing ? "Save and lock the row" : "Edit trigger, negation and target in place";
+    edit.addEventListener("click", () => {
+      if (!editing) { EDITING.add(idOf(p)); render(); return; }
+      const fields = {};
+      tr.querySelectorAll("input.cellEdit").forEach(inp => {
+        const v = inp.value.trim();
+        fields[inp.dataset.field] = v === "" ? null : Number(v);
+      });
+      EDITING.delete(idOf(p));
+      saveEdit(p, fields);
+      render();
     });
-    box.appendChild(neg);
+    box.appendChild(edit);
     if (p.manualState !== "failed") {
       const f = h("button", null, "Fail");
       f.title = "Move to failed manually";
-      f.addEventListener("click", () => {
-        if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), manualState: "failed" };
-        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) mine.manualState = "failed"; }
-        saveOverlay(); render();
-      });
+      f.addEventListener("click", () => { saveEdit(p, { manualState: "failed" }); render(); });
       box.appendChild(f);
     } else {
       const r2 = h("button", null, "Restore");
       r2.addEventListener("click", () => {
-        if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; }
-        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; }
-        saveOverlay(); render();
+        if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; saveOverlay(); }
+        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; saveOverlay(); }
+        render();
       });
       box.appendChild(r2);
     }
     const del = h("button", null, p.shared ? "Hide" : "Del");
     del.addEventListener("click", () => {
       if (!confirm((p.shared ? "Hide " : "Delete ") + p.sym + " " + p.dir + "?")) return;
-      if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), deleted: true };
-      else OV.added = OV.added.filter(x => idOf(x) !== idOf(p));
-      saveOverlay(); render();
+      if (p.shared) { OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), deleted: true }; saveOverlay(); }
+      else { OV.added = OV.added.filter(x => idOf(x) !== idOf(p)); saveOverlay(); }
+      render();
     });
     box.appendChild(del);
     td.appendChild(box);
+    return td;
+  }
+
+  function levelCell(p, field, editing) {
+    const td = h("td");
+    if (editing) {
+      const inp = h("input", "cellEdit");
+      inp.type = "number"; inp.step = "any";
+      inp.dataset.field = field;
+      if (p[field] != null) inp.value = p[field];
+      td.appendChild(inp);
+    } else {
+      td.textContent = fmt(p[field]);
+    }
     return td;
   }
 
@@ -395,8 +458,13 @@
     const wrap = $("#sec-" + state);
     wrap.textContent = "";
     if (!rows.length) return;
+    const flt = FILTERS[state] = FILTERS[state] || { sym: "", dir: "", pattern: "" };
+    const shown = rows.filter(r =>
+      (!flt.sym || (r.p.sym + " " + (r.p.note || "")).toLowerCase().includes(flt.sym.toLowerCase())) &&
+      (!flt.dir || r.p.dir === flt.dir) &&
+      (!flt.pattern || r.p.pattern === flt.pattern));
     const [sortKey, asc] = SORT[state];
-    rows.sort((a, b) => {
+    shown.sort((a, b) => {
       const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
       if (va == null && vb == null) return 0;
       if (va == null) return 1;
@@ -407,20 +475,49 @@
     const table = h("table", "wl");
     const thead = h("thead"), hr = h("tr");
     for (const [key, label, cls] of COLS[state]) {
-      const th = h("th", (cls || "") +
-        (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""), label);
+      const th = h("th", (cls || "") + (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""), label);
       if (key && cls !== "nosort") th.addEventListener("click", () => {
         const cur = SORT[state];
-        SORT[state] = [key, cur[0] === key ? !cur[1] : (key === "sym" || key === "dir" || key === "gap")];
+        SORT[state] = [key, cur[0] === key ? !cur[1] : (typeof sortVal(shown[0] || {p:{}}, key) === "string" || key === "gap")];
         render();
       });
       hr.appendChild(th);
     }
-    thead.appendChild(hr); table.appendChild(thead);
+    thead.appendChild(hr);
+    // filter row: symbol text, dir select, pattern select
+    const fr = h("tr", "filters");
+    const patterns = [...new Set(rows.map(r => r.p.pattern).filter(Boolean))].sort();
+    COLS[state].forEach(([key], i) => {
+      const th = h("th", i === 0 ? "left" : null);
+      if (key === "sym") {
+        const inp = h("input"); inp.placeholder = "filter…"; inp.value = flt.sym;
+        inp.addEventListener("input", () => { flt.sym = inp.value; render();
+          setTimeout(() => { const el = $("#sec-" + state + " tr.filters input"); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 0); });
+        th.appendChild(inp);
+      } else if (key === "dir") {
+        const sel = h("select");
+        [["","all"],["long","long"],["short","short"]].forEach(([v,l]) => {
+          const o = h("option", null, l); o.value = v; if (flt.dir === v) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener("change", () => { flt.dir = sel.value; render(); });
+        th.appendChild(sel);
+      } else if (key === "pattern") {
+        const sel = h("select");
+        const all = h("option", null, "all"); all.value = ""; sel.appendChild(all);
+        patterns.forEach(pt => { const o = h("option", null, pt); o.value = pt; if (flt.pattern === pt) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener("change", () => { flt.pattern = sel.value; render(); });
+        th.appendChild(sel);
+      }
+      fr.appendChild(th);
+    });
+    thead.appendChild(fr);
+    table.appendChild(thead);
+
     const tb = h("tbody");
-    for (const r of rows) {
+    for (const r of shown) {
       const { p, st } = r;
+      const editing = EDITING.has(idOf(p));
       const tr = h("tr");
+      // symbol + eps icon + name
       const tdSym = h("td", "left");
       const symLine = h("span");
       const a = h("a", "wsym", p.sym);
@@ -438,15 +535,12 @@
           const existing = tr.nextElementSibling;
           if (existing && existing.classList.contains("epsrow")) { existing.remove(); return; }
           const dtr = h("tr", "epsrow");
-          const td = h("td");
-          td.colSpan = tr.children.length;
-          td.className = "left";
+          const td = h("td"); td.colSpan = tr.children.length; td.className = "left";
           const surprise = e.surprise_pct != null ? (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "";
           td.appendChild(h("span", "epsdetail",
             "Last reported quarter (ended " + (e.quarter_end || "n/a") + "): EPS " + e.actual +
             (e.estimate != null ? " vs " + e.estimate + " est" : "") +
-            (surprise ? " · surprise " + surprise : "") +
-            " — " + (beat ? "beat" : "miss")));
+            (surprise ? " · surprise " + surprise : "") + " — " + (beat ? "beat" : "miss")));
           dtr.appendChild(td);
           tr.after(dtr);
         });
@@ -455,12 +549,21 @@
       tdSym.appendChild(symLine);
       if (p.note) tdSym.appendChild(h("span", "wname", p.note));
       tr.appendChild(tdSym);
+
       const tdDir = h("td"); tdDir.appendChild(h("span", "wdir " + p.dir, p.dir)); tr.appendChild(tdDir);
-      const tdLast = h("td");
-      tdLast.textContent = r.last != null ? fmt(r.last) + (r.currency ? " " + r.currency : "") : "–";
-      if (r.closeDate) tdLast.appendChild(h("span", "wname", "close " + r.closeDate));
-      tr.appendChild(tdLast);
-      tr.appendChild(h("td", null, fmt(p.breakthrough)));
+      tr.appendChild(h("td", null, p.pattern || "–"));
+      tr.appendChild(h("td", null, p.duration_m != null ? p.duration_m + "m" : "–"));
+
+      const tdLive = h("td");
+      tdLive.textContent = r.live != null ? fmt(r.live) + (r.currency ? " " + r.currency : "") : "–";
+      if (r.liveDate && r.liveDate !== r.prevDate) tdLive.appendChild(h("span", "wname", "intraday " + r.liveDate));
+      tr.appendChild(tdLive);
+      const tdPrev = h("td");
+      tdPrev.textContent = fmt(r.prevClose);
+      if (r.prevDate) tdPrev.appendChild(h("span", "wname", r.prevDate));
+      tr.appendChild(tdPrev);
+
+      tr.appendChild(levelCell(p, "breakthrough", editing));
       if (state === "watch") tr.appendChild(h("td", null, r.gap == null ? "–" : fmt(r.gap) + "%"));
       if (state === "breakout") {
         const td = h("td", null, st.breakout ? st.breakout.when : "–");
@@ -473,23 +576,22 @@
         if (st.targetHit) td.appendChild(h("span", "wname", "@ " + fmt(st.targetHit.close)));
         tr.appendChild(td);
       }
-      if (state === "failed") {
-        tr.appendChild(h("td", null, st.failed ? st.failed.when : "–"));
-      }
+      if (state === "failed") tr.appendChild(h("td", null, st.failed ? st.failed.when : "–"));
+
       if (state === "target") {
-        tr.appendChild(h("td", null, fmt(p.target)));
-        tr.appendChild(h("td", null, fmt(p.negation)));
+        tr.appendChild(levelCell(p, "target", editing));
+        tr.appendChild(levelCell(p, "negation", editing));
       } else if (state === "failed") {
-        tr.appendChild(h("td", null, fmt(p.negation)));
+        tr.appendChild(levelCell(p, "negation", editing));
         const td = h("td");
         td.appendChild(h("span", "wstat bad",
-          st.failed ? st.failed.reason + (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "")
-                    : "moved manually"));
+          st.failed ? st.failed.reason + (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "") : "moved manually"));
         tr.appendChild(td);
       } else {
-        tr.appendChild(h("td", null, fmt(p.negation)));
-        tr.appendChild(h("td", null, fmt(p.target)));
+        tr.appendChild(levelCell(p, "negation", editing));
+        tr.appendChild(levelCell(p, "target", editing));
       }
+
       if (state !== "failed") {
         const tdE = h("td", r.earningsSoon ? "soon" : null, r.earnings || "–");
         if (r.ev.earnings_to && r.ev.earnings_to !== r.earnings) tdE.appendChild(h("span", "wname", "to " + r.ev.earnings_to));
@@ -497,22 +599,59 @@
         tr.appendChild(tdE);
         tr.appendChild(h("td", null, r.exdiv || "–"));
       }
-      tr.appendChild(actionsCell(p));
+      tr.appendChild(actionsCell(p, tr));
       tb.appendChild(tr);
     }
     table.appendChild(tb);
     wrap.appendChild(table);
   }
 
+  /* Alerts: (1) new transitions sealed by the most recent settled close, and
+     (2) watch setups trading beyond their trigger intraday — awaiting a close. */
+  function renderAlerts(all) {
+    const box = $("#alerts");
+    box.textContent = "";
+    const items = [];
+    for (const r of all) {
+      const { p, st } = r;
+      const lastSettledDate = r.prevDate;
+      if (st.breakout && st.breakout.close != null && st.breakout.when === lastSettledDate)
+        items.push(["new", p.sym + " " + p.dir + " — BREAKOUT CONFIRMED by the " + st.breakout.when +
+          " close at " + fmt(st.breakout.close) + " (trigger " + fmt(p.breakthrough) + ")"]);
+      if (st.targetHit && st.targetHit.when === lastSettledDate)
+        items.push(["new", p.sym + " " + p.dir + " — reached its target on the " + st.targetHit.when +
+          " close (" + fmt(st.targetHit.close) + " vs target " + fmt(p.target) + ")"]);
+      if (st.failed && st.failed.when === lastSettledDate)
+        items.push(["bad", p.sym + " " + p.dir + " — " + st.failed.reason + " on the " + st.failed.when +
+          " close (" + fmt(st.failed.close) + " vs negation " + fmt(p.negation) + ")"]);
+      if (st.state === "watch" && r.live != null && p.breakthrough != null &&
+          r.liveDate !== r.prevDate &&
+          (p.dir === "long" ? r.live > p.breakthrough : r.live < p.breakthrough))
+        items.push(["warn", p.sym + " " + p.dir + " — trading beyond its trigger intraday (" +
+          fmt(r.live) + " vs " + fmt(p.breakthrough) + "); a close beyond confirms the breakout"]);
+    }
+    for (const [cls, msg] of items.slice(0, 12)) {
+      const b = h("div", "albox " + cls);
+      b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
+      b.appendChild(document.createTextNode(msg));
+      box.appendChild(b);
+    }
+  }
+
+  const SECTIONS = ["watch", "breakout", "target", "failed"];
   function render() {
     const list = workingList();
     const items = { watch: [], breakout: [], target: [], failed: [] };
+    const all = [];
     for (const p of list) {
       const st = replay(p, HIST[p.sym]);
       const state = p.manualState === "failed" ? "failed" : st.state;
-      items[state].push(rowData(p, st));
+      const r = rowData(p, st);
+      items[state].push(r);
+      all.push(r);
     }
-    for (const state of Object.keys(items)) {
+    renderAlerts(all);
+    for (const state of SECTIONS) {
       $("#empty-" + state).hidden = items[state].length > 0;
       buildTable(state, items[state]);
     }
@@ -522,7 +661,7 @@
       items.breakout.length + " confirmed · " + items.target.length + " at target · " +
       items.failed.length + " failed" +
       (missing.length ? " · no quote: " + missing.join(", ") : "") +
-      " · states replayed from closes on every load";
+      " · states use settled closes only";
   }
 
   async function refresh() {
@@ -552,7 +691,7 @@
       target: num("#f-tgt"),
       breakthrough: num("#f-brk"),
       note: $("#f-note").value.trim(),
-      created: today(),
+      created: new Date().toISOString().slice(0, 10),
     };
     if (!p.sym) return;
     OV.added.push(p); saveOverlay();
