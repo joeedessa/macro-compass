@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809a">
+<link rel="stylesheet" href="styles.css?v=20260809b">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -323,7 +323,7 @@
       list.push({ ...p,
         negation: o.negation !== undefined ? o.negation : p.negation,
         breakthrough: o.breakthrough !== undefined ? o.breakthrough : p.breakthrough,
-        target: o.target !== undefined ? o.target : p.target,
+        target:o.target !== undefined ? o.target : p.target,
         manualState: o.manualState || null, shared: true });
     }
     for (const p of OV.added) list.push({ ...p, shared: false });
@@ -356,16 +356,16 @@
   }
 
   const COLS = {
-    watch:    [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+    watch:[["sym","Symbol","left"],["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["gap","To trigger"],
                ["negation","Negation"],["target","Target"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+    breakout: [["sym","Symbol","left"],["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Confirmed"],
                ["negation","Negation"],["target","Target"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+    target:  [["sym","Symbol","left"],["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Reached"],
                ["target","Target"],["negation","Negation"],["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
-    failed:   [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["dur","Dur"],
+    failed:  [["sym","Symbol","left"],["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["live","Live"],["prev","Prev close"],["breakthrough","Trigger"],["when","Failed"],
                ["negation","Negation"],["","Reason","nosort"],["","Actions","nosort"]],
   };
@@ -374,6 +374,7 @@
 
   function sortVal(r, key) {
     if (key === "sym" || key === "dir") return r.p[key] || "";
+    if (key === "exchange" || key === "country") return r.p[key] || "";
     if (key === "pattern") return r.p.pattern || "";
     if (key === "dur") return r.p.duration_m;
     if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
@@ -417,7 +418,10 @@
     if (p.manualState !== "failed") {
       const f = h("button", null, "Fail");
       f.title = "Move to failed manually";
-      f.addEventListener("click", () => { saveEdit(p, { manualState: "failed" }); render(); });
+      f.addEventListener("click", () => {
+        if (!confirm("Move " + p.sym + " " + p.dir + " to Failed breakouts? Restore is available afterwards.")) return;
+        saveEdit(p, { manualState: "failed" }); render();
+      });
       box.appendChild(f);
     } else {
       const r2 = h("button", null, "Restore");
@@ -428,14 +432,15 @@
       });
       box.appendChild(r2);
     }
-    const del = h("button", null, p.shared ? "Hide" : "Del");
-    del.addEventListener("click", () => {
-      if (!confirm((p.shared ? "Hide " : "Delete ") + p.sym + " " + p.dir + "?")) return;
-      if (p.shared) { OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), deleted: true }; saveOverlay(); }
-      else { OV.added = OV.added.filter(x => idOf(x) !== idOf(p)); saveOverlay(); }
-      render();
-    });
-    box.appendChild(del);
+    if (!p.shared) {
+      const del = h("button", null, "Del");
+      del.addEventListener("click", () => {
+        if (!confirm("Delete " + p.sym + " " + p.dir + " permanently?")) return;
+        OV.added = OV.added.filter(x => idOf(x) !== idOf(p)); saveOverlay();
+        render();
+      });
+      box.appendChild(del);
+    }
     td.appendChild(box);
     return td;
   }
@@ -458,11 +463,13 @@
     const wrap = $("#sec-" + state);
     wrap.textContent = "";
     if (!rows.length) return;
-    const flt = FILTERS[state] = FILTERS[state] || { sym: "", dir: "", pattern: "" };
+    const flt = FILTERS[state] = FILTERS[state] || { sym: "", dir: "", pattern: "", country: "", exchange: "" };
     const shown = rows.filter(r =>
       (!flt.sym || (r.p.sym + " " + (r.p.note || "")).toLowerCase().includes(flt.sym.toLowerCase())) &&
       (!flt.dir || r.p.dir === flt.dir) &&
-      (!flt.pattern || r.p.pattern === flt.pattern));
+      (!flt.pattern || r.p.pattern === flt.pattern) &&
+      (!flt.country || r.p.country === flt.country) &&
+      (!flt.exchange || r.p.exchange === flt.exchange));
     const [sortKey, asc] = SORT[state];
     shown.sort((a, b) => {
       const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
@@ -499,6 +506,20 @@
         [["","all"],["long","long"],["short","short"]].forEach(([v,l]) => {
           const o = h("option", null, l); o.value = v; if (flt.dir === v) o.selected = true; sel.appendChild(o); });
         sel.addEventListener("change", () => { flt.dir = sel.value; render(); });
+        th.appendChild(sel);
+      } else if (key === "country") {
+        const sel = h("select");
+        const all = h("option", null, "all"); all.value = ""; sel.appendChild(all);
+        [...new Set(rows.map(r2 => r2.p.country).filter(Boolean))].sort().forEach(cc => {
+          const o = h("option", null, cc); o.value = cc; if (flt.country === cc) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener("change", () => { flt.country = sel.value; render(); });
+        th.appendChild(sel);
+      } else if (key === "exchange") {
+        const sel = h("select");
+        const all = h("option", null, "all"); all.value = ""; sel.appendChild(all);
+        [...new Set(rows.map(r2 => r2.p.exchange).filter(Boolean))].sort().forEach(ex => {
+          const o = h("option", null, ex); o.value = ex; if (flt.exchange === ex) o.selected = true; sel.appendChild(o); });
+        sel.addEventListener("change", () => { flt.exchange = sel.value; render(); });
         th.appendChild(sel);
       } else if (key === "pattern") {
         const sel = h("select");
@@ -551,6 +572,8 @@
       tr.appendChild(tdSym);
 
       const tdDir = h("td"); tdDir.appendChild(h("span", "wdir " + p.dir, p.dir)); tr.appendChild(tdDir);
+      tr.appendChild(h("td", null, p.exchange || "–"));
+      tr.appendChild(h("td", null, p.country || "–"));
       tr.appendChild(h("td", null, p.pattern || "–"));
       tr.appendChild(h("td", null, p.duration_m != null ? p.duration_m + "m" : "–"));
 
@@ -688,7 +711,7 @@
       alertOp: $("#f-alert-op").value,
       alert: num("#f-alert"),
       negation: num("#f-neg"),
-      target: num("#f-tgt"),
+      target:num("#f-tgt"),
       breakthrough: num("#f-brk"),
       note: $("#f-note").value.trim(),
       created: new Date().toISOString().slice(0, 10),

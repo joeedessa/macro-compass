@@ -7,11 +7,13 @@
   "breakthrough": 12.1,
   "target": 15.65,
   "negation": null,
-  "note": "Southern Cross Gold Consolidated Ltd. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Southern Cross Gold Consolidated Ltd.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 7
+  "duration_m": 7,
+  "exchange": "TSX",
+  "country": "Canada"
  },
  {
   "sym": "LB",
@@ -21,11 +23,13 @@
   "breakthrough": 83.1,
   "target": 100.3,
   "negation": null,
-  "note": "LandBridge Company LLC \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "LandBridge Company LLC",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "GPCR",
@@ -35,11 +39,13 @@
   "breakthrough": 59,
   "target": 78,
   "negation": null,
-  "note": "Structure Therapeutics Inc. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Structure Therapeutics Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "H&S bottom",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "CGON",
@@ -49,11 +55,13 @@
   "breakthrough": 78,
   "target": 97.8,
   "negation": null,
-  "note": "CG Oncology Inc. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "CG Oncology Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "H&S continuation",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "OVV",
@@ -63,11 +71,13 @@
   "breakthrough": 65,
   "target": 74.7,
   "negation": null,
-  "note": "Ovintiv Inc. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Ovintiv Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "DAKT",
@@ -77,11 +87,13 @@
   "breakthrough": 18.4,
   "target": 16.5,
   "negation": null,
-  "note": "Daktronics Inc. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Daktronics Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle (bearish continuation)",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "NGVT",
@@ -91,11 +103,13 @@
   "breakthrough": 80,
   "target": 92.1,
   "negation": null,
-  "note": "Ingevity Corporation \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Ingevity Corporation",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "FSS",
@@ -105,11 +119,13 @@
   "breakthrough": 136.42,
   "target": 160,
   "negation": null,
-  "note": "Federal Signal Corporation \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Federal Signal Corporation",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 12
+  "duration_m": 12,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "BWMX",
@@ -119,11 +135,13 @@
   "breakthrough": 20,
   "target": 23,
   "negation": null,
-  "note": "Betterware de Mexico \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Betterware de Mexico",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "FCX",
@@ -133,11 +151,13 @@
   "breakthrough": 73.15,
   "target": 90,
   "negation": null,
-  "note": "Freeport-McMoRan Inc. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Freeport-McMoRan Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "BYD",
@@ -147,11 +167,13 @@
   "breakthrough": 92.2,
   "target": 102.2,
   "negation": null,
-  "note": "Boyd Gaming Corp. \u00b7 Americas \u00b7 Tech Charts Aug 8",
+  "note": "Boyd Gaming Corp.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 10
+  "duration_m": 10,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "SL.MI",
@@ -161,11 +183,13 @@
   "breakthrough": 40.6,
   "target": 43.2,
   "negation": null,
-  "note": "Sanlorenzo SpA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Sanlorenzo SpA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "Borsa Italiana",
+  "country": "Italy"
  },
  {
   "sym": "MYI.L",
@@ -175,11 +199,13 @@
   "breakthrough": 379.6,
   "target": 406,
   "negation": null,
-  "note": "Murray International Trust \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Murray International Trust",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Cup & Handle continuation",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "LSE",
+  "country": "UK"
  },
  {
   "sym": "TRN.MI",
@@ -189,11 +215,13 @@
   "breakthrough": 10.52,
   "target": 11.37,
   "negation": null,
-  "note": "Terna SpA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Terna SpA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "Borsa Italiana",
+  "country": "Italy"
  },
  {
   "sym": "HO.PA",
@@ -203,11 +231,13 @@
   "breakthrough": 285,
   "target": 338,
   "negation": null,
-  "note": "Thales SA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Thales SA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 13
+  "duration_m": 13,
+  "exchange": "Euronext Paris",
+  "country": "France"
  },
  {
   "sym": "HO.PA",
@@ -217,11 +247,13 @@
   "breakthrough": 209.5,
   "target": 168.5,
   "negation": null,
-  "note": "Thales SA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Thales SA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 13
+  "duration_m": 13,
+  "exchange": "Euronext Paris",
+  "country": "France"
  },
  {
   "sym": "SAB.MC",
@@ -231,11 +263,13 @@
   "breakthrough": 3.57,
   "target": 3.91,
   "negation": null,
-  "note": "Banco de Sabadell SA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Banco de Sabadell SA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "BME",
+  "country": "Spain"
  },
  {
   "sym": "SAB.MC",
@@ -245,11 +279,13 @@
   "breakthrough": 2.86,
   "target": 2.5,
   "negation": null,
-  "note": "Banco de Sabadell SA \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Banco de Sabadell SA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "BME",
+  "country": "Spain"
  },
  {
   "sym": "MKS.L",
@@ -259,11 +295,13 @@
   "breakthrough": 426,
   "target": 507,
   "negation": null,
-  "note": "Marks and Spencer Group Plc \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Marks and Spencer Group Plc",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 14
+  "duration_m": 14,
+  "exchange": "LSE",
+  "country": "UK"
  },
  {
   "sym": "MKS.L",
@@ -273,11 +311,13 @@
   "breakthrough": 309,
   "target": 247.8,
   "negation": null,
-  "note": "Marks and Spencer Group Plc \u00b7 Europe \u00b7 Tech Charts Aug 8",
+  "note": "Marks and Spencer Group Plc",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 14
+  "duration_m": 14,
+  "exchange": "LSE",
+  "country": "UK"
  },
  {
   "sym": "FSR.JO",
@@ -287,11 +327,13 @@
   "breakthrough": 10275,
   "target": 11420,
   "negation": null,
-  "note": "FirstRand Limited \u00b7 Middle East & Africa \u00b7 Tech Charts Aug 8",
+  "note": "FirstRand Limited",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Cup & Handle continuation",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "JSE",
+  "country": "South Africa"
  },
  {
   "sym": "THYAO.IS",
@@ -301,11 +343,13 @@
   "breakthrough": 353,
   "target": 428,
   "negation": null,
-  "note": "Turk Hava Yollari A.O. \u00b7 Middle East & Africa \u00b7 Tech Charts Aug 8",
+  "note": "Turk Hava Yollari A.O.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 24
+  "duration_m": 24,
+  "exchange": "BIST",
+  "country": "Turkey"
  },
  {
   "sym": "7936.T",
@@ -315,11 +359,13 @@
   "breakthrough": 5150,
   "target": 6000,
   "negation": null,
-  "note": "Asics Corporation \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Asics Corporation",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "BPCL.NS",
@@ -329,11 +375,13 @@
   "breakthrough": 330,
   "target": 370,
   "negation": null,
-  "note": "Bharat Petroleum Corp. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Bharat Petroleum Corp.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NSE",
+  "country": "India"
  },
  {
   "sym": "7278.T",
@@ -343,11 +391,13 @@
   "breakthrough": 6400,
   "target": 6920,
   "negation": null,
-  "note": "Exedy Corp. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Exedy Corp.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "S32.AX",
@@ -357,11 +407,13 @@
   "breakthrough": 5.04,
   "target": 6.0,
   "negation": null,
-  "note": "South32 Ltd. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "South32 Ltd.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "ASX",
+  "country": "Australia"
  },
  {
   "sym": "6728.T",
@@ -371,11 +423,13 @@
   "breakthrough": 11500,
   "target": 14200,
   "negation": null,
-  "note": "ULVAC Inc. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "ULVAC Inc.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "0002.HK",
@@ -385,11 +439,13 @@
   "breakthrough": 78.75,
   "target": 83.2,
   "negation": null,
-  "note": "CLP Holdings Ltd. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "CLP Holdings Ltd.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "HKEX",
+  "country": "Hong Kong"
  },
  {
   "sym": "6473.T",
@@ -399,11 +455,13 @@
   "breakthrough": 2225,
   "target": 2735,
   "negation": null,
-  "note": "JTEKT Corporation \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "JTEKT Corporation",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Cup & Handle continuation",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "8012.T",
@@ -413,11 +471,13 @@
   "breakthrough": 1285,
   "target": 1430,
   "negation": null,
-  "note": "Nagase & Co Ltd. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Nagase & Co Ltd.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "3401.T",
@@ -427,11 +487,13 @@
   "breakthrough": 1797,
   "target": 1977,
   "negation": null,
-  "note": "Teijin Limited \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Teijin Limited",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "CANHLIFE.NS",
@@ -441,11 +503,13 @@
   "breakthrough": 162.1,
   "target": 179,
   "negation": null,
-  "note": "Canara HSBC Life Insurance Co. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Canara HSBC Life Insurance Co.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "NSE",
+  "country": "India"
  },
  {
   "sym": "CANHLIFE.NS",
@@ -455,11 +519,13 @@
   "breakthrough": 131.6,
   "target": 117.2,
   "negation": null,
-  "note": "Canara HSBC Life Insurance Co. \u00b7 Asia \u00b7 Tech Charts Aug 8",
+  "note": "Canara HSBC Life Insurance Co.",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "NSE",
+  "country": "India"
  },
  {
   "sym": "TCELL.IS",
@@ -469,11 +535,13 @@
   "breakthrough": 112.1,
   "negation": 92.55,
   "target": 141.5,
-  "note": "Turkcell Iletisim Hizmetleri \u00b7 Turkey \u00b7 Tech Charts breakout baseline",
+  "note": "Turkcell Iletisim Hizmetleri",
   "created": "2026-01-24",
   "confirmed": "2026-01-24",
   "pattern": "Symm triangle",
-  "duration_m": 14
+  "duration_m": 14,
+  "exchange": "BIST",
+  "country": "Turkey"
  },
  {
   "sym": "BLBD",
@@ -483,11 +551,13 @@
   "breakthrough": 63.63,
   "negation": 46.15,
   "target": 90.2,
-  "note": "Blue Bird Corp. \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Blue Bird Corp.",
   "created": "2026-04-11",
   "confirmed": "2026-04-11",
   "pattern": "Cup & Handle",
-  "duration_m": 20
+  "duration_m": 20,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "KRO",
@@ -497,11 +567,13 @@
   "breakthrough": 7.12,
   "negation": 4.81,
   "target": 9.35,
-  "note": "Kronos Worldwide Inc. \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Kronos Worldwide Inc.",
   "created": "2026-04-25",
   "confirmed": "2026-04-25",
   "pattern": "H&S bottom",
-  "duration_m": 10
+  "duration_m": 10,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "3107.T",
@@ -511,11 +583,13 @@
   "breakthrough": 3403.0,
   "negation": 2840.0,
   "target": 4500.0,
-  "note": "Daiwabo Holdings Co \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Daiwabo Holdings Co",
   "created": "2026-05-09",
   "confirmed": "2026-05-09",
   "pattern": "Rectangle",
-  "duration_m": 24
+  "duration_m": 24,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "NPCE",
@@ -525,11 +599,13 @@
   "breakthrough": 19.29,
   "negation": 12.47,
   "target": 36.15,
-  "note": "NeuroPace Inc. \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "NeuroPace Inc.",
   "created": "2026-05-09",
   "confirmed": "2026-05-09",
   "pattern": "Ascending triangle",
-  "duration_m": 24
+  "duration_m": 24,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "ARG.TO",
@@ -539,11 +615,13 @@
   "breakthrough": 7.13,
   "negation": 5.55,
   "target": 9.0,
-  "note": "Amerigo Resources Ltd. \u00b7 Canada \u00b7 Tech Charts breakout baseline",
+  "note": "Amerigo Resources Ltd.",
   "created": "2026-05-16",
   "confirmed": "2026-05-16",
   "pattern": "H&S continuation",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "TSX",
+  "country": "Canada"
  },
  {
   "sym": "9509.T",
@@ -553,11 +631,13 @@
   "breakthrough": 940.8,
   "negation": 1145.0,
   "target": 751.0,
-  "note": "Hokkaido Electric Power \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Hokkaido Electric Power",
   "created": "2026-05-23",
   "confirmed": "2026-05-23",
   "pattern": "Rectangle",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "UNM",
@@ -567,11 +647,13 @@
   "breakthrough": 82.77,
   "negation": 69.0,
   "target": 96.8,
-  "note": "Unum Group \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Unum Group",
   "created": "2026-05-23",
   "confirmed": "2026-05-23",
   "pattern": "Symm triangle",
-  "duration_m": 13
+  "duration_m": 13,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "A5G.IR",
@@ -581,11 +663,13 @@
   "breakthrough": 10.3,
   "negation": 9.27,
   "target": 11.5,
-  "note": "AIB Group Plc \u00b7 Ireland \u00b7 Tech Charts breakout baseline",
+  "note": "AIB Group Plc",
   "created": "2026-05-30",
   "confirmed": "2026-05-30",
   "pattern": "Cup & Handle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "Euronext Dublin",
+  "country": "Ireland"
  },
  {
   "sym": "7956.T",
@@ -595,11 +679,13 @@
   "breakthrough": 1984.0,
   "negation": 1745.0,
   "target": 2210.0,
-  "note": "Pigeon Corporation \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Pigeon Corporation",
   "created": "2026-06-13",
   "confirmed": "2026-06-13",
   "pattern": "Rectangle",
-  "duration_m": 14
+  "duration_m": 14,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "VLY",
@@ -609,11 +695,13 @@
   "breakthrough": 14.41,
   "negation": 12.77,
   "target": 16.1,
-  "note": "Valley National Bancorp \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Valley National Bancorp",
   "created": "2026-06-13",
   "confirmed": "2026-06-13",
   "pattern": "Cup & Handle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "GLYHO.IS",
@@ -623,11 +711,13 @@
   "breakthrough": 17.48,
   "negation": 15.02,
   "target": 19.9,
-  "note": "Global Yatirim Holding \u00b7 Turkey \u00b7 Tech Charts breakout baseline",
+  "note": "Global Yatirim Holding",
   "created": "2026-06-20",
   "confirmed": "2026-06-20",
   "pattern": "Rectangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "BIST",
+  "country": "Turkey"
  },
  {
   "sym": "TRENT.NS",
@@ -637,11 +727,13 @@
   "breakthrough": 3102.0,
   "negation": 2653.0,
   "target": 3590.0,
-  "note": "Trent Limited \u00b7 India \u00b7 Tech Charts breakout baseline",
+  "note": "Trent Limited",
   "created": "2026-06-20",
   "confirmed": "2026-06-20",
   "pattern": "H&S bottom",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "NSE",
+  "country": "India"
  },
  {
   "sym": "RL",
@@ -651,11 +743,13 @@
   "breakthrough": 404.0,
   "negation": 355.0,
   "target": 464.0,
-  "note": "Ralph Lauren Corporation \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Ralph Lauren Corporation",
   "created": "2026-06-20",
   "confirmed": "2026-06-20",
   "pattern": "Rectangle",
-  "duration_m": 8
+  "duration_m": 8,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "DOCO.IS",
@@ -665,11 +759,13 @@
   "breakthrough": 12042.0,
   "negation": 10100.0,
   "target": 14920.0,
-  "note": "Do & Co \u00b7 Turkey \u00b7 Tech Charts breakout baseline",
+  "note": "Do & Co",
   "created": "2026-06-27",
   "confirmed": "2026-06-27",
   "pattern": "Rectangle",
-  "duration_m": 10
+  "duration_m": 10,
+  "exchange": "BIST",
+  "country": "Turkey"
  },
  {
   "sym": "PGEN",
@@ -679,11 +775,13 @@
   "breakthrough": 5.52,
   "negation": 4.18,
   "target": 7.55,
-  "note": "Precigen Inc. \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Precigen Inc.",
   "created": "2026-06-27",
   "confirmed": "2026-06-27",
   "pattern": "Rectangle",
-  "duration_m": 9
+  "duration_m": 9,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "PACS",
@@ -693,11 +791,13 @@
   "breakthrough": 44.32,
   "negation": 34.07,
   "target": 54.6,
-  "note": "PACS Group Inc \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "PACS Group Inc",
   "created": "2026-07-04",
   "confirmed": "2026-07-04",
   "pattern": "H&S continuation",
-  "duration_m": 6
+  "duration_m": 6,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "WBS",
@@ -707,11 +807,13 @@
   "breakthrough": 76.42,
   "negation": 71.16,
   "target": 81.0,
-  "note": "Webster Financial Corp \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Webster Financial Corp",
   "created": "2026-07-04",
   "confirmed": "2026-07-04",
   "pattern": "H&S continuation",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "LLYVA",
@@ -721,11 +823,13 @@
   "breakthrough": 103.86,
   "negation": 87.7,
   "target": 124.2,
-  "note": "Liberty Live Holdings \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Liberty Live Holdings",
   "created": "2026-07-04",
   "confirmed": "2026-07-04",
   "pattern": "Cup & Handle",
-  "duration_m": 7
+  "duration_m": 7,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "INDUSINDBK.NS",
@@ -735,11 +839,13 @@
   "breakthrough": 1009.0,
   "negation": 870.2,
   "target": 1162.0,
-  "note": "IndusInd Bank Ltd \u00b7 India \u00b7 Tech Charts breakout baseline",
+  "note": "IndusInd Bank Ltd",
   "created": "2026-07-11",
   "confirmed": "2026-07-11",
   "pattern": "H&S continuation",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "NSE",
+  "country": "India"
  },
  {
   "sym": "8876.T",
@@ -749,11 +855,13 @@
   "breakthrough": 2132.0,
   "negation": 1770.0,
   "target": 2426.0,
-  "note": "Relo Group Inc \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Relo Group Inc",
   "created": "2026-07-11",
   "confirmed": "2026-07-11",
   "pattern": "Rectangle",
-  "duration_m": 18
+  "duration_m": 18,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "GXI.DE",
@@ -763,11 +871,13 @@
   "breakthrough": 29.72,
   "negation": 23.1,
   "target": 41.0,
-  "note": "Gerresheimer AG \u00b7 Germany \u00b7 Tech Charts breakout baseline",
+  "note": "Gerresheimer AG",
   "created": "2026-07-11",
   "confirmed": "2026-07-11",
   "pattern": "H&S bottom",
-  "duration_m": 8
+  "duration_m": 8,
+  "exchange": "XETRA",
+  "country": "Germany"
  },
  {
   "sym": "8386.T",
@@ -777,11 +887,13 @@
   "breakthrough": 2695.0,
   "negation": 2282.0,
   "target": 3190.0,
-  "note": "Hayakujushi Bank Ltd \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Hayakujushi Bank Ltd",
   "created": "2026-07-11",
   "confirmed": "2026-07-11",
   "pattern": "Cup & Handle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "NESTE.HE",
@@ -791,11 +903,13 @@
   "breakthrough": 31.53,
   "negation": 25.92,
   "target": 37.5,
-  "note": "Neste Corporation \u00b7 Finland \u00b7 Tech Charts breakout baseline",
+  "note": "Neste Corporation",
   "created": "2026-07-18",
   "confirmed": "2026-07-18",
   "pattern": "Ascending triangle",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "Nasdaq Helsinki",
+  "country": "Finland"
  },
  {
   "sym": "CBK.DE",
@@ -805,11 +919,13 @@
   "breakthrough": 39.03,
   "negation": 33.64,
   "target": 46.0,
-  "note": "Commerzbank AG \u00b7 Germany \u00b7 Tech Charts breakout baseline",
+  "note": "Commerzbank AG",
   "created": "2026-07-18",
   "confirmed": "2026-07-18",
   "pattern": "Rectangle",
-  "duration_m": 8
+  "duration_m": 8,
+  "exchange": "XETRA",
+  "country": "Germany"
  },
  {
   "sym": "7189.T",
@@ -819,11 +935,13 @@
   "breakthrough": 4419.0,
   "negation": 4020.0,
   "target": 5105.0,
-  "note": "Nishi-Nippon Financial \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Nishi-Nippon Financial",
   "created": "2026-07-18",
   "confirmed": "2026-07-18",
   "pattern": "Symm triangle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "IGIC",
@@ -833,11 +951,13 @@
   "breakthrough": 28.53,
   "negation": 24.14,
   "target": 33.85,
-  "note": "International General Ins \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "International General Ins",
   "created": "2026-07-18",
   "confirmed": "2026-07-18",
   "pattern": "Rectangle",
-  "duration_m": 19
+  "duration_m": 19,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "WAWI.OL",
@@ -847,11 +967,13 @@
   "breakthrough": 145.3,
   "negation": 126.8,
   "target": 163.0,
-  "note": "Wallenius Wilhelmsen \u00b7 Norway \u00b7 Tech Charts breakout baseline",
+  "note": "Wallenius Wilhelmsen",
   "created": "2026-07-25",
   "confirmed": "2026-07-25",
   "pattern": "Cup & Handle",
-  "duration_m": 4
+  "duration_m": 4,
+  "exchange": "Oslo Bors",
+  "country": "Norway"
  },
  {
   "sym": "UBER",
@@ -861,11 +983,13 @@
   "breakthrough": 65.94,
   "negation": 75.4,
   "target": 58.9,
-  "note": "Uber Technologies Inc. \u00b7 US \u00b7 Tech Charts breakout baseline",
+  "note": "Uber Technologies Inc.",
   "created": "2026-07-25",
   "confirmed": "2026-07-25",
   "pattern": "Rectangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
  },
  {
   "sym": "SOF.BR",
@@ -875,11 +999,13 @@
   "breakthrough": 238.0,
   "negation": 222.2,
   "target": 256.0,
-  "note": "Sofina SA \u00b7 Belgium \u00b7 Tech Charts breakout baseline",
+  "note": "Sofina SA",
   "created": "2026-08-01",
   "confirmed": "2026-08-01",
   "pattern": "Ascending triangle",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "Euronext Brussels",
+  "country": "Belgium"
  },
  {
   "sym": "GEI.TO",
@@ -889,11 +1015,13 @@
   "breakthrough": 32.11,
   "negation": 28.35,
   "target": 33.7,
-  "note": "Gibson Energy Inc. \u00b7 Canada \u00b7 Tech Charts breakout baseline",
+  "note": "Gibson Energy Inc.",
   "created": "2026-08-01",
   "confirmed": "2026-08-01",
   "pattern": "Ascending triangle",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "TSX",
+  "country": "Canada"
  },
  {
   "sym": "DTG.DE",
@@ -903,11 +1031,13 @@
   "breakthrough": 46.35,
   "negation": 41.37,
   "target": 50.8,
-  "note": "Daimler Truck Holding AG \u00b7 Germany \u00b7 Tech Charts breakout baseline",
+  "note": "Daimler Truck Holding AG",
   "created": "2026-08-01",
   "confirmed": "2026-08-01",
   "pattern": "Rectangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "XETRA",
+  "country": "Germany"
  },
  {
   "sym": "8766.T",
@@ -917,11 +1047,13 @@
   "breakthrough": 8243.0,
   "negation": 7450.0,
   "target": 9020.0,
-  "note": "Tokio Marine Holdings \u00b7 Japan \u00b7 Tech Charts breakout baseline",
+  "note": "Tokio Marine Holdings",
   "created": "2026-08-01",
   "confirmed": "2026-08-01",
   "pattern": "Rectangle",
-  "duration_m": 3
+  "duration_m": 3,
+  "exchange": "TSE",
+  "country": "Japan"
  },
  {
   "sym": "BFIT.AS",
@@ -931,10 +1063,12 @@
   "breakthrough": 36.06,
   "negation": 30.34,
   "target": 40.09,
-  "note": "Basic-Fit NV \u00b7 Netherlands \u00b7 Tech Charts breakout baseline",
+  "note": "Basic-Fit NV",
   "created": "2026-08-01",
   "confirmed": "2026-08-01",
   "pattern": "Rectangle",
-  "duration_m": 5
+  "duration_m": 5,
+  "exchange": "Euronext Amsterdam",
+  "country": "Netherlands"
  }
 ]
