@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808k">
+<link rel="stylesheet" href="styles.css?v=20260808m">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -245,10 +245,18 @@
      Negation outranks the others on the same close. Target is not terminal. */
   function replay(p, hist) {
     const st = { state: "watch", breakout: null, targetHit: null, failed: null };
+    /* Entries imported from the source's breakout list carry `confirmed`: they
+       enter the machine already in the breakout state on that date, and only
+       negation and target are evaluated from there. */
+    if (p.confirmed) {
+      st.state = "breakout";
+      st.breakout = { when: p.confirmed, close: null };
+    }
     if (!hist) return st;
     const long = p.dir === "long";
+    const from = p.confirmed || p.created;
     for (const [date, c] of hist.pts) {
-      if (p.created && date < p.created) continue;
+      if (from && date < from) continue;
       const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
       if (negHit) {
         st.failed = { when: date, close: c,
@@ -456,7 +464,8 @@
       if (state === "watch") tr.appendChild(h("td", null, r.gap == null ? "–" : fmt(r.gap) + "%"));
       if (state === "breakout") {
         const td = h("td", null, st.breakout ? st.breakout.when : "–");
-        if (st.breakout) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
+        if (st.breakout && st.breakout.close != null) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
+        else if (st.breakout) td.appendChild(h("span", "wname", "as listed by source"));
         tr.appendChild(td);
       }
       if (state === "target") {
