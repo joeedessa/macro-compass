@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808i">
+<link rel="stylesheet" href="styles.css?v=20260808j">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -55,7 +55,35 @@
     background:var(--surface-1); border:1px solid var(--border); border-radius:8px;
     padding:5px 12px; cursor:pointer; }
   .toolbar button:hover { color:var(--text-primary); }
-  .grid2 { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); }
+  .tablewrap.wl { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; margin-bottom:6px; }
+  table.wl { border-collapse:collapse; width:100%; font-size:13px; min-width:980px; }
+  table.wl th { font-size:11.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:9px 12px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  table.wl th.left { text-align:left; }
+  table.wl th.nosort { cursor:default; }
+  table.wl th.active { color:var(--text-primary); }
+  table.wl th.active::after { content:" ▾"; }
+  table.wl th.active.asc::after { content:" ▴"; }
+  table.wl td { padding:8px 12px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; vertical-align:top; }
+  table.wl td.left { text-align:left; }
+  table.wl tbody tr:last-child td { border-bottom:none; }
+  table.wl tbody tr:hover { background:var(--surface-2); }
+  .wsym { display:block; color:var(--text-primary); font-weight:620; text-decoration:none; }
+  .wsym:hover { text-decoration:underline; }
+  .wname { display:block; font-size:11.5px; color:var(--text-muted); max-width:320px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wdir { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+  .wdir.long { color:var(--up); } .wdir.short { color:var(--down); }
+  .wstat { font-size:12px; color:var(--text-secondary); white-space:normal; min-width:150px; }
+  .wstat.good { color:var(--up); } .wstat.bad { color:var(--down); }
+  .wact { display:flex; gap:4px; justify-content:flex-end; }
+  .wact button { font:inherit; font-size:11.5px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 8px; cursor:pointer; }
+  .wact button:hover { color:var(--text-primary); border-color:var(--baseline); }
 </style>
 </head>
 <body>
@@ -114,26 +142,26 @@
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
     <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
     Import JSON, or add a single setup with the form above.</p>
-  <div class="grid2" id="sec-watch"></div>
+  <div class="tablewrap wl" id="sec-watch"></div>
 
   <h2>Confirmed breakouts</h2>
   <p class="lede">Triggered trades, with the confirming close and date. From here a close beyond
     the negation moves the trade to Failed; reaching the target moves it to Reached target.</p>
   <p id="empty-breakout" class="lede" hidden>No confirmed breakouts yet.</p>
-  <div class="grid2" id="sec-breakout"></div>
+  <div class="tablewrap wl" id="sec-breakout"></div>
 
   <h2>Reached price target</h2>
   <p class="lede">Trades that closed at or beyond their target. They may well still be in play —
     that's part of the game — so negation keeps being checked and a later invalidation still moves
     them to Failed.</p>
   <p id="empty-target" class="lede" hidden>None yet.</p>
-  <div class="grid2" id="sec-target"></div>
+  <div class="tablewrap wl" id="sec-target"></div>
 
   <h2>Failed breakouts</h2>
   <p class="lede">Negated patterns, with the close that invalidated them. Manually archived trades
     land here too.</p>
   <p id="empty-failed" class="lede" hidden>None — nothing has been negated.</p>
-  <div class="grid2" id="sec-failed"></div>
+  <div class="tablewrap wl" id="sec-failed"></div>
 
   <footer>
     <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
@@ -251,119 +279,179 @@
     return list;
   }
 
-  function lvl(label, value, state, sub) {
-    const box = h("div", "lvl" + (state ? " " + state : ""));
-    box.appendChild(h("span", "lt", label));
-    box.appendChild(document.createTextNode(" "));
-    box.appendChild(h("span", "lv", fmt(value)));
-    if (sub) box.appendChild(h("span", "ls", sub));
-    return box;
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  const pct1 = v => v == null ? null : Math.round(v * 10) / 10;
+
+  /* One row per setup. `rowsOf` builds sortable value objects; the status
+     column carries the per-section detail (confirmation, target, failure). */
+  function rowData(p, st) {
+    const hist = HIST[p.sym];
+    const last = hist ? hist.pts[hist.pts.length - 1][1] : null;
+    const gap = (last != null && p.breakthrough != null && st.state === "watch")
+      ? pct1((p.dir === "long" ? p.breakthrough / last - 1 : 1 - p.breakthrough / last) * 100)
+      : null;
+    return { p, st, last,
+      currency: hist ? hist.currency : "",
+      closeDate: hist ? hist.pts[hist.pts.length - 1][0] : "",
+      gap,
+      when: st.failed ? st.failed.when : st.targetHit ? st.targetHit.when : st.breakout ? st.breakout.when : "" };
   }
 
-  function card(p, st) {
-    const hist = HIST[p.sym];
-    const q = hist ? { last: hist.pts[hist.pts.length - 1][1], date: hist.pts[hist.pts.length - 1][0], currency: hist.currency } : null;
+  const COLS = {
+    watch:    [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
+               ["gap","To trigger"],["negation","Negation"],["target","Target"],["","Actions","nosort"]],
+    breakout: [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
+               ["when","Confirmed"],["negation","Negation"],["target","Target"],["","Actions","nosort"]],
+    target:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
+               ["when","Reached"],["target","Target"],["negation","Negation"],["","Actions","nosort"]],
+    failed:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
+               ["when","Failed"],["negation","Negation"],["","Reason","nosort"],["","Actions","nosort"]],
+  };
+  const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false], failed: ["when", false] };
+
+  function sortVal(r, key) {
+    if (key === "sym" || key === "dir") return r.p[key] || "";
+    if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
+    if (key === "last") return r.last;
+    if (key === "gap") return r.gap;
+    if (key === "when") return r.when;
+    return null;
+  }
+
+  function actionsCell(p) {
+    const td = document.createElement("td");
+    const box = h("div", "wact");
     const long = p.dir === "long";
-    const el = h("div", "pos" + (st.state === "failed" ? " archived" : ""));
-    const head = h("div", "pos-head");
-    const a = h("a", "psym", p.sym);
-    a.href = "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym);
-    a.target = "_blank"; a.rel = "noopener noreferrer";
-    a.style.textDecoration = "none"; a.style.color = "inherit";
-    head.appendChild(a);
-    head.appendChild(h("span", "pdir " + p.dir, p.dir));
-    const last = h("span", "plast");
-    last.textContent = q ? fmt(q.last) + (q.currency ? " " + q.currency : "") + " · close " + q.date : "no quote";
-    head.appendChild(last);
-    el.appendChild(head);
-    if (p.note) el.appendChild(h("p", "pnote", p.note));
-
-    const levels = h("div", "levels");
-    if (p.breakthrough != null) levels.appendChild(lvl(long ? "Breakout >" : "Breakdown <", p.breakthrough,
-      st.breakout ? "hit" : null,
-      st.breakout ? "confirmed " + st.breakout.when + " @ " + fmt(st.breakout.close) : "waiting for close beyond"));
-    if (p.negation != null) levels.appendChild(lvl("Negation", p.negation,
-      st.state === "failed" ? "bad" : null, st.state === "failed" ? "hit" : "intact"));
-    if (p.target != null) levels.appendChild(lvl("Target", p.target,
-      st.targetHit ? "hit" : null,
-      st.targetHit ? "reached " + st.targetHit.when + " @ " + fmt(st.targetHit.close) : "open"));
-    if (q && p.breakthrough != null && st.state === "watch") {
-      const gap = (long ? p.breakthrough / q.last - 1 : 1 - p.breakthrough / q.last) * 100;
-      levels.appendChild(lvl("To trigger", null, null, fmt(Math.abs(gap)) + "% away"));
-    }
-    el.appendChild(levels);
-
-    if (st.state === "failed" && st.failed) el.appendChild(h("p", "archive-reason",
-      "Failed " + st.failed.when + " — " + st.failed.reason +
-      (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "")));
-    if (p.manualState === "failed") el.appendChild(h("p", "archive-reason", "Moved to failed manually"));
-
-    const actions = h("div", "pos-actions");
-    const setNeg = h("button", null, p.negation != null ? "Edit negation" : "Set negation");
-    setNeg.type = "button";
-    setNeg.addEventListener("click", () => {
+    const neg = h("button", null, p.negation != null ? "Neg…" : "Set neg");
+    neg.title = "Set or edit the negation level";
+    neg.addEventListener("click", () => {
       const v = prompt("Negation level for " + p.sym + " (close " + (long ? "below" : "above") +
         " it fails the pattern). Empty to clear.", p.negation ?? "");
       if (v === null) return;
       const nv = v.trim() === "" ? null : Number(v);
-      if (p.shared) {
-        OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), negation: nv };
-      } else {
-        const mine = OV.added.find(x => idOf(x) === idOf(p));
-        if (mine) mine.negation = nv;
-      }
+      if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), negation: nv };
+      else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) mine.negation = nv; }
       saveOverlay(); render();
     });
-    actions.appendChild(setNeg);
+    box.appendChild(neg);
     if (p.manualState !== "failed") {
-      const arch = h("button", null, "Move to failed");
-      arch.type = "button";
-      arch.addEventListener("click", () => {
+      const f = h("button", null, "Fail");
+      f.title = "Move to failed manually";
+      f.addEventListener("click", () => {
         if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), manualState: "failed" };
         else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) mine.manualState = "failed"; }
         saveOverlay(); render();
       });
-      actions.appendChild(arch);
+      box.appendChild(f);
     } else {
-      const rest = h("button", null, "Restore");
-      rest.type = "button";
-      rest.addEventListener("click", () => {
+      const r2 = h("button", null, "Restore");
+      r2.addEventListener("click", () => {
         if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; }
         else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; }
         saveOverlay(); render();
       });
-      actions.appendChild(rest);
+      box.appendChild(r2);
     }
-    const del = h("button", null, p.shared ? "Hide" : "Delete");
-    del.type = "button";
+    const del = h("button", null, p.shared ? "Hide" : "Del");
     del.addEventListener("click", () => {
       if (!confirm((p.shared ? "Hide " : "Delete ") + p.sym + " " + p.dir + "?")) return;
       if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), deleted: true };
       else OV.added = OV.added.filter(x => idOf(x) !== idOf(p));
       saveOverlay(); render();
     });
-    actions.appendChild(del);
-    el.appendChild(actions);
-    return el;
+    box.appendChild(del);
+    td.appendChild(box);
+    return td;
   }
 
-  const SECTIONS = [["watch", "#sec-watch", "#empty-watch"], ["breakout", "#sec-breakout", "#empty-breakout"],
-    ["target", "#sec-target", "#empty-target"], ["failed", "#sec-failed", "#empty-failed"]];
+  function buildTable(state, rows) {
+    const wrap = $("#sec-" + state);
+    wrap.textContent = "";
+    if (!rows.length) return;
+    const [sortKey, asc] = SORT[state];
+    rows.sort((a, b) => {
+      const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      const cmp = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+      return asc ? cmp : -cmp;
+    });
+    const table = h("table", "wl");
+    const thead = h("thead"), hr = h("tr");
+    for (const [key, label, cls] of COLS[state]) {
+      const th = h("th", (cls || "") +
+        (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""), label);
+      if (key && cls !== "nosort") th.addEventListener("click", () => {
+        const cur = SORT[state];
+        SORT[state] = [key, cur[0] === key ? !cur[1] : (key === "sym" || key === "dir" || key === "gap")];
+        render();
+      });
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr); table.appendChild(thead);
+    const tb = h("tbody");
+    for (const r of rows) {
+      const { p, st } = r;
+      const tr = h("tr");
+      const tdSym = h("td", "left");
+      const a = h("a", "wsym", p.sym);
+      a.href = YQ(p.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      tdSym.appendChild(a);
+      if (p.note) tdSym.appendChild(h("span", "wname", p.note));
+      tr.appendChild(tdSym);
+      const tdDir = h("td"); tdDir.appendChild(h("span", "wdir " + p.dir, p.dir)); tr.appendChild(tdDir);
+      const tdLast = h("td");
+      tdLast.textContent = r.last != null ? fmt(r.last) + (r.currency ? " " + r.currency : "") : "–";
+      if (r.closeDate) tdLast.appendChild(h("span", "wname", "close " + r.closeDate));
+      tr.appendChild(tdLast);
+      tr.appendChild(h("td", null, fmt(p.breakthrough)));
+      if (state === "watch") tr.appendChild(h("td", null, r.gap == null ? "–" : fmt(r.gap) + "%"));
+      if (state === "breakout") {
+        const td = h("td", null, st.breakout ? st.breakout.when : "–");
+        if (st.breakout) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
+        tr.appendChild(td);
+      }
+      if (state === "target") {
+        const td = h("td", null, st.targetHit ? st.targetHit.when : "–");
+        if (st.targetHit) td.appendChild(h("span", "wname", "@ " + fmt(st.targetHit.close)));
+        tr.appendChild(td);
+      }
+      if (state === "failed") {
+        tr.appendChild(h("td", null, st.failed ? st.failed.when : "–"));
+      }
+      if (state === "target") {
+        tr.appendChild(h("td", null, fmt(p.target)));
+        tr.appendChild(h("td", null, fmt(p.negation)));
+      } else if (state === "failed") {
+        tr.appendChild(h("td", null, fmt(p.negation)));
+        const td = h("td");
+        td.appendChild(h("span", "wstat bad",
+          st.failed ? st.failed.reason + (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "")
+                    : "moved manually"));
+        tr.appendChild(td);
+      } else {
+        tr.appendChild(h("td", null, fmt(p.negation)));
+        tr.appendChild(h("td", null, fmt(p.target)));
+      }
+      tr.appendChild(actionsCell(p));
+      tb.appendChild(tr);
+    }
+    table.appendChild(tb);
+    wrap.appendChild(table);
+  }
+
   function render() {
     const list = workingList();
     const items = { watch: [], breakout: [], target: [], failed: [] };
-    let newBreakouts = 0;
     for (const p of list) {
       const st = replay(p, HIST[p.sym]);
       const state = p.manualState === "failed" ? "failed" : st.state;
-      items[state].push([p, st]);
-      if (state === "breakout") newBreakouts++;
+      items[state].push(rowData(p, st));
     }
-    for (const [state, sec, empty] of SECTIONS) {
-      const boxEl = $(sec);
-      boxEl.textContent = "";
-      $(empty).hidden = items[state].length > 0;
-      items[state].forEach(([p, st]) => boxEl.appendChild(card(p, st)));
+    for (const state of Object.keys(items)) {
+      $("#empty-" + state).hidden = items[state].length > 0;
+      buildTable(state, items[state]);
     }
     const syms = [...new Set(list.map(p => p.sym))];
     const missing = syms.filter(s => !HIST[s]);
