@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808f">
+<link rel="stylesheet" href="styles.css?v=20260808g">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -100,23 +100,39 @@
     <button type="submit">Add</button>
   </form>
 
-  <h2>Active</h2>
   <div class="toolbar">
     <button id="exportbtn" type="button">Export JSON</button>
     <button id="importbtn" type="button">Import JSON</button>
     <input id="importfile" type="file" accept="application/json" hidden>
   </div>
-  <p id="empty-active" class="lede" hidden>Nothing on the list — add a setup above.</p>
-  <div class="grid2" id="active"></div>
 
-  <h2>Archived</h2>
-  <p class="lede">Negated trades land here automatically, with the close that killed them.
-    Closed winners can be archived by hand.</p>
-  <p id="empty-arch" class="lede" hidden>Nothing archived yet.</p>
-  <div class="grid2" id="archived"></div>
+  <h2>Watchlist</h2>
+  <p class="lede">Setups waiting for their trigger. A close beyond the breakout level — above for
+    longs, below for shorts — moves the trade to Confirmed breakouts automatically.</p>
+  <p id="empty-watch" class="lede" hidden>Nothing waiting — add a setup above.</p>
+  <div class="grid2" id="sec-watch"></div>
+
+  <h2>Confirmed breakouts</h2>
+  <p class="lede">Triggered trades, with the confirming close and date. From here a close beyond
+    the negation moves the trade to Failed; reaching the target moves it to Reached target.</p>
+  <p id="empty-breakout" class="lede" hidden>No confirmed breakouts yet.</p>
+  <div class="grid2" id="sec-breakout"></div>
+
+  <h2>Reached price target</h2>
+  <p class="lede">Trades that closed at or beyond their target. They may well still be in play —
+    that's part of the game — so negation keeps being checked and a later invalidation still moves
+    them to Failed.</p>
+  <p id="empty-target" class="lede" hidden>None yet.</p>
+  <div class="grid2" id="sec-target"></div>
+
+  <h2>Failed breakouts</h2>
+  <p class="lede">Negated patterns, with the close that invalidated them. Manually archived trades
+    land here too.</p>
+  <p id="empty-failed" class="lede" hidden>None — nothing has been negated.</p>
+  <div class="grid2" id="sec-failed"></div>
 
   <footer>
-    <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Rules are
+    <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
       evaluated against daily closes only — intraday touches do not count, by design, so signals
       match end-of-day discipline. Watchlist data is stored in this browser's localStorage and never
       leaves your machine. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
@@ -162,6 +178,9 @@
             if (closes.length) out[row.symbol] = {
               last: closes[closes.length - 1],
               date: new Date(stamps[stamps.length - 1] * 1000).toISOString().slice(0, 10),
+              // Native listing currency, straight from the exchange metadata.
+              // Never converted: a JSE price stays in cents, a TSE price in yen.
+              currency: resp?.meta?.currency || "",
             };
           }
           break;
@@ -171,39 +190,65 @@
     return out;
   }
 
-  /* Rule evaluation against the latest CLOSE (not intraday):
-     alert   — informational: price is beyond the chosen level
-     negation— long: close < level; short: close > level  → auto-archive
-     target  — long: close ≥ level; short: close ≤ level
-     breakthrough — long: close > level; short: close < level (entry confirmation) */
-  function evaluate(p, quote) {
-    const s = { alert: null, negation: null, target: null, breakthrough: null };
-    if (!quote) return s;
+  /* State machine, evaluated on daily closes only:
+       watch    --close beyond breakthrough (long: >, short: <)-->  breakout
+       watch    --close beyond negation-->                          failed (negated pre-trigger)
+       breakout --close beyond negation-->                          failed
+       breakout --close at/beyond target-->                         target
+       target   --close beyond negation-->                          failed (was at target)
+     Negation is checked first: an invalidation outranks anything else that
+     happened on the same close. Target state is not terminal by design — the
+     trade may still be in play; only negation moves it out. */
+  function step(p, quote) {
+    if (!quote) return null;
     const c = quote.last, long = p.dir === "long";
-    if (p.alert != null) s.alert = p.alertOp === ">" ? c > p.alert : c < p.alert;
-    if (p.negation != null) s.negation = long ? c < p.negation : c > p.negation;
-    if (p.target != null) s.target = long ? c >= p.target : c <= p.target;
-    if (p.breakthrough != null) s.breakthrough = long ? c > p.breakthrough : c < p.breakthrough;
-    return s;
+    const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
+    const state = p.state || "watch";
+    if (negHit && state !== "failed") {
+      const was = state;
+      p.state = "failed";
+      p.failed = { when: quote.date, close: c,
+        reason: was === "watch" ? "negated before trigger" :
+                was === "target" ? "negated after reaching target" : "failed breakout" };
+      return "failed";
+    }
+    if (state === "watch" && p.breakthrough != null &&
+        (long ? c > p.breakthrough : c < p.breakthrough)) {
+      p.state = "breakout";
+      p.breakout = { when: quote.date, close: c };
+      return "breakout";
+    }
+    if (state === "breakout" && p.target != null &&
+        (long ? c >= p.target : c <= p.target)) {
+      p.state = "target";
+      p.targetHit = { when: quote.date, close: c };
+      return "target";
+    }
+    return null;
   }
 
   let LIST = load();
+  // Migrate entries from the earlier schema (active/archived).
+  for (const p of LIST) {
+    if (!p.state) p.state = p.archived ? "failed" : "watch";
+    if (p.archived && !p.failed) p.failed = { when: p.archived.when, close: null, reason: p.archived.reason };
+    delete p.archived;
+  }
   let QUOTES = {};
 
   function lvl(label, value, state, sub) {
     const box = h("div", "lvl" + (state ? " " + state : ""));
     box.appendChild(h("span", "lt", label));
     box.appendChild(document.createTextNode(" "));
-    const v = h("span", "lv", fmt(value));
-    box.appendChild(v);
+    box.appendChild(h("span", "lv", fmt(value)));
     if (sub) box.appendChild(h("span", "ls", sub));
     return box;
   }
 
   function card(p) {
     const q = QUOTES[p.sym];
-    const st = evaluate(p, q);
-    const el = h("div", "pos" + (p.archived ? " archived" : ""));
+    const long = p.dir === "long";
+    const el = h("div", "pos" + (p.state === "failed" ? " archived" : ""));
     const head = h("div", "pos-head");
     const a = h("a", "psym", p.sym);
     a.href = "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym);
@@ -212,38 +257,57 @@
     head.appendChild(a);
     head.appendChild(h("span", "pdir " + p.dir, p.dir));
     const last = h("span", "plast");
-    last.textContent = q ? fmt(q.last) + " close " + q.date : "no quote";
+    last.textContent = q ? fmt(q.last) + (q.currency ? " " + q.currency : "") + " · close " + q.date : "no quote";
     head.appendChild(last);
     el.appendChild(head);
     if (p.note) el.appendChild(h("p", "pnote", p.note));
 
     const levels = h("div", "levels");
-    if (p.alert != null) levels.appendChild(lvl("Alert " + p.alertOp, p.alert,
-      st.alert ? "warn" : null, st.alert ? "triggered" : "waiting"));
+    if (p.alert != null) {
+      const hit = q && (p.alertOp === ">" ? q.last > p.alert : q.last < p.alert);
+      levels.appendChild(lvl("Alert " + p.alertOp, p.alert, hit ? "warn" : null, hit ? "triggered" : "waiting"));
+    }
+    if (p.breakthrough != null) levels.appendChild(lvl(long ? "Breakout >" : "Breakdown <", p.breakthrough,
+      p.state !== "watch" && p.breakout ? "hit" : null,
+      p.breakout ? "confirmed " + p.breakout.when + " @ " + fmt(p.breakout.close) : "waiting for close beyond"));
     if (p.negation != null) levels.appendChild(lvl("Negation", p.negation,
-      st.negation ? "bad" : null, st.negation ? "close beyond — invalid" : "intact"));
-    if (p.breakthrough != null) levels.appendChild(lvl("Breakthrough", p.breakthrough,
-      st.breakthrough ? "hit" : null, st.breakthrough ? "confirmed by close" : "not yet"));
+      p.state === "failed" ? "bad" : null, p.state === "failed" ? "hit" : "intact"));
     if (p.target != null) levels.appendChild(lvl("Target", p.target,
-      st.target ? "hit" : null, st.target ? "reached" : "open"));
+      p.targetHit ? "hit" : null,
+      p.targetHit ? "reached " + p.targetHit.when + " @ " + fmt(p.targetHit.close) : "open"));
     el.appendChild(levels);
 
-    if (p.archived) el.appendChild(h("p", "archive-reason",
-      "Archived " + p.archived.when + " — " + p.archived.reason));
+    if (p.state === "failed" && p.failed) el.appendChild(h("p", "archive-reason",
+      "Failed " + p.failed.when + " — " + p.failed.reason +
+      (p.failed.close != null ? " (close " + fmt(p.failed.close) + ")" : "")));
 
     const actions = h("div", "pos-actions");
-    if (!p.archived) {
-      const arch = h("button", null, "Archive");
+    const setNeg = h("button", null, p.negation != null ? "Edit negation" : "Set negation");
+    setNeg.type = "button";
+    setNeg.addEventListener("click", () => {
+      const v = prompt("Negation level for " + p.sym + " (close " + (long ? "below" : "above") +
+        " it fails the pattern). Empty to clear.", p.negation ?? "");
+      if (v === null) return;
+      p.negation = v.trim() === "" ? null : Number(v);
+      save(LIST); refresh();
+    });
+    actions.appendChild(setNeg);
+    if (p.state !== "failed") {
+      const arch = h("button", null, "Move to failed");
       arch.type = "button";
       arch.addEventListener("click", () => {
-        p.archived = { when: today(), reason: "archived manually" };
+        p.state = "failed";
+        p.failed = { when: today(), close: null, reason: "archived manually" };
         save(LIST); render();
       });
       actions.appendChild(arch);
     } else {
-      const rest = h("button", null, "Restore");
+      const rest = h("button", null, "Restore to watchlist");
       rest.type = "button";
-      rest.addEventListener("click", () => { delete p.archived; save(LIST); render(); });
+      rest.addEventListener("click", () => {
+        p.state = "watch"; delete p.failed; delete p.breakout; delete p.targetHit;
+        save(LIST); refresh();
+      });
       actions.appendChild(rest);
     }
     const del = h("button", null, "Delete");
@@ -257,36 +321,36 @@
     return el;
   }
 
+  const SECTIONS = [["watch", "#sec-watch", "#empty-watch"], ["breakout", "#sec-breakout", "#empty-breakout"],
+    ["target", "#sec-target", "#empty-target"], ["failed", "#sec-failed", "#empty-failed"]];
   function render() {
-    const act = $("#active"), arc = $("#archived");
-    act.textContent = ""; arc.textContent = "";
-    const active = LIST.filter(p => !p.archived);
-    const archived = LIST.filter(p => p.archived);
-    $("#empty-active").hidden = active.length > 0;
-    $("#empty-arch").hidden = archived.length > 0;
-    active.forEach(p => act.appendChild(card(p)));
-    archived.forEach(p => arc.appendChild(card(p)));
+    for (const [state, sec, empty] of SECTIONS) {
+      const boxEl = $(sec);
+      boxEl.textContent = "";
+      const items = LIST.filter(p => (p.state || "watch") === state);
+      $(empty).hidden = items.length > 0;
+      items.forEach(p => boxEl.appendChild(card(p)));
+    }
   }
 
   async function refresh() {
     const syms = [...new Set(LIST.map(p => p.sym))];
     $("#stamp").textContent = "Fetching closes…";
     QUOTES = await fetchCloses(syms);
-    // Auto-archive on negation: a close beyond the invalidation level.
-    let moved = 0;
+    const moves = { breakout: 0, failed: 0, target: 0 };
     for (const p of LIST) {
-      if (p.archived) continue;
-      const st = evaluate(p, QUOTES[p.sym]);
-      if (st.negation) {
-        p.archived = { when: today(),
-          reason: "negated — close " + fmt(QUOTES[p.sym].last) + " beyond " + fmt(p.negation) };
-        moved++;
-      }
+      const m = step(p, QUOTES[p.sym]);
+      if (m) moves[m]++;
     }
-    if (moved) save(LIST);
-    $("#stamp").textContent = (syms.length ? "Closes as of latest session · " + syms.length +
-      " symbols" : "Empty list") + (moved ? " · " + moved + " trade" + (moved > 1 ? "s" : "") +
-      " auto-archived on negation" : "") + " · rules use closes, not intraday";
+    if (moves.breakout + moves.failed + moves.target) save(LIST);
+    const missing = syms.filter(s => !QUOTES[s]);
+    const bits = [];
+    if (syms.length) bits.push(syms.length + " symbols, native currencies");
+    if (moves.breakout) bits.push(moves.breakout + " new confirmed breakout" + (moves.breakout > 1 ? "s" : ""));
+    if (moves.target) bits.push(moves.target + " reached target");
+    if (moves.failed) bits.push(moves.failed + " failed");
+    if (missing.length) bits.push("no quote: " + missing.join(", "));
+    $("#stamp").textContent = (bits.length ? bits.join(" · ") : "Empty list") + " · rules use closes, not intraday";
     render();
   }
 
@@ -303,6 +367,7 @@
       breakthrough: num("#f-brk"),
       note: $("#f-note").value.trim(),
       created: today(),
+      state: "watch",
     };
     if (!p.sym) return;
     LIST.push(p); save(LIST);
@@ -326,7 +391,17 @@
     try {
       const data = JSON.parse(await f.text());
       if (!Array.isArray(data)) throw new Error("not a list");
-      LIST = data; save(LIST); refresh();
+      // Merge on symbol+direction so re-importing an updated file doesn't duplicate.
+      const seen = new Set(LIST.map(p => p.sym + "|" + p.dir));
+      let added = 0;
+      for (const p of data) {
+        if (!p.sym || !p.dir) continue;
+        if (seen.has(p.sym + "|" + p.dir)) continue;
+        if (!p.state) p.state = "watch";
+        LIST.push(p); added++;
+      }
+      save(LIST); refresh();
+      alert("Imported " + added + " new entries (" + (data.length - added) + " already present or invalid).");
     } catch (err) { alert("Could not import: " + err.message); }
     e.target.value = "";
   });
