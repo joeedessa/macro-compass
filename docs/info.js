@@ -166,6 +166,31 @@ window.INFO = {
     ],
   },
 
+  // ---- sentiment ---------------------------------------------------------
+  cot_commercial: {
+    title: "Smart money — commercial hedgers",
+    body: [
+      "Net futures positioning of commercial traders in the E-mini S&P 500, from the CFTC's weekly Commitments of Traders report. Commercials hedge business exposure rather than speculate, and their positioning has historically been most informative at extremes — heavily net long near market lows, heavily net short near tops.",
+      "The 'smart money' framing popularised by commercial products follows the same logic: fade the crowd, follow the hedgers. This is the free official series underneath that idea rather than any proprietary index.",
+      "Limits: the report arrives with a three-day lag (Tuesday positions, Friday publication), commercials are structurally short much of the time because hedging is their business — which is why the percentile against history matters and the raw sign does not — and index exposure increasingly runs through options and swaps the legacy report does not capture.",
+    ],
+  },
+  cot_small: {
+    title: "Dumb money — small speculators",
+    body: [
+      "Net positioning of non-reportable traders — accounts too small to meet CFTC reporting thresholds, overwhelmingly retail. The unkind label is conventional in the literature: small-trader positioning has historically been most crowded long near tops and most washed out near lows, making it a contrarian input.",
+      "Read it together with the hedgers above: the informative configuration is the two at opposite extremes simultaneously. Both mid-range means the signal is simply absent.",
+      "The same limits apply as for the commercial series, plus one more: retail equity exposure now runs heavily through options and ETFs rather than futures, so this captures a shrinking slice of retail positioning.",
+    ],
+  },
+  vix_term: {
+    title: "The volatility term structure",
+    body: [
+      "Three-month implied volatility divided by spot: above 1 (contango) is the normal state, since uncertainty grows with horizon. Inversion — spot above three-month — means the market is paying up for immediate protection, which historically happens in stress episodes and near capitulation lows.",
+      "As a sentiment read: steep contango is complacency, inversion is fear. Like the positioning series, it is contrarian at extremes — deep inversion has more often marked lows than the start of sustained declines, but it cannot distinguish the two in real time.",
+    ],
+  },
+
   // ---- official flows ----------------------------------------------------
   cb_foreign_custody: {
     title: "Foreign official Treasuries held at the Fed",

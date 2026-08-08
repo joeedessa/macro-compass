@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Themes — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.45; }
+  .wrap { max-width:1240px; margin:0 auto; padding:26px 18px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  h1 { font-size:24px; font-weight:650; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:8px; padding:6px 13px; background:var(--surface-1); }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); font-weight:620; background:var(--surface-2); border-color:var(--baseline); }
+  h2 { font-size:17px; font-weight:650; margin:30px 0 4px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; max-width:74ch; }
+  #status { margin:26px 0; color:var(--text-secondary); font-size:14px; }
+  .delta { font-variant-numeric:tabular-nums; }
+  .delta.up { color:var(--up); } .delta.down { color:var(--down); } .delta.flat { color:var(--text-muted); }
+
+  .lead { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-bottom:18px; }
+  .leadbox { border:1px solid var(--border); border-radius:12px; padding:13px 16px; }
+  .leadbox.up { background:var(--on-bg); } .leadbox.down { background:var(--off-bg); }
+  .leadbox .t { font-size:12.5px; color:var(--text-secondary); margin-bottom:5px; }
+  .leadbox .row { display:flex; justify-content:space-between; font-size:13.5px; padding:2px 0; }
+  .leadbox .row a { color:var(--text-primary); text-decoration:none; }
+  .leadbox .row a:hover { text-decoration:underline; }
+
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border); border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; min-width:880px; }
+  th { font-size:11.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:9px 12px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  th.left { text-align:left; }
+  th[data-sort].active { color:var(--text-primary); }
+  th[data-sort].active::after { content:" ▾"; }
+  td { padding:8px 12px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.left { text-align:left; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:var(--surface-2); }
+  .iname { display:block; color:var(--text-primary); text-decoration:none; }
+  .iname:hover { text-decoration:underline; }
+  .isym { display:block; font-size:11.5px; color:var(--text-muted); }
+  .trend { font-size:12px; }
+  .trend.up { color:var(--up); } .trend.down { color:var(--down); }
+  td svg { display:block; margin-left:auto; }
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:80ch; }
+  footer a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Themes</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="themes.html" class="here">Themes</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+  </nav>
+
+  <p id="status">Fetching live prices…</p>
+
+  <div id="content" hidden>
+    <h2>Leaders and laggards</h2>
+    <p class="lede">Three-month performance relative to SPY — the sentiment read at theme level.
+      Money rotating <em>toward</em> a theme shows up here before it shows up in headlines.</p>
+    <div class="lead" id="lead"></div>
+
+    <h2>All themes</h2>
+    <p class="lede">Sorted by 3-month relative strength by default — click any column to re-sort.
+      "vs SPY 3m" is the theme's excess return over the index; "vs 200d" its own trend state.</p>
+    <div class="tablewrap"><table id="tbl">
+      <thead><tr>
+        <th class="left">Theme</th>
+        <th data-sort="last">Last</th>
+        <th data-sort="w1">1w</th>
+        <th data-sort="m1">1m</th>
+        <th data-sort="m3">3m</th>
+        <th data-sort="m6">6m</th>
+        <th data-sort="rel3" class="active">vs SPY 3m</th>
+        <th data-sort="maGap">vs 200d</th>
+        <th>1y</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live in your browser on each load (delayed, not real-time).
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  const THEMES = [
+    ["BOTZ", "Robotics & automation"],
+    ["AIQ", "Artificial intelligence"],
+    ["ARKX", "Space"],
+    ["CIBR", "Cybersecurity"],
+    ["SMH", "Semiconductors"],
+    ["XBI", "Biotech"],
+    ["XLV", "Healthcare"],
+    ["IHI", "Medical devices"],
+    ["XLI", "Industrials"],
+    ["ITA", "Defense & aerospace"],
+    ["BOAT", "Shipping"],
+    ["JETS", "Airlines"],
+    ["XLE", "Energy"],
+    ["OIH", "Oil services"],
+    ["NLR", "Nuclear"],
+    ["URA", "Uranium"],
+    ["TAN", "Solar"],
+    ["ICLN", "Clean energy"],
+    ["PAVE", "Infrastructure"],
+    ["GRID", "Grid & electrification"],
+    ["XLB", "Materials"],
+    ["LIT", "Lithium & battery"],
+    ["COPX", "Copper miners"],
+    ["GDX", "Gold miners"],
+    ["MOO", "Agribusiness"],
+    ["DBA", "Soft commodities"],
+    ["PHO", "Water"],
+    ["ITB", "Homebuilders"],
+    ["KBE", "Banks"],
+    ["XRT", "Retail"],
+    ["CQQQ", "China tech"],
+    ["KWEB", "China internet"],
+  ];
+  const $ = s => document.querySelector(s);
+  const fmt = (v, d) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
+  const price = v => v == null ? "–" : fmt(v, Math.abs(v) >= 1000 ? 0 : Math.abs(v) >= 10 ? 2 : 3);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  async function fetchSeries(symbols) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=2y&interval=1d")).spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) if (closes[i] != null) pts.push([stamps[i] * 1000, closes[i]]);
+      if (pts.length) out[row.symbol] = pts;
+    }
+    return out;
+  }
+  function metrics(pts) {
+    const v = pts.map(p => p[1]);
+    const last = v[v.length - 1];
+    const chg = n => v.length > n ? (last / v[v.length - 1 - n] - 1) * 100 : null;
+    const win = v.slice(-200);
+    const ma = win.length >= 150 ? win.reduce((a, b) => a + b, 0) / win.length : null;
+    return { last, w1: chg(5), m1: chg(21), m3: chg(63), m6: chg(126),
+      maGap: ma == null ? null : (last / ma - 1) * 100, aboveMa: ma == null ? null : last >= ma };
+  }
+  function sparkline(pts, aboveMa) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    const w = 70, hgt = 22;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + hgt);
+    svg.setAttribute("width", w); svg.setAttribute("height", hgt);
+    const v = pts.slice(-252).map(p => p[1]);
+    const lo = Math.min(...v), hi = Math.max(...v);
+    const x = i => 1 + (i / (v.length - 1)) * (w - 4);
+    const y = val => hi === lo ? hgt / 2 : 2 + (1 - (val - lo) / (hi - lo)) * (hgt - 4);
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", v.map((val, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(val).toFixed(1)).join(""));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", css(aboveMa ? "--series-1" : "--text-muted"));
+    path.setAttribute("stroke-width", "1.5");
+    svg.appendChild(path);
+    return svg;
+  }
+  const deltaTd = v => {
+    const td = document.createElement("td");
+    const s = document.createElement("span");
+    s.textContent = pct(v);
+    s.className = "delta " + (v == null || Math.abs(v) < 0.05 ? "flat" : v > 0 ? "up" : "down");
+    td.appendChild(s);
+    return td;
+  };
+
+  const series = await fetchSeries(THEMES.map(t => t[0]).concat(["SPY"]));
+  const spyM = series.SPY ? metrics(series.SPY) : null;
+  if (!spyM) { $("#status").textContent = "Live price feed unavailable right now — reload to retry."; return; }
+
+  const rows = THEMES.filter(t => series[t[0]]).map(([sym, name]) => {
+    const m = metrics(series[sym]);
+    return { sym, name, ...m, rel3: m.m3 == null ? null : m.m3 - spyM.m3 };
+  });
+  $("#status").hidden = true;
+  $("#content").hidden = false;
+  $("#stamp").textContent = "Live prices fetched " +
+    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
+    " · " + rows.length + " themes · benchmark SPY " + pct(spyM.m3) + " over 3m";
+
+  // leaders / laggards
+  const sorted3 = rows.filter(r => r.rel3 != null).sort((a, b) => b.rel3 - a.rel3);
+  const lead = $("#lead");
+  const mkLead = (title, list, cls) => {
+    const box = document.createElement("div");
+    box.className = "leadbox " + cls;
+    const t = document.createElement("div"); t.className = "t"; t.textContent = title;
+    box.appendChild(t);
+    for (const r of list) {
+      const row = document.createElement("div"); row.className = "row";
+      const a = document.createElement("a"); a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener";
+      a.textContent = r.name;
+      const s = document.createElement("span");
+      s.textContent = pct(r.rel3) + " vs SPY";
+      s.className = "delta " + (r.rel3 > 0 ? "up" : "down");
+      row.appendChild(a); row.appendChild(s);
+      box.appendChild(row);
+    }
+    lead.appendChild(box);
+  };
+  mkLead("Money rotating in — 3m leaders vs SPY", sorted3.slice(0, 4), "up");
+  mkLead("Money rotating out — 3m laggards vs SPY", sorted3.slice(-4).reverse(), "down");
+
+  // table with sortable columns
+  let sortKey = "rel3";
+  function renderTable() {
+    const tb = $("#tbl tbody");
+    tb.textContent = "";
+    const data = [...rows].sort((a, b) => (b[sortKey] ?? -1e9) - (a[sortKey] ?? -1e9));
+    for (const r of data) {
+      const tr = document.createElement("tr");
+      const name = document.createElement("td"); name.className = "left";
+      const a = document.createElement("a"); a.className = "iname";
+      a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener"; a.textContent = r.name;
+      const sym = document.createElement("span"); sym.className = "isym"; sym.textContent = r.sym;
+      name.appendChild(a); name.appendChild(sym); tr.appendChild(name);
+      const lastTd = document.createElement("td"); lastTd.textContent = price(r.last); tr.appendChild(lastTd);
+      [r.w1, r.m1, r.m3, r.m6, r.rel3].forEach(v => tr.appendChild(deltaTd(v)));
+      const ma = document.createElement("td");
+      if (r.aboveMa == null) ma.textContent = "–";
+      else {
+        const t = document.createElement("span");
+        t.className = "trend " + (r.aboveMa ? "up" : "down");
+        t.textContent = (r.aboveMa ? "above " : "below ") + pct(r.maGap).replace("+", "");
+        ma.appendChild(t);
+      }
+      tr.appendChild(ma);
+      const sp = document.createElement("td"); sp.appendChild(sparkline(series[r.sym], r.aboveMa)); tr.appendChild(sp);
+      tb.appendChild(tr);
+    }
+  }
+  document.querySelectorAll("th[data-sort]").forEach(th => th.addEventListener("click", () => {
+    sortKey = th.dataset.sort;
+    document.querySelectorAll("th[data-sort]").forEach(x => x.classList.toggle("active", x === th));
+    renderTable();
+  }));
+  renderTable();
+})();
+</script>
+</body>
+</html>

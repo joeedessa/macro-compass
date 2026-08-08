@@ -105,6 +105,7 @@ const UNIVERSE = [
   ["JPY=X", "USD/JPY", "fx"],
   ["EURUSD=X", "EUR/USD", "fx"],
   ["^VIX", "VIX", "fx"],
+  ["^VIX3M", "VIX 3-month", "fx"],
 ];
 
 /* Relative strength. `up` and `down` state in words what each direction means,
@@ -509,6 +510,7 @@ async function load() {
   const macroP = fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
     .then(r => r.ok ? r.json() : null).catch(() => null);
   macroP.then(m => { if (m) { MACRO = m; renderMacro(); renderOfficial(); } });
+  // renderSentiment needs both MACRO (COT) and SERIES (VIX), so it runs after the join below.
 
   const [series, macro] = await Promise.all([
     fetchSeries(UNIVERSE.map(u => u[0])).catch(() => ({})),
@@ -532,6 +534,7 @@ async function load() {
   if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); }
   renderMacro();
   renderOfficial();
+  renderSentiment();
   initScrollSpy();
   if (live && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
 }
@@ -972,6 +975,85 @@ function rangeBar(m) {
   el("circle", { cx: 3 + (m.rangePos / 100) * (w - 6), cy: hgt / 2, r: 4,
     fill: css(m.rangePos >= 50 ? "--series-1" : "--series-2"), stroke: css("--surface-1"), "stroke-width": 2 }, svg);
   return svg;
+}
+
+/* Sentiment: positioning-based reads, not surveys. Smart and dumb money come
+   from CFTC COT data (weekly); the volatility term structure is computed live
+   from VIX and VIX3M. Each card names the conventional reading and its limits. */
+function renderSentiment() {
+  const box = $("#sentiment");
+  box.textContent = "";
+
+  // Headline strip: current state of the three signals.
+  const strip = h("div", "senti-strip");
+  const addPill = (label, value, tone, detail) => {
+    const p = h("div", "senti-pill " + tone);
+    p.appendChild(h("div", "sp-label", label));
+    p.appendChild(h("div", "sp-value", value));
+    p.appendChild(h("div", "sp-detail", detail));
+    strip.appendChild(p);
+  };
+
+  const cot = k => MACRO && MACRO.series && MACRO.series[k];
+  const sc = cot("cot_commercial"), sd = cot("cot_small");
+  if (sc && sc.points.length > 52) {
+    const v = sc.points[sc.points.length - 1][1];
+    const hist = sc.points.map(p => p[1]);
+    const rank = hist.filter(x => x <= v).length / hist.length * 100;
+    addPill("Smart money (hedgers)", fmtNum(v, 1) + "% of OI",
+      rank >= 70 ? "good" : rank <= 30 ? "bad" : "neutral",
+      Math.round(rank) + "th percentile of 5y — " + (rank >= 70 ? "unusually long" : rank <= 30 ? "unusually short" : "mid-range"));
+  }
+  if (sd && sd.points.length > 52) {
+    const v = sd.points[sd.points.length - 1][1];
+    const hist = sd.points.map(p => p[1]);
+    const rank = hist.filter(x => x <= v).length / hist.length * 100;
+    // For dumb money, crowded-long is the warning state.
+    addPill("Dumb money (small specs)", fmtNum(v, 1) + "% of OI",
+      rank >= 80 ? "bad" : rank <= 25 ? "good" : "neutral",
+      Math.round(rank) + "th percentile of 5y — " + (rank >= 80 ? "crowded long" : rank <= 25 ? "washed out" : "mid-range"));
+  }
+  const vix = METRICS["^VIX"], vix3 = METRICS["^VIX3M"];
+  if (vix && vix3 && vix.last) {
+    const ts = vix3.last / vix.last;
+    addPill("Vol term structure", fmtNum(ts, 2) + "×",
+      ts >= 1.1 ? "good" : ts < 1 ? "bad" : "neutral",
+      ts < 1 ? "inverted — spot fear exceeds 3-month, stress regime"
+        : ts >= 1.1 ? "steep contango — complacent-to-calm"
+        : "flat — watchful");
+  }
+  box.appendChild(strip);
+
+  // Charts: the two COT series with 5y history, and the VIX3M/VIX ratio.
+  const grid = h("div", "grid");
+  const mk = (id, title) => {
+    const s = cot(id);
+    if (!s) return;
+    const pts = s.points.map(p => [new Date(p[0]).getTime(), p[1]]);
+    const card = makeCard(title, id, s.source_url, s.source);
+    card.body.appendChild(h("p", "meta", s.unit + " · " + s.freq + " · " + s.source));
+    const read = h("p", "latest");
+    read.appendChild(h("strong", null, fmtNum(s.points[s.points.length - 1][1], 1) + "%"));
+    read.appendChild(document.createTextNode(" (" + s.points[s.points.length - 1][0] + ")"));
+    card.body.appendChild(read);
+    card.body.appendChild(lineChart(pts, { title, unit: s.unit }));
+    grid.appendChild(card);
+  };
+  mk("cot_commercial", "Smart money: commercial hedgers");
+  mk("cot_small", "Dumb money: small speculators");
+
+  const rv = ratioSeries(SERIES["^VIX3M"], SERIES["^VIX"]);
+  if (rv) {
+    const card = makeCard("VIX term structure (3m / spot)", "vix_term", YQ("^VIX"), "VIX on Yahoo Finance");
+    card.body.appendChild(h("p", "meta", "ratio · daily · Cboe via Yahoo"));
+    const read = h("p", "latest");
+    read.appendChild(h("strong", null, fmtNum(rv[rv.length - 1][1], 2) + "×"));
+    read.appendChild(document.createTextNode(" — below 1.0 is inversion"));
+    card.body.appendChild(read);
+    card.body.appendChild(lineChart(rv.slice(-252), { title: "VIX3M/VIX", unit: "ratio" }));
+    grid.appendChild(card);
+  }
+  box.appendChild(grid);
 }
 
 /* Official flows: who is buying Treasuries, how auctions are clearing, and what

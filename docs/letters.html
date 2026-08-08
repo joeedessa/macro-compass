@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Letters &amp; 13F — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --up:#006300; --down:#d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --up:#0ca30c; --down:#e66767;
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.45; }
+  .wrap { max-width:1240px; margin:0 auto; padding:26px 18px 70px; }
+  header h1 { font-size:24px; font-weight:650; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:8px; padding:6px 13px; background:var(--surface-1); }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); font-weight:620; background:var(--surface-2); border-color:var(--baseline); }
+  h2 { font-size:17px; font-weight:650; margin:30px 0 4px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; max-width:76ch; }
+  #status { margin:20px 0; color:var(--text-secondary); font-size:14px; }
+
+  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); }
+  .card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:15px 16px 13px; }
+  .card h3 { font-size:14.5px; font-weight:620; }
+  .card h3 a { color:inherit; text-decoration:none; }
+  .card h3 a:hover { text-decoration:underline; }
+  .meta { font-size:12px; color:var(--text-muted); margin-top:2px; }
+  ol.holdings { margin:10px 0 0; padding:0; list-style:none; }
+  ol.holdings li { display:flex; align-items:center; gap:8px; font-size:13px; padding:3.5px 0;
+    border-bottom:1px solid var(--grid); }
+  ol.holdings li:last-child { border-bottom:none; }
+  .hname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hbar { height:5px; border-radius:3px; background:var(--series-1); opacity:0.75; flex:none; }
+  .hpct { color:var(--text-secondary); font-variant-numeric:tabular-nums; flex:none; width:52px; text-align:right; }
+
+  table.dir { border-collapse:collapse; width:100%; font-size:13.5px;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .dirwrap { border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface-1); }
+  table.dir th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:0.03em;
+    color:var(--text-muted); padding:10px 14px; border-bottom:1px solid var(--grid); }
+  table.dir td { padding:9px 14px; border-bottom:1px solid var(--grid); vertical-align:top; }
+  table.dir tr:last-child td { border-bottom:none; }
+  table.dir tr:hover { background:var(--surface-2); }
+  table.dir a { color:var(--text-primary); text-decoration:none; font-weight:560; }
+  table.dir a:hover { text-decoration:underline; }
+  .cadence { color:var(--text-muted); white-space:nowrap; }
+  .why { color:var(--text-secondary); font-size:12.5px; }
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:82ch; }
+  footer a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Letters &amp; 13F</h1>
+    <p class="stamp" id="stamp">Loading holdings…</p>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="themes.html">Themes</a>
+    <a href="letters.html" class="here">Letters &amp; 13F</a>
+  </nav>
+
+  <h2>What the big books hold</h2>
+  <p class="lede">Top 10 disclosed US equity positions from each manager's latest 13F filing,
+    parsed directly from <a href="https://www.sec.gov/cgi-srv/browse-edgar?action=getcompany" rel="noopener">SEC EDGAR</a>
+    and refreshed by CI. 13Fs arrive up to 45 days after quarter end, cover US long positions only
+    — no shorts, no international, no derivatives detail — and are a snapshot, not a portfolio.
+    Click a manager for the full filing history.</p>
+  <p id="status"></p>
+  <div class="grid" id="managers"></div>
+
+  <h2>Reading list — public letters and commentaries</h2>
+  <p class="lede">Primary sources that publish free on their own sites, linked directly —
+    no paywalled or leaked material.</p>
+  <div class="dirwrap"><table class="dir">
+    <thead><tr><th>Source</th><th>Cadence</th><th>Why read it</th></tr></thead>
+    <tbody id="dir"></tbody>
+  </table></div>
+
+  <footer>
+    <p>Holdings from SEC EDGAR 13F-HR filings, official and free. The reading list links only to
+      material each firm publishes publicly on its own site; availability can change.
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const fmt = v => v.toLocaleString("en-US", { maximumFractionDigits: 1 });
+
+  const READING = [
+    ["Berkshire Hathaway — shareholder letters", "https://www.berkshirehathaway.com/letters/letters.html", "Annual",
+      "Buffett's letters; the canonical capital-allocation record."],
+    ["Oaktree — Howard Marks memos", "https://www.oaktreecapital.com/insights", "Occasional",
+      "Cycle and risk thinking; the memos move markets on their own."],
+    ["JPMorgan — Guide to the Markets", "https://am.jpmorgan.com/us/en/asset-management/adv/insights/market-insights/guide-to-the-markets/", "Quarterly",
+      "The chart pack most macro decks borrow from."],
+    ["GMO — research library", "https://www.gmo.com/americas/research-library/", "Quarterly",
+      "Grantham & co on valuation regimes and long-horizon asset returns."],
+    ["Third Point — investor letters", "https://thirdpointlimited.com/investor-documents/", "Quarterly",
+      "Loeb's letters, published for the listed vehicle."],
+    ["Pershing Square Holdings — letters & presentations", "https://pershingsquareholdings.com/company-reports/", "Semi-annual",
+      "Ackman's letters and position write-ups for the listed fund."],
+    ["Bridgewater — research & insights", "https://www.bridgewater.com/research-and-insights", "Occasional",
+      "Dalio-school macro machine; public subset of Daily Observations."],
+    ["Hussman Funds — market comment", "https://www.hussmanfunds.com/comment/", "Monthly",
+      "Valuation-and-internals bear case, argued with data; a useful antidote."],
+    ["Fairfax Financial — shareholder letters", "https://www.fairfax.ca/news/press-releases/", "Annual",
+      "Prem Watsa's letters; insurance float investing outside the US lens."],
+    ["Damodaran — Musings on Markets", "https://aswathdamodaran.blogspot.com/", "Occasional",
+      "Valuation first principles applied to whatever the market is arguing about."],
+  ];
+  const dir = $("#dir");
+  for (const [name, url, cadence, why] of READING) {
+    const tr = h("tr");
+    const td1 = h("td");
+    const a = h("a", null, name);
+    a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    td1.appendChild(a);
+    tr.appendChild(td1);
+    tr.appendChild(h("td", "cadence", cadence));
+    tr.appendChild(h("td", "why", why));
+    dir.appendChild(tr);
+  }
+
+  let data = null;
+  try {
+    const r = await fetch("data/letters.json?t=" + Date.now(), { cache: "no-store" });
+    if (r.ok) data = await r.json();
+  } catch (e) { /* handled below */ }
+  if (!data || !data.managers || !data.managers.length) {
+    $("#status").textContent = "Holdings data unavailable — data/letters.json has not been generated yet.";
+    $("#stamp").textContent = "Reading list below";
+    return;
+  }
+  $("#stamp").textContent = data.managers.length + " managers · holdings as filed, updated " +
+    data.generated_at.slice(0, 10);
+
+  const box = $("#managers");
+  for (const m of data.managers) {
+    const card = h("div", "card");
+    const title = h("h3");
+    const a = h("a", null, m.label);
+    a.href = m.url; a.target = "_blank"; a.rel = "noopener noreferrer";
+    title.appendChild(a);
+    card.appendChild(title);
+    // 13F values: whole dollars since the 2023 rule change.
+    const bn = m.total_value / 1e9;
+    const ageDays = (Date.now() - new Date(m.filed)) / 864e5;
+    card.appendChild(h("p", "meta",
+      "Q ending " + m.period + " · filed " + m.filed + " · " + m.positions +
+      " positions · $" + fmt(bn) + "bn disclosed" +
+      (ageDays > 200 ? " · ⚠ old filing — no recent 13F on record" : "")));
+    const ol = h("ol", "holdings");
+    const maxPct = Math.max(...m.top.map(t => t.pct));
+    for (const t of m.top) {
+      const li = h("li");
+      li.appendChild(h("span", "hname", t.name));
+      const bar = h("span", "hbar");
+      bar.style.width = Math.max(3, (t.pct / maxPct) * 70) + "px";
+      li.appendChild(bar);
+      li.appendChild(h("span", "hpct", t.pct.toFixed(1) + "%"));
+      ol.appendChild(li);
+    }
+    card.appendChild(ol);
+    box.appendChild(card);
+  }
+})();
+</script>
+</body>
+</html>

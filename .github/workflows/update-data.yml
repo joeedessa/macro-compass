@@ -20,11 +20,14 @@ jobs:
       - name: Fetch latest data
         run: python3 scripts/fetch_data.py
 
+      - name: Fetch 13F holdings
+        run: python3 scripts/fetch_letters.py || true   # quarterly data; a bad EDGAR day must not block the price refresh
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/macro.json
+          git add docs/data/macro.json docs/data/letters.json
           if git diff --cached --quiet; then
             echo "No data changes."
           else

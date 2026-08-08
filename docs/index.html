@@ -56,6 +56,12 @@
   h2 { font-size:17px; font-weight:650; margin:36px 0 4px; }
   .lede { color:var(--text-secondary); font-size:13.5px; margin-bottom:14px; max-width:74ch; }
 
+  nav.pages { display:flex; gap:6px; margin-top:14px; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:8px; padding:6px 13px; background:var(--surface-1); }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); font-weight:620; background:var(--surface-2); border-color:var(--baseline); }
+
   /* sticky section nav */
   .jump { position:sticky; top:0; z-index:20; display:flex; gap:6px; flex-wrap:wrap;
     padding:9px 0; margin:14px 0 0; background:var(--page);
@@ -84,6 +90,17 @@
     margin-left:7px; padding:1px 5px; border-radius:4px; background:var(--surface-2);
     color:var(--text-secondary); border:1px solid var(--border); vertical-align:1px; }
   .regime-item.flipped-today { background:var(--surface-2); }
+
+  /* sentiment strip */
+  .senti-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:12px; margin-bottom:14px; }
+  .senti-pill { border:1px solid var(--border); border-radius:12px; padding:13px 16px;
+    background:var(--surface-1); }
+  .senti-pill.good { background:var(--on-bg); } .senti-pill.bad { background:var(--off-bg); }
+  .senti-pill.neutral { background:var(--mixed-bg); }
+  .sp-label { font-size:12.5px; color:var(--text-secondary); }
+  .sp-value { font-size:22px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .sp-detail { font-size:12px; color:var(--text-secondary); margin-top:1px; }
 
   /* Modern Family: same condition-list vocabulary as the regime block, with
      each member's chart collapsed behind its row. */
@@ -242,6 +259,11 @@
     </div>
     <button id="refresh" type="button">Refresh prices</button>
   </header>
+  <nav class="pages">
+    <a href="./" class="here">Overview</a>
+    <a href="themes.html">Themes</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+  </nav>
 
   <nav class="jump" id="jump" aria-label="Jump to section">
     <a href="#s-regime" data-key="1">Regime<kbd>1</kbd></a>
@@ -249,8 +271,9 @@
     <a href="#s-family" data-key="3">Modern Family<kbd>3</kbd></a>
     <a href="#s-rs" data-key="4">Relative strength<kbd>4</kbd></a>
     <a href="#s-markets" data-key="5">Markets<kbd>5</kbd></a>
-    <a href="#s-official" data-key="6">Official flows<kbd>6</kbd></a>
-    <a href="#s-macro" data-key="7">Macro<kbd>7</kbd></a>
+    <a href="#s-sentiment" data-key="6">Sentiment<kbd>6</kbd></a>
+    <a href="#s-official" data-key="7">Official flows<kbd>7</kbd></a>
+    <a href="#s-macro" data-key="8">Macro<kbd>8</kbd></a>
   </nav>
 
   <p id="status" hidden></p>
@@ -290,6 +313,12 @@
     <div id="charts" role="tabpanel" aria-labelledby="tab-charts" hidden></div>
   </div>
 
+  <h2 id="s-sentiment">Sentiment & positioning</h2>
+  <p class="lede">Positioning data rather than surveys: what hedgers and small speculators actually
+    hold (CFTC, weekly), and what the volatility curve is pricing. Sentiment signals are
+    contrarian at extremes and noise in the middle — the percentile matters, not the sign.</p>
+  <div id="sentiment"></div>
+
   <h2 id="s-official">Official flows</h2>
   <p class="lede">Who is actually financing the US deficit, and what the largest reserve managers
     hold. Auction bid-to-cover and the indirect bidder share are the closest public read on
@@ -316,7 +345,7 @@
 </div>
 <!-- Bump ?v= whenever these change: the Pages CDN and browsers cache them
      aggressively, and a stale app.js against a fresh page is a silent failure. -->
-<script src="info.js?v=20260808b"></script>
-<script src="app.js?v=20260808b"></script>
+<script src="info.js?v=20260808c"></script>
+<script src="app.js?v=20260808c"></script>
 </body>
 </html>

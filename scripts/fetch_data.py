@@ -133,6 +133,43 @@ def fetch_auctions(term, field="bidToCoverRatio", years=6):
     return points
 
 
+def fetch_cot(measure, years=5):
+    """CFTC Commitments of Traders for the E-mini S&P 500, weekly (official
+    Socrata API, no key). `measure`:
+      commercial_net  — commercial hedgers' net position as % of open interest
+                        (the conventional "smart money" read)
+      small_net       — non-reportable (small speculator) net as % of OI
+                        (the conventional "dumb money" read)
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=365 * years)).strftime("%Y-%m-%d")
+    url = (
+        "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
+        "?$select=report_date_as_yyyy_mm_dd,comm_positions_long_all,"
+        "comm_positions_short_all,nonrept_positions_long_all,"
+        "nonrept_positions_short_all,open_interest_all"
+        "&$where=market_and_exchange_names='E-MINI S%26P 500 - CHICAGO MERCANTILE EXCHANGE'"
+        f" AND report_date_as_yyyy_mm_dd>'{cutoff}'"
+        "&$order=report_date_as_yyyy_mm_dd&$limit=400"
+    ).replace(" ", "%20").replace("'", "%27")
+    rows = json.loads(http_get(url))
+    points = []
+    for r in rows:
+        try:
+            oi = float(r["open_interest_all"])
+            if oi <= 0:
+                continue
+            if measure == "commercial_net":
+                net = float(r["comm_positions_long_all"]) - float(r["comm_positions_short_all"])
+            else:
+                net = float(r["nonrept_positions_long_all"]) - float(r["nonrept_positions_short_all"])
+            points.append((r["report_date_as_yyyy_mm_dd"][:10], round(net / oi * 100, 2)))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not points:
+        raise RuntimeError(f"CFTC COT {measure}: no data parsed")
+    return points
+
+
 def wb_gold_component(country):
     """Value of gold in a country's reserves: total reserves minus reserves
     excluding gold, both from the World Bank. Returned in $bn. This is a value
@@ -203,6 +240,13 @@ SERIES = [
     ("us_yield_spread", "10y minus 2y spread", "pp", "daily", "us",
      lambda: trim(fetch_fred("T10Y2Y"), 15),
      "FRED · US Treasury", FRED_URL + "T10Y2Y"),
+    # --- Sentiment / positioning (CFTC COT, weekly) ---
+    ("cot_commercial", "Smart money: commercial hedgers net (S&P e-mini)", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("commercial_net"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    ("cot_small", "Dumb money: small speculators net (S&P e-mini)", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("small_net"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
     # --- Official demand for Treasuries ---
     ("cb_foreign_custody", "Foreign official Treasuries at the Fed", "$m", "weekly", "official",
      lambda: trim(fetch_fred("WMTSECL1"), 15),
