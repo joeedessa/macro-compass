@@ -531,12 +531,13 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
-  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); }
+  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); }
   renderMacro();
   renderOfficial();
   renderSentiment();
+  renderSentiStrip();
   initScrollSpy();
-  if (live && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
+  if (live && $("#tab-charts") && $("#tab-charts").getAttribute("aria-selected") === "true") buildCharts();
 }
 
 function renderStamp(live) {
@@ -593,6 +594,7 @@ function regimeChecks(off) {
 }
 
 function renderRegime() {
+  if (!$("#regime")) return;
   const checks = regimeChecks();
   const on = checks.filter(c => c.ok).length;
   const box = $("#regime");
@@ -675,6 +677,7 @@ function renderRegime() {
 }
 
 function renderMovers() {
+  if (!$("#movers")) return;
   const rows = UNIVERSE.filter(u => METRICS[u[0]] && METRICS[u[0]].d1 != null).map(u => {
     const m = METRICS[u[0]], pts = SERIES[u[0]];
     const rets = [];
@@ -706,6 +709,7 @@ function renderMovers() {
 
 function renderRatios() {
   const box = $("#ratios");
+  if (!box) return;
   box.textContent = "";
   const spec = WINDOWS.find(w => w[0] === RS_WINDOW)[1];
   for (const [a, b, question, upMeans, downMeans] of RATIOS) {
@@ -740,6 +744,7 @@ function renderRatios() {
    laggards rather than showing seven charts and leaving you to compare them. */
 function renderFamily() {
   const box = $("#family");
+  if (!box) return;
   box.textContent = "";
   const rows = FAMILY.map(([sym, nick, role]) => {
     const m = METRICS[sym];
@@ -857,8 +862,39 @@ function renderFamily() {
   box.appendChild(all);
 }
 
+/* Overview-only compact form of the relative strength section: one row per
+   ratio with its 1-month verdict, no charts. The full version lives on the
+   Markets page. */
+function renderRotationSnapshot() {
+  const box = $("#rsnap");
+  if (!box) return;
+  box.textContent = "";
+  const list = h("div", "rsnap-list");
+  for (const [a, b, question, upMeans, downMeans] of RATIOS) {
+    const full = ratioSeries(SERIES[a], SERIES[b]);
+    if (!full) continue;
+    const view = windowSlice(full, 21);
+    if (view.length < 3) continue;
+    const change = (view[view.length - 1][1] / view[0][1] - 1) * 100;
+    const rising = change > 0;
+    const row = h("a", "rsnap-row");
+    row.href = "markets.html#s-rs";
+    row.appendChild(h("span", "mark " + (rising ? "up" : "down"), rising ? "▲" : "▼"));
+    const txt = h("span", "rtext");
+    txt.appendChild(h("span", "rlabel", rising ? upMeans : downMeans));
+    txt.appendChild(h("span", "rdetail", a + "/" + b + " · " + question));
+    row.appendChild(txt);
+    const d = deltaEl(change);
+    d.classList.add("rsnap-delta");
+    row.appendChild(d);
+    list.appendChild(row);
+  }
+  box.appendChild(list);
+}
+
 function renderTables() {
   const box = $("#tables");
+  if (!box) return;
   box.textContent = "";
   for (const [key, title] of GROUPS) {
     const rows = UNIVERSE.filter(u => u[2] === key && METRICS[u[0]]);
@@ -905,7 +941,7 @@ function renderTables() {
    and EMA 21. Built on first view and rendered lazily as cards scroll in, since
    sixty charts at once is a lot of SVG. */
 function buildCharts() {
-  if (CHARTS_BUILT) return;
+  if (CHARTS_BUILT || !$("#charts")) return;
   const box = $("#charts");
   box.textContent = "";
   const pending = [];
@@ -980,11 +1016,9 @@ function rangeBar(m) {
 /* Sentiment: positioning-based reads, not surveys. Smart and dumb money come
    from CFTC COT data (weekly); the volatility term structure is computed live
    from VIX and VIX3M. Each card names the conventional reading and its limits. */
-function renderSentiment() {
-  const box = $("#sentiment");
-  box.textContent = "";
-
-  // Headline strip: current state of the three signals.
+/* The headline strip is shared: the overview shows it alone, the macro page
+   shows it above the full history charts. */
+function buildSentiStrip() {
   const strip = h("div", "senti-strip");
   const addPill = (label, value, tone, detail) => {
     const p = h("div", "senti-pill " + tone);
@@ -1022,7 +1056,24 @@ function renderSentiment() {
         : ts >= 1.1 ? "steep contango — complacent-to-calm"
         : "flat — watchful");
   }
-  box.appendChild(strip);
+  return strip.children.length ? strip : null;
+}
+
+function renderSentiStrip() {
+  const host = $("#senti-strip");
+  if (!host) return;
+  host.textContent = "";
+  const strip = buildSentiStrip();
+  if (strip) host.appendChild(strip);
+}
+
+function renderSentiment() {
+  const box = $("#sentiment");
+  if (!box) return;
+  box.textContent = "";
+  const strip = buildSentiStrip();
+  if (strip) box.appendChild(strip);
+  const cot = k => MACRO && MACRO.series && MACRO.series[k];
 
   // Charts: the two COT series with 5y history, and the VIX3M/VIX ratio.
   const grid = h("div", "grid");
@@ -1062,6 +1113,7 @@ function renderSentiment() {
    question — official demand, rather than the state of the economy. */
 function renderOfficial() {
   const box = $("#official");
+  if (!box) return;
   box.textContent = "";
   if (!MACRO) return;
   const PICKS = [
@@ -1112,6 +1164,7 @@ function renderOfficial() {
 
 function renderMacro() {
   const box = $("#macro");
+  if (!box) return;
   box.textContent = "";
   if (!MACRO) { box.appendChild(h("p", "muted", "Official macro data unavailable.")); return; }
   const PICKS = [
@@ -1140,6 +1193,7 @@ function renderMacro() {
 // ------------------------------------------------------------------- wiring
 (function initWindows() {
   const box = $("#rswindows");
+  if (!box) return;
   for (const [label] of WINDOWS) {
     const b = h("button", "rangebtn", label);
     b.type = "button";
@@ -1157,6 +1211,7 @@ function renderMacro() {
    at whichever of the two panels is showing. */
 function renderGroupJump() {
   const nav = $("#groupjump");
+  if (!nav) return;
   nav.textContent = "";
   const charts = $("#tab-charts").getAttribute("aria-selected") === "true";
   const host = charts ? $("#charts") : $("#tables");
@@ -1219,6 +1274,7 @@ addEventListener("keydown", e => {
 });
 
 function selectTab(which) {
+  if (!$("#tab-table")) return;
   const isCharts = which === "charts";
   $("#tab-table").setAttribute("aria-selected", String(!isCharts));
   $("#tab-charts").setAttribute("aria-selected", String(isCharts));
@@ -1227,7 +1283,7 @@ function selectTab(which) {
   if (isCharts) buildCharts();
   renderGroupJump();
 }
-$("#tab-table").addEventListener("click", () => selectTab("table"));
-$("#tab-charts").addEventListener("click", () => selectTab("charts"));
-$("#refresh").addEventListener("click", () => load());
+if ($("#tab-table")) $("#tab-table").addEventListener("click", () => selectTab("table"));
+if ($("#tab-charts")) $("#tab-charts").addEventListener("click", () => selectTab("charts"));
+if ($("#refresh")) $("#refresh").addEventListener("click", () => load());
 load();

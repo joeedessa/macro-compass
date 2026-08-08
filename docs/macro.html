@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Macro &amp; flows — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<link rel="stylesheet" href="styles.css?v=20260808d">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Macro &amp; flows</h1>
+      <p class="stamp" id="stamp"></p>
+    </div>
+    <button id="refresh" type="button">Refresh prices</button>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="markets.html">Markets</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html" class="here">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+  </nav>
+
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <a href="#s-sentiment" data-key="1">Sentiment<kbd>1</kbd></a>
+    <a href="#s-official" data-key="2">Official flows<kbd>2</kbd></a>
+    <a href="#s-macro" data-key="3">Fundamentals<kbd>3</kbd></a>
+  </nav>
+
+  <p id="status" hidden></p>
+  <div id="markets" hidden></div>
+
+  <h2 id="s-sentiment">Sentiment &amp; positioning</h2>
+  <p class="lede">Positioning data rather than surveys: what hedgers and small speculators actually
+    hold (CFTC, weekly), and what the volatility curve is pricing. Sentiment signals are
+    contrarian at extremes and noise in the middle — the percentile matters, not the sign.</p>
+  <div id="sentiment"></div>
+
+  <h2 id="s-official">Official flows</h2>
+  <p class="lede">Who is actually financing the US deficit, and what the largest reserve managers
+    hold. Auction bid-to-cover and the indirect bidder share are the closest public read on
+    foreign official demand — no country publishes the currency breakdown of its own reserves.</p>
+  <div class="grid" id="official"></div>
+
+  <h2 id="s-macro">Macro fundamentals</h2>
+  <p class="lede">Slow-moving official data — inflation, labour, growth and policy rates.
+    These set the backdrop the market read sits inside.</p>
+  <div class="grid" id="macro"></div>
+
+  <footer>
+    <p>Official data from <a href="https://fred.stlouisfed.org/" rel="noopener">FRED</a>,
+      the <a href="https://www.cftc.gov/" rel="noopener">CFTC</a>,
+      <a href="https://www.treasurydirect.gov/" rel="noopener">TreasuryDirect</a>,
+      the <a href="https://data.ecb.europa.eu/" rel="noopener">ECB</a> and the
+      <a href="https://data.worldbank.org/" rel="noopener">World Bank</a>, refreshed hourly —
+      raw data: <a href="data/macro.json">macro.json</a>.
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+<script src="info.js?v=20260808d"></script>
+<script src="app.js?v=20260808d"></script>
+</body>
+</html>

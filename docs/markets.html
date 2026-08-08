@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markets — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<link rel="stylesheet" href="styles.css?v=20260808d">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Markets</h1>
+      <p class="stamp" id="stamp"></p>
+    </div>
+    <button id="refresh" type="button">Refresh prices</button>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="markets.html" class="here">Markets</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+  </nav>
+
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <a href="#s-rs" data-key="1">Relative strength<kbd>1</kbd></a>
+    <a href="#s-markets" data-key="2">All instruments<kbd>2</kbd></a>
+  </nav>
+
+  <p id="status" hidden></p>
+
+  <div id="markets" hidden>
+    <h2 id="s-rs">Relative strength</h2>
+    <p class="lede">What is leading what. Each ratio states plainly what a rising line means.
+      Switch the window to separate a genuine trend change from noise — a rotation visible at 1M
+      but absent at 6M is usually noise.</p>
+    <div class="switch" id="rswindows" role="group" aria-label="Relative strength time window">
+      <span class="slabel">Window</span>
+    </div>
+    <div class="grid" id="ratios"></div>
+
+    <h2 id="s-markets">All instruments</h2>
+    <p class="lede">Yields move in basis points, everything else in percent.
+      Colour marks the <em>direction</em> of a move, not whether it is good news — a rising
+      yield or a stronger dollar is green here, and whether that helps depends on your book.</p>
+    <div class="switch" role="tablist" aria-label="Markets view">
+      <button class="tabbtn" id="tab-table" role="tab" aria-selected="true" type="button">Table<kbd>t</kbd></button>
+      <button class="tabbtn" id="tab-charts" role="tab" aria-selected="false" type="button">Charts<kbd>c</kbd></button>
+    </div>
+    <nav class="jump inline" id="groupjump" aria-label="Jump to market category"></nav>
+    <div id="tables" role="tabpanel" aria-labelledby="tab-table"></div>
+    <div id="charts" role="tabpanel" aria-labelledby="tab-charts" hidden></div>
+  </div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live in your browser on each load (delayed, not real-time).
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+<script src="info.js?v=20260808d"></script>
+<script src="app.js?v=20260808d"></script>
+</body>
+</html>
