@@ -76,6 +76,49 @@
     color:var(--text-secondary); border:1px solid var(--border); vertical-align:1px; }
   .regime-item.flipped-today { background:var(--surface-2); }
 
+  /* back to top */
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid var(--border); background:var(--surface-1);
+    color:var(--text-secondary); font-size:17px; cursor:pointer; display:none;
+    align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+  #totop.show { display:flex; }
+  #totop:hover { color:var(--text-primary); border-color:var(--baseline); }
+
+  /* per-section auto summary */
+  .secsum { font-size:13.5px; color:var(--text-primary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:10px; padding:9px 14px; margin-bottom:12px;
+    max-width:74ch; }
+  .secsum .delta { font-weight:620; }
+
+  /* compact family rows (regime-style grid; chart opens in the shared panel below) */
+  .family-list.compact { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+  .family-list.compact .family-row { border-top:1px solid var(--grid); }
+  .family-list.compact .family-row[aria-expanded="true"] { background:var(--surface-2); }
+  #family-detail { background:var(--surface-2); border:1px solid var(--border); border-top:none;
+    border-radius:0 0 12px 12px; padding:10px 18px 16px; }
+  #family-detail .chart, #family-detail .legend { max-width:660px; }
+  #family-detail .dtitle { font-size:13.5px; font-weight:620; margin:4px 0 2px; }
+
+  /* signal scan */
+  .sigwrap { background:var(--surface-1); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .sigrow { display:flex; gap:10px; align-items:baseline; padding:9px 16px; border-top:1px solid var(--grid);
+    font-size:13.5px; flex-wrap:wrap; }
+  .sigrow:first-child { border-top:none; }
+  .sigrow .mark { font-weight:700; width:14px; flex:none; }
+  .sigrow .mark.up { color:var(--up); } .sigrow .mark.down { color:var(--down); }
+  .sigrow .sname { color:var(--text-primary); font-weight:560; }
+  .sigrow .ssym { color:var(--text-muted); font-size:12px; }
+  .sigrow .swhat { color:var(--text-secondary); }
+  .sigrow .swhen { margin-left:auto; color:var(--text-muted); font-size:12.5px; white-space:nowrap; }
+  .sigrow .whip { color:var(--series-2); font-size:12px; border:1px solid var(--border);
+    border-radius:4px; padding:0 5px; }
+
+  .siggroup { margin-bottom:10px; }
+  .siggroup summary { font-size:13px; font-weight:620; color:var(--text-secondary); cursor:pointer;
+    padding:7px 2px; }
+  .siggroup summary:hover { color:var(--text-primary); }
+  .siggroup[open] summary { color:var(--text-primary); }
+
   /* rotation snapshot (overview) */
   .rsnap-list { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
     overflow:hidden; display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); }

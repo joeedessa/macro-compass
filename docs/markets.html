@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808d">
+<link rel="stylesheet" href="styles.css?v=20260808f">
 </head>
 <body>
 <div class="wrap">
@@ -24,16 +24,28 @@
     <a href="themes.html">Themes</a>
     <a href="macro.html">Macro &amp; flows</a>
     <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
   </nav>
 
   <nav class="jump" id="jump" aria-label="Jump to section">
-    <a href="#s-rs" data-key="1">Relative strength<kbd>1</kbd></a>
-    <a href="#s-markets" data-key="2">All instruments<kbd>2</kbd></a>
+    <a href="#s-signals" data-key="1">Signals<kbd>1</kbd></a>
+    <a href="#s-rs" data-key="2">Relative strength<kbd>2</kbd></a>
+    <a href="#s-markets" data-key="3">All instruments<kbd>3</kbd></a>
   </nav>
 
   <p id="status" hidden></p>
 
   <div id="markets" hidden>
+    <h2 id="s-signals">Signal scan — moving-average crosses</h2>
+    <p class="lede">Every cross in the last ten sessions across all instruments, slowest signal first.
+      The hierarchy matters more than any single cross: <strong>price × 200-day</strong> is the regime call;
+      <strong>50 × 200</strong> confirms it late but whipsaws least; <strong>price × 50</strong> marks the
+      swing-level break; <strong>21-EMA × 50</strong> the momentum turn; <strong>5-EMA × 21-EMA</strong> is
+      a timing trigger only — trade it solely in the direction the slower signals already point.
+      Whipsawed crosses stay listed and flagged: a market that keeps crossing a level is telling you
+      the level is contested.</p>
+    <div id="signals"></div>
+
     <h2 id="s-rs">Relative strength</h2>
     <p class="lede">What is leading what. Each ratio states plainly what a rising line means.
       Switch the window to separate a genuine trend change from noise — a rotation visible at 1M
@@ -61,7 +73,7 @@
       Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
   </footer>
 </div>
-<script src="info.js?v=20260808d"></script>
-<script src="app.js?v=20260808d"></script>
+<script src="info.js?v=20260808f"></script>
+<script src="app.js?v=20260808f"></script>
 </body>
 </html>

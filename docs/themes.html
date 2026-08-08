@@ -98,6 +98,7 @@
     <a href="themes.html" class="here">Themes</a>
     <a href="macro.html">Macro &amp; flows</a>
     <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
   </nav>
 
   <p id="status">Fetching live prices…</p>
@@ -114,6 +115,13 @@
       <button class="rangebtn" data-win="m3" aria-pressed="false" type="button">3M</button>
     </div>
     <div class="lead" id="lead"></div>
+
+    <h2>Signal scan — moving-average crosses</h2>
+    <p class="lede">Theme ETFs that crossed a key average in the last ten sessions, slowest signal
+      first: price × 200-day is the regime call, 50 × 200 the late confirmation, price × 50 the swing
+      break, 21-EMA × 50 the momentum turn, 5-EMA × 21-EMA a timing trigger only. Whipsaws are flagged,
+      not hidden.</p>
+    <div id="sigscan"></div>
 
     <h2>All themes</h2>
     <p class="lede">Sorted by relative strength over the selected window by default — click any
@@ -221,6 +229,52 @@
     }
     return out;
   }
+  const sma = (pts, n) => {
+    if (pts.length < n) return [];
+    const out = []; let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      s += pts[i][1];
+      if (i >= n) s -= pts[i - n][1];
+      if (i >= n - 1) out.push([pts[i][0], s / n]);
+    }
+    return out;
+  };
+  const ema = (pts, n) => {
+    const k = 2 / (n + 1), out = [];
+    let prev = pts[0][1];
+    for (let i = 0; i < pts.length; i++) { prev = pts[i][1] * k + prev * (1 - k); out.push([pts[i][0], prev]); }
+    return out.slice(n);
+  };
+  const CROSS_DEFS = [
+    ["price crossed the 200-day SMA", (P, S) => [P, S.s200]],
+    ["50-day crossed the 200-day (golden/death)", (P, S) => [S.s50, S.s200]],
+    ["price crossed the 50-day SMA", (P, S) => [P, S.s50]],
+    ["21-day EMA crossed the 50-day SMA", (P, S) => [S.e21, S.s50]],
+    ["5-day EMA crossed the 21-day EMA", (P, S) => [S.e5, S.e21]],
+  ];
+  function crossEvents(pts, lookback = 10) {
+    if (pts.length < 220) return [];
+    const S = { s50: sma(pts, 50), s200: sma(pts, 200), e21: ema(pts, 21), e5: ema(pts, 5) };
+    const events = [];
+    CROSS_DEFS.forEach(([label, pick], tier) => {
+      const [fast, slow] = pick(pts, S);
+      const bySlow = new Map(slow.map(p => [p[0], p[1]]));
+      const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
+      if (pair.length < lookback + 2) return;
+      const tail = pair.slice(-(lookback + 1));
+      for (let i = 1; i < tail.length; i++) {
+        const prev = tail[i - 1][1], now = tail[i][1];
+        if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
+        let whip = false;
+        for (let k2 = i + 1; k2 < tail.length; k2++) {
+          if ((tail[k2][1] < 0) !== (now < 0)) { whip = true; break; }
+        }
+        events.push({ tier, label, bullish: now > 0, daysAgo: tail.length - 1 - i, whip });
+      }
+    });
+    return events;
+  }
+
   function metrics(pts) {
     const v = pts.map(p => p[1]);
     const last = v[v.length - 1];
@@ -341,6 +395,58 @@
     document.querySelectorAll("th[data-sort]").forEach(x => x.classList.toggle("active", x === th));
     renderTable();
   }));
+  // signal scan
+  (function renderSignals() {
+    const box = $("#sigscan");
+    if (!box) return;
+    const found = [];
+    for (const [sym, name] of THEMES) {
+      if (!series[sym]) continue;
+      for (const ev of crossEvents(series[sym])) found.push({ sym, name, ...ev });
+    }
+    if (!found.length) {
+      const p = document.createElement("p");
+      p.className = "lede"; p.textContent = "No moving-average crosses in the last ten sessions.";
+      box.appendChild(p); return;
+    }
+    found.sort((x, y) => x.tier - y.tier || x.daysAgo - y.daysAgo);
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "background:var(--surface-1);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:6px";
+    for (const f of found) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;gap:10px;align-items:baseline;padding:9px 16px;border-top:1px solid var(--grid);font-size:13.5px;flex-wrap:wrap";
+      const mark = document.createElement("span");
+      mark.textContent = f.bullish ? "▲" : "▼";
+      mark.style.cssText = "font-weight:700;width:14px;flex:none;color:var(--" + (f.bullish ? "up" : "down") + ")";
+      row.appendChild(mark);
+      const a = document.createElement("a");
+      a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener";
+      a.textContent = f.name;
+      a.style.cssText = "color:var(--text-primary);font-weight:560;text-decoration:none";
+      row.appendChild(a);
+      const sym = document.createElement("span");
+      sym.textContent = f.sym;
+      sym.style.cssText = "color:var(--text-muted);font-size:12px";
+      row.appendChild(sym);
+      const what = document.createElement("span");
+      what.textContent = (f.bullish ? "↑ " : "↓ ") + f.label;
+      what.style.color = "var(--text-secondary)";
+      row.appendChild(what);
+      if (f.whip) {
+        const w = document.createElement("span");
+        w.textContent = "whipsawed";
+        w.style.cssText = "color:var(--series-2);font-size:12px;border:1px solid var(--border);border-radius:4px;padding:0 5px";
+        row.appendChild(w);
+      }
+      const when = document.createElement("span");
+      when.textContent = f.daysAgo === 0 ? "latest close" : f.daysAgo + " session" + (f.daysAgo > 1 ? "s" : "") + " ago";
+      when.style.cssText = "margin-left:auto;color:var(--text-muted);font-size:12.5px;white-space:nowrap";
+      row.appendChild(when);
+      wrap.appendChild(row);
+    }
+    box.appendChild(wrap);
+  })();
+
   document.querySelectorAll("#relwin .rangebtn").forEach(b => b.addEventListener("click", () => {
     relWin = b.dataset.win;
     document.querySelectorAll("#relwin .rangebtn").forEach(x =>

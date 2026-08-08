@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watchlist — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<link rel="stylesheet" href="styles.css?v=20260808f">
+<style>
+  /* watchlist-specific */
+  form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); align-items:end; }
+  form.add label { display:flex; flex-direction:column; gap:4px; font-size:12px;
+    color:var(--text-secondary); }
+  form.add input, form.add select { font:inherit; font-size:13.5px; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:7px 10px;
+    min-width:0; }
+  form.add input:focus, form.add select:focus { outline:2px solid var(--series-1); outline-offset:0; }
+  form.add button { font:inherit; font-size:13.5px; font-weight:620; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--baseline); border-radius:8px;
+    padding:8px 16px; cursor:pointer; }
+  .alertfield { display:flex; gap:6px; }
+  .alertfield select { width:64px; flex:none; }
+  .alertfield input { flex:1; }
+
+  .pos { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; }
+  .pos.archived { opacity:0.85; }
+  .pos-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .pos-head .psym { font-size:16px; font-weight:650; }
+  .pos-head .pdir { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    border-radius:4px; padding:1px 7px; border:1px solid var(--border); }
+  .pdir.long { color:var(--up); } .pdir.short { color:var(--down); }
+  .pos-head .plast { margin-left:auto; font-variant-numeric:tabular-nums; font-size:14px; }
+  .pnote { font-size:12.5px; color:var(--text-secondary); margin-top:2px; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:10px; }
+  .lvl { border:1px solid var(--border); border-radius:9px; padding:7px 11px; font-size:12.5px; }
+  .lvl .lt { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; }
+  .lvl .lv { font-variant-numeric:tabular-nums; font-weight:620; }
+  .lvl.hit { background:var(--on-bg); }
+  .lvl.bad { background:var(--off-bg); }
+  .lvl.warn { background:var(--mixed-bg); }
+  .lvl .ls { display:block; font-size:11.5px; color:var(--text-secondary); }
+  .pos-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .pos-actions button { font:inherit; font-size:12px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:7px;
+    padding:4px 10px; cursor:pointer; }
+  .pos-actions button:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .archive-reason { font-size:12px; color:var(--text-muted); margin-top:6px; }
+  .toolbar { display:flex; gap:6px; margin:8px 0 16px; flex-wrap:wrap; }
+  .toolbar button { font:inherit; font-size:12.5px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px;
+    padding:5px 12px; cursor:pointer; }
+  .toolbar button:hover { color:var(--text-primary); }
+  .grid2 { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Watchlist</h1>
+      <p class="stamp" id="stamp">Swing positions and setups, checked against the latest close on every open.</p>
+    </div>
+    <button id="refresh" type="button">Refresh prices</button>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="markets.html">Markets</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html" class="here">Watchlist</a>
+  </nav>
+
+  <h2>Add a setup</h2>
+  <p class="lede">Four levels per trade, all optional except the alert:
+    <strong>alert</strong> pings when price is beyond your level; <strong>negation</strong> is the
+    invalidation — a close beyond it archives the trade automatically; <strong>target</strong> is where
+    the thesis pays; <strong>breakthrough</strong> confirms entry when a close clears it (above for
+    longs, below for shorts). Data lives in this browser only — export before switching devices.</p>
+  <form class="add" id="addform">
+    <label>Symbol<input id="f-sym" required placeholder="e.g. GDX" autocomplete="off"></label>
+    <label>Direction
+      <select id="f-dir"><option value="long">Long</option><option value="short">Short</option></select>
+    </label>
+    <label>Alert
+      <span class="alertfield">
+        <select id="f-alert-op"><option value=">">&gt;</option><option value="<">&lt;</option></select>
+        <input id="f-alert" type="number" step="any" placeholder="price">
+      </span>
+    </label>
+    <label>Negation<input id="f-neg" type="number" step="any" placeholder="invalidates"></label>
+    <label>Target<input id="f-tgt" type="number" step="any" placeholder="thesis pays"></label>
+    <label>Breakthrough<input id="f-brk" type="number" step="any" placeholder="close beyond"></label>
+    <label>Note<input id="f-note" placeholder="why this trade (optional)"></label>
+    <button type="submit">Add</button>
+  </form>
+
+  <h2>Active</h2>
+  <div class="toolbar">
+    <button id="exportbtn" type="button">Export JSON</button>
+    <button id="importbtn" type="button">Import JSON</button>
+    <input id="importfile" type="file" accept="application/json" hidden>
+  </div>
+  <p id="empty-active" class="lede" hidden>Nothing on the list — add a setup above.</p>
+  <div class="grid2" id="active"></div>
+
+  <h2>Archived</h2>
+  <p class="lede">Negated trades land here automatically, with the close that killed them.
+    Closed winners can be archived by hand.</p>
+  <p id="empty-arch" class="lede" hidden>Nothing archived yet.</p>
+  <div class="grid2" id="archived"></div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Rules are
+      evaluated against daily closes only — intraday touches do not count, by design, so signals
+      match end-of-day discipline. Watchlist data is stored in this browser's localStorage and never
+      leaves your machine. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const KEY = "macro-compass-watchlist-v1";
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+  const save = list => localStorage.setItem(KEY, JSON.stringify(list));
+  const fmt = v => v == null ? "–" : v.toLocaleString("en-US", { maximumFractionDigits: Math.abs(v) >= 100 ? 1 : 2 });
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  async function fetchCloses(symbols) {
+    if (!symbols.length) return {};
+    const out = {};
+    for (let i = 0; i < symbols.length; i += 10) {
+      const chunk = symbols.slice(i, i + 10);
+      const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+        chunk.map(encodeURIComponent).join(",") + "&range=5d&interval=1d";
+      for (const wrap of PROXIES) {
+        try {
+          const r = await fetch(wrap(url), { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          for (const row of (j.spark?.result || [])) {
+            const resp = row.response?.[0];
+            const closes = (resp?.indicators?.quote?.[0]?.close || []).filter(v => v != null);
+            const stamps = resp?.timestamp || [];
+            if (closes.length) out[row.symbol] = {
+              last: closes[closes.length - 1],
+              date: new Date(stamps[stamps.length - 1] * 1000).toISOString().slice(0, 10),
+            };
+          }
+          break;
+        } catch { /* next proxy */ }
+      }
+    }
+    return out;
+  }
+
+  /* Rule evaluation against the latest CLOSE (not intraday):
+     alert   — informational: price is beyond the chosen level
+     negation— long: close < level; short: close > level  → auto-archive
+     target  — long: close ≥ level; short: close ≤ level
+     breakthrough — long: close > level; short: close < level (entry confirmation) */
+  function evaluate(p, quote) {
+    const s = { alert: null, negation: null, target: null, breakthrough: null };
+    if (!quote) return s;
+    const c = quote.last, long = p.dir === "long";
+    if (p.alert != null) s.alert = p.alertOp === ">" ? c > p.alert : c < p.alert;
+    if (p.negation != null) s.negation = long ? c < p.negation : c > p.negation;
+    if (p.target != null) s.target = long ? c >= p.target : c <= p.target;
+    if (p.breakthrough != null) s.breakthrough = long ? c > p.breakthrough : c < p.breakthrough;
+    return s;
+  }
+
+  let LIST = load();
+  let QUOTES = {};
+
+  function lvl(label, value, state, sub) {
+    const box = h("div", "lvl" + (state ? " " + state : ""));
+    box.appendChild(h("span", "lt", label));
+    box.appendChild(document.createTextNode(" "));
+    const v = h("span", "lv", fmt(value));
+    box.appendChild(v);
+    if (sub) box.appendChild(h("span", "ls", sub));
+    return box;
+  }
+
+  function card(p) {
+    const q = QUOTES[p.sym];
+    const st = evaluate(p, q);
+    const el = h("div", "pos" + (p.archived ? " archived" : ""));
+    const head = h("div", "pos-head");
+    const a = h("a", "psym", p.sym);
+    a.href = "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym);
+    a.target = "_blank"; a.rel = "noopener noreferrer";
+    a.style.textDecoration = "none"; a.style.color = "inherit";
+    head.appendChild(a);
+    head.appendChild(h("span", "pdir " + p.dir, p.dir));
+    const last = h("span", "plast");
+    last.textContent = q ? fmt(q.last) + " close " + q.date : "no quote";
+    head.appendChild(last);
+    el.appendChild(head);
+    if (p.note) el.appendChild(h("p", "pnote", p.note));
+
+    const levels = h("div", "levels");
+    if (p.alert != null) levels.appendChild(lvl("Alert " + p.alertOp, p.alert,
+      st.alert ? "warn" : null, st.alert ? "triggered" : "waiting"));
+    if (p.negation != null) levels.appendChild(lvl("Negation", p.negation,
+      st.negation ? "bad" : null, st.negation ? "close beyond — invalid" : "intact"));
+    if (p.breakthrough != null) levels.appendChild(lvl("Breakthrough", p.breakthrough,
+      st.breakthrough ? "hit" : null, st.breakthrough ? "confirmed by close" : "not yet"));
+    if (p.target != null) levels.appendChild(lvl("Target", p.target,
+      st.target ? "hit" : null, st.target ? "reached" : "open"));
+    el.appendChild(levels);
+
+    if (p.archived) el.appendChild(h("p", "archive-reason",
+      "Archived " + p.archived.when + " — " + p.archived.reason));
+
+    const actions = h("div", "pos-actions");
+    if (!p.archived) {
+      const arch = h("button", null, "Archive");
+      arch.type = "button";
+      arch.addEventListener("click", () => {
+        p.archived = { when: today(), reason: "archived manually" };
+        save(LIST); render();
+      });
+      actions.appendChild(arch);
+    } else {
+      const rest = h("button", null, "Restore");
+      rest.type = "button";
+      rest.addEventListener("click", () => { delete p.archived; save(LIST); render(); });
+      actions.appendChild(rest);
+    }
+    const del = h("button", null, "Delete");
+    del.type = "button";
+    del.addEventListener("click", () => {
+      if (!confirm("Delete " + p.sym + " permanently?")) return;
+      LIST = LIST.filter(x => x !== p); save(LIST); render();
+    });
+    actions.appendChild(del);
+    el.appendChild(actions);
+    return el;
+  }
+
+  function render() {
+    const act = $("#active"), arc = $("#archived");
+    act.textContent = ""; arc.textContent = "";
+    const active = LIST.filter(p => !p.archived);
+    const archived = LIST.filter(p => p.archived);
+    $("#empty-active").hidden = active.length > 0;
+    $("#empty-arch").hidden = archived.length > 0;
+    active.forEach(p => act.appendChild(card(p)));
+    archived.forEach(p => arc.appendChild(card(p)));
+  }
+
+  async function refresh() {
+    const syms = [...new Set(LIST.map(p => p.sym))];
+    $("#stamp").textContent = "Fetching closes…";
+    QUOTES = await fetchCloses(syms);
+    // Auto-archive on negation: a close beyond the invalidation level.
+    let moved = 0;
+    for (const p of LIST) {
+      if (p.archived) continue;
+      const st = evaluate(p, QUOTES[p.sym]);
+      if (st.negation) {
+        p.archived = { when: today(),
+          reason: "negated — close " + fmt(QUOTES[p.sym].last) + " beyond " + fmt(p.negation) };
+        moved++;
+      }
+    }
+    if (moved) save(LIST);
+    $("#stamp").textContent = (syms.length ? "Closes as of latest session · " + syms.length +
+      " symbols" : "Empty list") + (moved ? " · " + moved + " trade" + (moved > 1 ? "s" : "") +
+      " auto-archived on negation" : "") + " · rules use closes, not intraday";
+    render();
+  }
+
+  $("#addform").addEventListener("submit", e => {
+    e.preventDefault();
+    const num = id => { const v = $(id).value.trim(); return v === "" ? null : Number(v); };
+    const p = {
+      sym: $("#f-sym").value.trim().toUpperCase(),
+      dir: $("#f-dir").value,
+      alertOp: $("#f-alert-op").value,
+      alert: num("#f-alert"),
+      negation: num("#f-neg"),
+      target: num("#f-tgt"),
+      breakthrough: num("#f-brk"),
+      note: $("#f-note").value.trim(),
+      created: today(),
+    };
+    if (!p.sym) return;
+    LIST.push(p); save(LIST);
+    e.target.reset();
+    refresh();
+  });
+
+  $("#refresh").addEventListener("click", refresh);
+  $("#exportbtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(LIST, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "macro-compass-watchlist.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("#importbtn").addEventListener("click", () => $("#importfile").click());
+  $("#importfile").addEventListener("change", async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!Array.isArray(data)) throw new Error("not a list");
+      LIST = data; save(LIST); refresh();
+    } catch (err) { alert("Could not import: " + err.message); }
+    e.target.value = "";
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

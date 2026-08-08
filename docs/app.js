@@ -531,7 +531,7 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
-  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); }
+  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
   renderMacro();
   renderOfficial();
   renderSentiment();
@@ -692,7 +692,25 @@ function renderMovers() {
   rows.sort((a, b) => Math.abs(b.sigma) - Math.abs(a.sigma));
   const box = $("#movers");
   box.textContent = "";
-  for (const r of rows.slice(0, 7)) {
+
+  // One-line takeaway: the biggest move, how unusual, and any group concentration.
+  const top7 = rows.slice(0, 7);
+  if (top7.length) {
+    const big = rows.filter(r => Math.abs(r.sigma) >= 2).length;
+    const groupOf = sym => (UNIVERSE.find(u => u[0] === sym) || [])[2];
+    const counts = {};
+    top7.forEach(r => { const g = groupOf(r.sym); counts[g] = (counts[g] || 0) + 1; });
+    const [gName, gCount] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    const groupLabel = (GROUPS.find(g => g[0] === gName) || [null, gName])[1];
+    const sum = h("p", "secsum");
+    sum.appendChild(document.createTextNode("Biggest move: " + top7[0].name + " "));
+    sum.appendChild(deltaEl(top7[0].m.d1, top7[0].m.isYield));
+    sum.appendChild(document.createTextNode(" (" + fmtNum(Math.abs(top7[0].sigma), 1) + "σ). " +
+      (big ? big + " move" + (big > 1 ? "s" : "") + " at 2σ or more." : "Nothing at 2σ — a quiet tape.") +
+      (gCount >= 4 ? " " + gCount + " of 7 from " + groupLabel.toLowerCase() + " — a concentrated story." : "")));
+    box.appendChild(sum);
+  }
+  for (const r of top7) {
     const t = h("a", "mover");
     t.href = YQ(r.sym); t.target = "_blank"; t.rel = "noopener noreferrer";
     t.appendChild(h("div", "mname", r.name));
@@ -792,10 +810,39 @@ function renderFamily() {
   for (const p of window.INFO.family.body) panel.appendChild(h("p", "ibody", p));
   box.appendChild(panel);
 
-  /* Same condition-list shape as the regime block. Each member's chart lives
-     behind its row, built on first expand so seven charts are not drawn for a
-     reader who only wants the pass/fail summary. */
-  const list = h("div", "family-list");
+  /* Compact grid in the same vocabulary as the regime list. Full content per
+     member is kept in the row; clicking a row opens its chart in one shared
+     detail panel below rather than expanding inline. */
+  const list = h("div", "family-list compact");
+  const detail = h("div");
+  detail.id = "family-detail";
+  detail.hidden = true;
+  let selected = null;
+  const showDetail = (r, btn) => {
+    if (selected === r.sym) {                 // second click closes
+      selected = null; detail.hidden = true;
+      list.querySelectorAll(".family-row").forEach(b => b.setAttribute("aria-expanded", "false"));
+      return;
+    }
+    selected = r.sym;
+    list.querySelectorAll(".family-row").forEach(b => b.setAttribute("aria-expanded", String(b === btn)));
+    detail.hidden = false;
+    detail.textContent = "";
+    detail.appendChild(h("div", "dtitle", r.nick + " (" + r.sym + ") — 1y daily with 200-day average"));
+    detail.appendChild(lineChart(SERIES[r.sym].slice(-252), {
+      title: r.nick, noFill: true,
+      overlays: [["SMA 200", sma(SERIES[r.sym], 200), "--text-secondary", 1.6]],
+    }));
+    const leg = h("div", "legend");
+    [["Price", "--series-1"], ["SMA 200", "--text-secondary"]].forEach(([lb, v]) => {
+      const k = h("span", "key");
+      const sw = h("span", "swatch"); sw.style.borderTopColor = css(v);
+      k.append(sw, h("span", null, lb));
+      leg.appendChild(k);
+    });
+    detail.appendChild(leg);
+    detail.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+  };
   for (const r of rows) {
     const rowBtn = h("button", "family-row " + (r.m.aboveMa ? "yes" : "no"));
     rowBtn.type = "button";
@@ -806,60 +853,20 @@ function renderFamily() {
     lab.appendChild(document.createTextNode(r.nick));
     lab.appendChild(h("span", "tick", r.sym));
     txt.appendChild(lab);
-    const bits = [(r.m.aboveMa ? "above" : "below") + " 200-day by " +
-      fmtNum(Math.abs(r.m.maGap), 1) + "%"];
-    if (r.rel3m != null) {
-      bits.push((r.rel3m > 0 ? "outperforming" : "underperforming") + " SPY by " +
-        fmtNum(Math.abs(r.rel3m), 1) + "% over 3m");
-    }
+    const bits = [(r.m.aboveMa ? "above" : "below") + " 200d by " + fmtNum(Math.abs(r.m.maGap), 1) + "%"];
+    if (r.rel3m != null) bits.push((r.rel3m > 0 ? "+" : "−") + fmtNum(Math.abs(r.rel3m), 1) + "% vs SPY 3m");
     txt.appendChild(h("span", "rdetail", r.role));
     txt.appendChild(h("span", "rdetail", bits.join(" · ")));
     rowBtn.appendChild(txt);
     const right = h("span", "rowright");
-    const d = deltaEl(r.m.d1);
-    right.appendChild(d);
+    right.appendChild(deltaEl(r.m.d1));
     right.appendChild(h("span", "chev", "▾"));
     rowBtn.appendChild(right);
-
-    const panelEl = h("div", "family-chart");
-    panelEl.hidden = true;
-    rowBtn.addEventListener("click", () => {
-      const open = rowBtn.getAttribute("aria-expanded") === "true";
-      rowBtn.setAttribute("aria-expanded", String(!open));
-      panelEl.hidden = open;
-      if (!open && !panelEl.dataset.done) {
-        panelEl.dataset.done = "1";
-        panelEl.appendChild(lineChart(SERIES[r.sym].slice(-252), {
-          title: r.nick, noFill: true,
-          overlays: [["SMA 200", sma(SERIES[r.sym], 200), "--text-secondary", 1.6]],
-        }));
-        const leg = h("div", "legend");
-        [["Price", "--series-1"], ["SMA 200", "--text-secondary"]].forEach(([lb, v]) => {
-          const k = h("span", "key");
-          const sw = h("span", "swatch"); sw.style.borderTopColor = css(v);
-          k.append(sw, h("span", null, lb));
-          leg.appendChild(k);
-        });
-        panelEl.appendChild(leg);
-      }
-    });
+    rowBtn.addEventListener("click", () => showDetail(r, rowBtn));
     list.appendChild(rowBtn);
-    list.appendChild(panelEl);
   }
   box.appendChild(list);
-
-  const all = h("button", "expandall", "Expand all charts");
-  all.type = "button";
-  all.addEventListener("click", () => {
-    const rowsEls = [...list.querySelectorAll(".family-row")];
-    // If anything is still closed, the button opens everything; otherwise it closes.
-    const shouldOpen = rowsEls.some(b => b.getAttribute("aria-expanded") === "false");
-    rowsEls.forEach(b => {
-      if ((b.getAttribute("aria-expanded") === "true") !== shouldOpen) b.click();
-    });
-    all.textContent = shouldOpen ? "Collapse all charts" : "Expand all charts";
-  });
-  box.appendChild(all);
+  box.appendChild(detail);
 }
 
 /* Overview-only compact form of the relative strength section: one row per
@@ -869,6 +876,7 @@ function renderRotationSnapshot() {
   const box = $("#rsnap");
   if (!box) return;
   box.textContent = "";
+  const verdicts = [];
   const list = h("div", "rsnap-list");
   for (const [a, b, question, upMeans, downMeans] of RATIOS) {
     const full = ratioSeries(SERIES[a], SERIES[b]);
@@ -877,6 +885,7 @@ function renderRotationSnapshot() {
     if (view.length < 3) continue;
     const change = (view[view.length - 1][1] / view[0][1] - 1) * 100;
     const rising = change > 0;
+    verdicts.push({ a, b, change, rising });
     const row = h("a", "rsnap-row");
     row.href = "markets.html#s-rs";
     row.appendChild(h("span", "mark " + (rising ? "up" : "down"), rising ? "▲" : "▼"));
@@ -889,7 +898,112 @@ function renderRotationSnapshot() {
     row.appendChild(d);
     list.appendChild(row);
   }
+  if (verdicts.length) {
+    const biggest = [...verdicts].sort((x, y) => Math.abs(y.change) - Math.abs(x.change))[0];
+    const rising = verdicts.filter(v => v.rising).length;
+    box.appendChild(h("p", "secsum",
+      rising + " of " + verdicts.length + " ratios rising over 1M. Biggest shift: " +
+      biggest.a + "/" + biggest.b + " " + pct(biggest.change) + "."));
+  }
   box.appendChild(list);
+}
+
+/* ---- cross detection --------------------------------------------------
+   Five moving-average cross signals, ordered from slow to fast:
+     price × SMA200   — regime change, the one the source report keys on
+     SMA50 × SMA200   — golden/death cross; confirms late, whipsaws least
+     price × SMA50    — swing-level trend break
+     EMA21 × SMA50    — intermediate momentum turn
+     EMA5  × EMA21    — short-term trigger; noisy, only meaningful with trend
+   A cross that reverses again within the window is flagged as a whipsaw
+   rather than hidden — a whipsawing signal is itself information. */
+const CROSS_DEFS = [
+  ["price-200", "price crossed the 200-day SMA", (P, S) => [P, S.s200]],
+  ["50-200", "50-day crossed the 200-day (golden/death)", (P, S) => [S.s50, S.s200]],
+  ["price-50", "price crossed the 50-day SMA", (P, S) => [P, S.s50]],
+  ["21-50", "21-day EMA crossed the 50-day SMA", (P, S) => [S.e21, S.s50]],
+  ["5-21", "5-day EMA crossed the 21-day EMA", (P, S) => [S.e5, S.e21]],
+];
+
+function crossEvents(pts, lookback) {
+  lookback = lookback || 10;
+  if (pts.length < 220) return [];
+  const S = { s50: sma(pts, 50), s200: sma(pts, 200), e21: ema(pts, 21), e5: ema(pts, 5) };
+  const events = [];
+  for (const [key, label, pick] of CROSS_DEFS) {
+    const [fast, slow] = pick(pts, S);
+    const bySlow = new Map(slow.map(p => [p[0], p[1]]));
+    const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
+    if (pair.length < lookback + 2) continue;
+    const tail = pair.slice(-(lookback + 1));
+    for (let i = 1; i < tail.length; i++) {
+      const prev = tail[i - 1][1], now = tail[i][1];
+      if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
+      const daysAgo = tail.length - 1 - i;
+      // Whipsaw: does the sign flip back later inside the window?
+      let whip = false;
+      for (let k = i + 1; k < tail.length; k++) {
+        if ((tail[k][1] < 0) !== (now < 0)) { whip = true; break; }
+      }
+      events.push({ key, label, bullish: now > 0, daysAgo, whip, when: tail[i][0] });
+    }
+  }
+  return events;
+}
+
+/* Signal scan section (Markets page): every cross in the last ten sessions
+   across the whole universe, slowest signals first. */
+function renderSignals() {
+  const box = $("#signals");
+  if (!box) return;
+  box.textContent = "";
+  const found = [];
+  for (const [sym, name] of UNIVERSE) {
+    if (!SERIES[sym]) continue;
+    for (const ev of crossEvents(SERIES[sym])) found.push({ sym, name, ...ev });
+  }
+  if (!found.length) {
+    box.appendChild(h("p", "muted", "No moving-average crosses in the last ten sessions."));
+    return;
+  }
+  const bulls = found.filter(f => f.bullish && !f.whip).length;
+  const bears = found.filter(f => !f.bullish && !f.whip).length;
+  box.appendChild(h("p", "secsum",
+    found.length + " crosses in the last 10 sessions — " + bulls + " bullish and " +
+    bears + " bearish still standing" +
+    (found.some(f => f.whip) ? ", " + found.filter(f => f.whip).length + " whipsawed" : "") + "."));
+
+  /* Grouped by signal tier. The slow tiers are open — few events, each one
+     matters. The fast tiers collapse behind their count: at timing-trigger
+     speed the count is the signal and the list is reference. */
+  CROSS_DEFS.forEach(([key, label], tier) => {
+    const evs = found.filter(f => f.key === key).sort((x, y) => x.daysAgo - y.daysAgo);
+    if (!evs.length) return;
+    const det = document.createElement("details");
+    det.className = "siggroup";
+    if (tier < 3 && evs.length <= 30) det.open = true;   // a 70-row "open" group is still a wall
+    const sum = document.createElement("summary");
+    const b = evs.filter(e => e.bullish && !e.whip).length;
+    const s = evs.filter(e => !e.bullish && !e.whip).length;
+    sum.textContent = label.replace(/^price/, "Price").replace(/^(\d)/, "$1") +
+      " — " + evs.length + " (" + b + "▲ " + s + "▼" +
+      (evs.length - b - s ? " " + (evs.length - b - s) + " whipsawed" : "") + ")";
+    det.appendChild(sum);
+    const wrap = h("div", "sigwrap");
+    for (const f of evs) {
+      const row = h("div", "sigrow");
+      row.appendChild(h("span", "mark " + (f.bullish ? "up" : "down"), f.bullish ? "▲" : "▼"));
+      const a = h("a", "sname", f.name);
+      a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      row.appendChild(a);
+      row.appendChild(h("span", "ssym", f.sym));
+      if (f.whip) row.appendChild(h("span", "whip", "whipsawed"));
+      row.appendChild(h("span", "swhen", f.daysAgo === 0 ? "latest close" : f.daysAgo + " session" + (f.daysAgo > 1 ? "s" : "") + " ago"));
+      wrap.appendChild(row);
+    }
+    det.appendChild(wrap);
+    box.appendChild(det);
+  });
 }
 
 function renderTables() {
@@ -1283,6 +1397,19 @@ function selectTab(which) {
   if (isCharts) buildCharts();
   renderGroupJump();
 }
+// Floating back-to-top: appears after two screens of scroll, honours reduced motion.
+(function initToTop() {
+  const b = h("button", null, "↑");
+  b.id = "totop"; b.type = "button"; b.title = "Back to top";
+  b.setAttribute("aria-label", "Back to top");
+  b.addEventListener("click", () => window.scrollTo({ top: 0,
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
+  document.body.appendChild(b);
+  // A plain class toggle is cheap; rAF throttling here would stall in
+  // background tabs (same failure mode as the chart batching, learned once).
+  addEventListener("scroll", () => b.classList.toggle("show", window.scrollY > 900), { passive: true });
+})();
+
 if ($("#tab-table")) $("#tab-table").addEventListener("click", () => selectTab("table"));
 if ($("#tab-charts")) $("#tab-charts").addEventListener("click", () => selectTab("charts"));
 if ($("#refresh")) $("#refresh").addEventListener("click", () => load());
