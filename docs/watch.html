@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808j">
+<link rel="stylesheet" href="styles.css?v=20260808k">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -84,6 +84,14 @@
     background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
     padding:2px 8px; cursor:pointer; }
   .wact button:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .epsbtn { font:inherit; font-size:10px; letter-spacing:-1px; margin-left:7px; padding:1px 5px;
+    border:1px solid var(--border); border-radius:5px; background:var(--surface-2); cursor:pointer;
+    vertical-align:1px; }
+  .epsbtn.up { color:var(--up); } .epsbtn.down { color:var(--down); }
+  .epsbtn:hover { border-color:var(--baseline); }
+  tr.epsrow td { background:var(--surface-2); font-size:12.5px; color:var(--text-secondary);
+    white-space:normal; }
+  td.soon { color:var(--series-2); font-weight:620; }
 </style>
 </head>
 <body>
@@ -265,7 +273,7 @@
   }
 
   let OV = loadOverlay();
-  let SHARED = [], HIST = {};
+  let SHARED = [], HIST = {}, EVENTS = {};
 
   function workingList() {
     const list = [];
@@ -290,20 +298,29 @@
     const gap = (last != null && p.breakthrough != null && st.state === "watch")
       ? pct1((p.dir === "long" ? p.breakthrough / last - 1 : 1 - p.breakthrough / last) * 100)
       : null;
+    const ev = EVENTS[p.sym] || {};
+    const todayStr = new Date().toISOString().slice(0, 10);
     return { p, st, last,
       currency: hist ? hist.currency : "",
       closeDate: hist ? hist.pts[hist.pts.length - 1][0] : "",
-      gap,
+      gap, ev,
+      earnings: ev.earnings || null,
+      exdiv: (ev.ex_div && ev.ex_div >= todayStr) ? ev.ex_div : null,
+      earningsSoon: !!(ev.earnings && ev.earnings >= todayStr &&
+        (new Date(ev.earnings) - new Date(todayStr)) / 864e5 <= 7),
       when: st.failed ? st.failed.when : st.targetHit ? st.targetHit.when : st.breakout ? st.breakout.when : "" };
   }
 
   const COLS = {
     watch:    [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["gap","To trigger"],["negation","Negation"],["target","Target"],["","Actions","nosort"]],
+               ["gap","To trigger"],["negation","Negation"],["target","Target"],
+               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
     breakout: [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["when","Confirmed"],["negation","Negation"],["target","Target"],["","Actions","nosort"]],
+               ["when","Confirmed"],["negation","Negation"],["target","Target"],
+               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
     target:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
-               ["when","Reached"],["target","Target"],["negation","Negation"],["","Actions","nosort"]],
+               ["when","Reached"],["target","Target"],["negation","Negation"],
+               ["earnings","Earnings"],["exdiv","Ex-div"],["","Actions","nosort"]],
     failed:   [["sym","Symbol","left"],["dir","Dir"],["last","Last"],["breakthrough","Trigger"],
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],["","Actions","nosort"]],
   };
@@ -315,6 +332,8 @@
     if (key === "last") return r.last;
     if (key === "gap") return r.gap;
     if (key === "when") return r.when;
+    if (key === "earnings") return r.earnings || "9999";
+    if (key === "exdiv") return r.exdiv || "9999";
     return null;
   }
 
@@ -395,9 +414,37 @@
       const { p, st } = r;
       const tr = h("tr");
       const tdSym = h("td", "left");
+      const symLine = h("span");
       const a = h("a", "wsym", p.sym);
       a.href = YQ(p.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
-      tdSym.appendChild(a);
+      a.style.display = "inline";
+      symLine.appendChild(a);
+      if (r.ev.last_eps) {
+        const e = r.ev.last_eps;
+        const beat = e.estimate != null ? e.actual >= e.estimate : e.surprise_pct >= 0;
+        const btn = h("button", "epsbtn " + (beat ? "up" : "down"), beat ? "▮▲" : "▮▼");
+        btn.type = "button";
+        btn.title = "Latest earnings result — click for detail";
+        btn.addEventListener("click", ev2 => {
+          ev2.stopPropagation();
+          const existing = tr.nextElementSibling;
+          if (existing && existing.classList.contains("epsrow")) { existing.remove(); return; }
+          const dtr = h("tr", "epsrow");
+          const td = h("td");
+          td.colSpan = tr.children.length;
+          td.className = "left";
+          const surprise = e.surprise_pct != null ? (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "";
+          td.appendChild(h("span", "epsdetail",
+            "Last reported quarter (ended " + (e.quarter_end || "n/a") + "): EPS " + e.actual +
+            (e.estimate != null ? " vs " + e.estimate + " est" : "") +
+            (surprise ? " · surprise " + surprise : "") +
+            " — " + (beat ? "beat" : "miss")));
+          dtr.appendChild(td);
+          tr.after(dtr);
+        });
+        symLine.appendChild(btn);
+      }
+      tdSym.appendChild(symLine);
       if (p.note) tdSym.appendChild(h("span", "wname", p.note));
       tr.appendChild(tdSym);
       const tdDir = h("td"); tdDir.appendChild(h("span", "wdir " + p.dir, p.dir)); tr.appendChild(tdDir);
@@ -434,6 +481,13 @@
         tr.appendChild(h("td", null, fmt(p.negation)));
         tr.appendChild(h("td", null, fmt(p.target)));
       }
+      if (state !== "failed") {
+        const tdE = h("td", r.earningsSoon ? "soon" : null, r.earnings || "–");
+        if (r.ev.earnings_to && r.ev.earnings_to !== r.earnings) tdE.appendChild(h("span", "wname", "to " + r.ev.earnings_to));
+        if (r.earningsSoon) tdE.appendChild(h("span", "wname", "within a week"));
+        tr.appendChild(tdE);
+        tr.appendChild(h("td", null, r.exdiv || "–"));
+      }
       tr.appendChild(actionsCell(p));
       tb.appendChild(tr);
     }
@@ -468,6 +522,10 @@
       const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
       SHARED = r.ok ? await r.json() : [];
     } catch { SHARED = []; }
+    try {
+      const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
+      EVENTS = r.ok ? (await r.json()).symbols || {} : {};
+    } catch { EVENTS = {}; }
     const syms = [...new Set(workingList().map(p => p.sym))];
     HIST = await fetchHistory(syms);
     render();

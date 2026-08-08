@@ -23,11 +23,14 @@ jobs:
       - name: Fetch 13F holdings
         run: python3 scripts/fetch_letters.py || true   # quarterly data; a bad EDGAR day must not block the price refresh
 
+      - name: Fetch watchlist earnings and dividend events
+        run: python3 scripts/fetch_events.py || true    # Yahoo can rate-limit; keep last good file rather than fail the run
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/macro.json docs/data/letters.json
+          git add -A docs/data/   # -A: watch-events.json may not exist on a rate-limited first run
           if git diff --cached --quiet; then
             echo "No data changes."
           else
