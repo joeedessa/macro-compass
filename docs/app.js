@@ -51,6 +51,7 @@ const UNIVERSE = [
   ["IBB", "Biotech", "family"],
   ["BTC-USD", "Bitcoin", "family"],
   ["ACWI", "MSCI ACWI", "global"],
+  ["GVAL", "Global value (GVAL)", "global"],
   ["EEM", "Emerging markets", "global"],
   ["EFA", "Developed ex-US", "global"],
   ["ILF", "Latin America 40", "global"],
@@ -121,6 +122,7 @@ const RATIOS = [
   ["HG=F", "GC=F", "Copper vs gold", "Growth expectations over fear", "Fear over growth expectations"],
   ["SMH", "SPY", "Semis vs market", "Semis leading", "Semis lagging"],
   ["SPY", "GLD", "Equities vs gold", "Equities preferred over gold", "Gold preferred over equities"],
+  ["GVAL", "SPY", "Global deep value vs US", "Value markets leading the US", "US leading global value markets"],
   ["GDX", "GLD", "Gold miners vs gold", "Miners leading the metal", "Miners lagging the metal"],
   ["GDXJ", "GDX", "Junior vs senior gold miners", "Risk appetite within miners rising", "Juniors being derisked"],
   ["COPX", "HG=F", "Copper miners vs copper", "Miners leading the metal", "Miners lagging the metal"],
@@ -182,9 +184,9 @@ function compact(v, digits) {
    FRED reports these in millions of dollars, the World Bank in raw dollars,
    and treating one as the other is off by six orders of magnitude. */
 function scaledValue(value, unit) {
-  const inMillions = /\$m/i.test(unit || "");
-  const dollars = inMillions ? value * 1e6 : value;
-  if (!/\$/.test(unit || "")) return fmtNum(value, 2);
+  const u = unit || "";
+  if (!/\$/.test(u)) return fmtNum(value, 2);
+  const dollars = /\$bn/i.test(u) ? value * 1e9 : /\$m/i.test(u) ? value * 1e6 : value;
   const a = Math.abs(dollars);
   if (a >= 1e12) return "$" + fmtNum(dollars / 1e12, 2) + "tn";
   if (a >= 1e9) return "$" + fmtNum(dollars / 1e9, 1) + "bn";
@@ -990,6 +992,8 @@ function renderOfficial() {
     ["auc_btc_5y", "5-year auction bid-to-cover"],
     ["auc_btc_10y", "10-year auction bid-to-cover"],
     ["auc_btc_30y", "30-year auction bid-to-cover"],
+    ["res_cn_gold", "China: gold in reserves"],
+    ["res_jp_gold", "Japan: gold in reserves"],
     ["res_china", "China FX reserves"],
     ["res_japan", "Japan FX reserves"],
     ["res_uk", "UK FX reserves"],
@@ -1005,6 +1009,7 @@ function renderOfficial() {
     // Several series share one note (all four bid-to-cover tenors, all reserves).
     const infoKey = id.startsWith("auc_btc_") ? "auc_btc_10y"
       : id.startsWith("auc_ind_") ? "auc_ind_10y"
+      : id.endsWith("_gold") ? "res_cn_gold"
       : id.startsWith("res_") ? "res_china" : id;
     const card = makeCard(title, infoKey, s.source_url, s.source);
     card.body.appendChild(h("p", "meta", s.unit + " · " + s.freq + " · " + s.source));

@@ -108,6 +108,34 @@ window.INFO = {
       "Central bank reserve accumulation has become a material part of gold demand, which can hold the gold leg firm for reasons unrelated to the investor risk appetite this ratio is usually read for.",
     ],
   },
+  "GVAL/SPY": {
+    title: "Global deep value versus the US",
+    body: [
+      "GVAL holds equities from the cheapest countries in the world on long-run valuation measures such as the cyclically adjusted P/E, so this ratio pits the most out-of-favour markets against the most expensive large market. It is a country-level value trade in one line.",
+      "Valuation spreads between countries have historically mean-reverted, but over horizons measured in years, and the spread can widen for a long time first. Read it as a positioning and regime gauge, not a timing signal.",
+      "A sustained turn higher usually travels with a weaker dollar and broadening global participation — EFA/SPY, EEM/SPY and the dollar index should confirm the same rotation if it is real.",
+    ],
+  },
+  "GDX/GLD": {
+    title: "Gold miners versus gold",
+    body: [
+      "Miners are an operationally levered claim on the gold price: costs are fixed in the short run, so margins move faster than the metal. Miners leading the metal is read as conviction in the move; miners lagging a rising gold price is a persistent late-cycle warning that equity investors do not believe the price.",
+      "The leverage cuts both ways and the relationship drifts with energy costs and equity beta, so the signal is in sustained divergence, not day-to-day wiggle.",
+    ],
+  },
+  "GDXJ/GDX": {
+    title: "Junior versus senior miners",
+    body: [
+      "Juniors are smaller, less capitalised and more speculative, so this is a risk-appetite read inside the mining complex itself. Juniors leading is the aggressive phase of a metals bull market; juniors being derisked while seniors hold up often precedes broader weakness in the trade.",
+    ],
+  },
+  "COPX/HG=F": {
+    title: "Copper miners versus copper",
+    body: [
+      "The equity market's forward judgement on the copper price: miners discount future prices and costs, while the futures leg is closer to spot. Miners leading is read as equity investors positioning for the move to extend.",
+      "Composition matters — COPX carries country and company risk (a large share of listed copper production sits in a handful of jurisdictions), so divergence can reflect mining-specific trouble rather than a copper view.",
+    ],
+  },
 
   // ---- markets -----------------------------------------------------------
   movingAverages: {
@@ -175,6 +203,15 @@ window.INFO = {
       "Total bids divided by the amount sold. The headline gauge of auction demand: higher means the sale was covered comfortably, lower means it struggled to clear.",
       "Judge it against the recent average for the same tenor rather than in absolute terms, since each maturity has its own normal range. The other things to watch alongside it are the tail — the gap between the auction yield and the market yield beforehand — and the dealer share.",
       "Auction quality has become a live macro variable as issuance has grown: a series of poor long-end auctions is read as the market demanding more term premium to absorb supply.",
+    ],
+  },
+  res_cn_gold: {
+    title: "Gold in official reserves",
+    body: [
+      "The dollar value of gold held in a country's official reserves, derived here as World Bank total reserves minus reserves excluding gold. For China this is the closest free official series to 'central bank gold buying', and its trajectory — roughly doubling in dollar terms in a single recent year — is why official gold demand has become a macro theme.",
+      "The essential caveat: this is a value measure, so it conflates two things. It rises when the central bank buys gold and it rises when the gold price goes up. A year of no purchases in a gold bull market still shows a sharply rising line. Tonnage is the clean quantity measure, and no free API publishes it — the World Gold Council and IMF IFS carry it under licence.",
+      "China-specific: the PBoC reports its gold holdings monthly to the IMF, but is widely assessed — including in mainstream sell-side and academic work — to under-report, with actual holdings accumulated through non-reported channels. Announced pauses in buying have historically not always matched trade-flow evidence. Treat the official figure as a floor.",
+      "Why it matters for markets: sustained official buying is price-insensitive demand that does not respond to yield or momentum, which changes gold's behaviour as a portfolio asset — one reason gold has been able to rise alongside positive real rates, breaking its textbook relationship.",
     ],
   },
   res_china: {

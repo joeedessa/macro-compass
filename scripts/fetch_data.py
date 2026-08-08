@@ -133,6 +133,22 @@ def fetch_auctions(term, field="bidToCoverRatio", years=6):
     return points
 
 
+def wb_gold_component(country):
+    """Value of gold in a country's reserves: total reserves minus reserves
+    excluding gold, both from the World Bank. Returned in $bn. This is a value
+    measure — it moves with both the gold price and the quantity held."""
+    total = dict(fetch_worldbank(country, "FI.RES.TOTL.CD"))
+    exgold = dict(fetch_worldbank(country, "FI.RES.XGLD.CD"))
+    points = [
+        (year, round((total[year] - exgold[year]) / 1e9, 1))
+        for year in sorted(total)
+        if year in exgold and total[year] and exgold[year]
+    ]
+    if not points:
+        raise RuntimeError(f"gold component {country}: no overlapping years")
+    return points
+
+
 def yoy_percent(points):
     """Year-over-year % change for a monthly index series."""
     by_date = dict(points)
@@ -229,6 +245,12 @@ SERIES = [
     ("res_euro", "Euro area total reserves", "$ (annual)", "annual", "official",
      lambda: fetch_worldbank("EMU", "FI.RES.TOTL.CD"),
      "World Bank", "https://data.worldbank.org/indicator/FI.RES.TOTL.CD?locations=XC"),
+    ("res_cn_gold", "China: gold in reserves", "$bn (annual)", "annual", "official",
+     lambda: wb_gold_component("chn"),
+     "World Bank", "https://data.worldbank.org/indicator/FI.RES.TOTL.CD?locations=CN"),
+    ("res_jp_gold", "Japan: gold in reserves", "$bn (annual)", "annual", "official",
+     lambda: wb_gold_component("jpn"),
+     "World Bank", "https://data.worldbank.org/indicator/FI.RES.TOTL.CD?locations=JP"),
     # --- Credit spreads (the cleaner credit signal; HYG/IEF is only a proxy) ---
     ("cr_hy_oas", "US high yield OAS", "pp", "daily", "credit",
      lambda: trim(fetch_fred("BAMLH0A0HYM2"), 15),
