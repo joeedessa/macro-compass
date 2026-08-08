@@ -45,6 +45,14 @@
   .delta { font-variant-numeric:tabular-nums; }
   .delta.up { color:var(--up); } .delta.down { color:var(--down); } .delta.flat { color:var(--text-muted); }
 
+  .switch { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .switch .slabel { font-size:13px; color:var(--text-muted); margin-right:2px; }
+  .rangebtn { font:inherit; font-size:13px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; }
+  .rangebtn:hover { color:var(--text-primary); }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); font-weight:620;
+    border-color:var(--baseline); background:var(--surface-2); }
+  .rangebtn[aria-pressed="true"]::before { content:"✓ "; font-weight:700; }
   .lead { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; margin-bottom:18px; }
   .leadbox { border:1px solid var(--border); border-radius:12px; padding:13px 16px; }
   .leadbox.up { background:var(--on-bg); } .leadbox.down { background:var(--off-bg); }
@@ -94,13 +102,21 @@
 
   <div id="content" hidden>
     <h2>Leaders and laggards</h2>
-    <p class="lede">Three-month performance relative to SPY — the sentiment read at theme level.
-      Money rotating <em>toward</em> a theme shows up here before it shows up in headlines.</p>
+    <p class="lede">Performance relative to SPY over the selected window — the sentiment read at
+      theme level. 1w catches the turn, 1m the forming trend, 3m the established one; a theme
+      leading at 1m but absent at 3m is a rotation just getting started.</p>
+    <div class="switch" id="relwin" role="group" aria-label="Relative window">
+      <span class="slabel">Window</span>
+      <button class="rangebtn" data-win="w1" aria-pressed="false" type="button">1W</button>
+      <button class="rangebtn" data-win="m1" aria-pressed="true" type="button">1M</button>
+      <button class="rangebtn" data-win="m3" aria-pressed="false" type="button">3M</button>
+    </div>
     <div class="lead" id="lead"></div>
 
     <h2>All themes</h2>
-    <p class="lede">Sorted by 3-month relative strength by default — click any column to re-sort.
-      "vs SPY 3m" is the theme's excess return over the index; "vs 200d" its own trend state.</p>
+    <p class="lede">Sorted by relative strength over the selected window by default — click any
+      column to re-sort. "vs SPY" is the theme's excess return over the index; "vs 200d" its own
+      trend state.</p>
     <div class="tablewrap"><table id="tbl">
       <thead><tr>
         <th class="left">Theme</th>
@@ -109,7 +125,7 @@
         <th data-sort="m1">1m</th>
         <th data-sort="m3">3m</th>
         <th data-sort="m6">6m</th>
-        <th data-sort="rel3" class="active">vs SPY 3m</th>
+        <th data-sort="rel" class="active" id="relhead">vs SPY 1m</th>
         <th data-sort="maGap">vs 200d</th>
         <th>1y</th>
       </tr></thead>
@@ -243,45 +259,59 @@
   const spyM = series.SPY ? metrics(series.SPY) : null;
   if (!spyM) { $("#status").textContent = "Live price feed unavailable right now — reload to retry."; return; }
 
+  // Relative return vs SPY over each window, so the view can switch instantly.
   const rows = THEMES.filter(t => series[t[0]]).map(([sym, name]) => {
     const m = metrics(series[sym]);
-    return { sym, name, ...m, rel3: m.m3 == null ? null : m.m3 - spyM.m3 };
+    const rel = k => m[k] == null || spyM[k] == null ? null : m[k] - spyM[k];
+    return { sym, name, ...m, rel: { w1: rel("w1"), m1: rel("m1"), m3: rel("m3") } };
   });
+  const WINLABEL = { w1: "1w", m1: "1m", m3: "3m" };
+  let relWin = "m1";                                  // default: catch forming trends
   $("#status").hidden = true;
   $("#content").hidden = false;
-  $("#stamp").textContent = "Live prices fetched " +
-    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
-    " · " + rows.length + " themes · benchmark SPY " + pct(spyM.m3) + " over 3m";
 
-  // leaders / laggards
-  const sorted3 = rows.filter(r => r.rel3 != null).sort((a, b) => b.rel3 - a.rel3);
-  const lead = $("#lead");
-  const mkLead = (title, list, cls) => {
-    const box = document.createElement("div");
-    box.className = "leadbox " + cls;
-    const t = document.createElement("div"); t.className = "t"; t.textContent = title;
-    box.appendChild(t);
-    for (const r of list) {
-      const row = document.createElement("div"); row.className = "row";
-      const a = document.createElement("a"); a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener";
-      a.textContent = r.name;
-      const s = document.createElement("span");
-      s.textContent = pct(r.rel3) + " vs SPY";
-      s.className = "delta " + (r.rel3 > 0 ? "up" : "down");
-      row.appendChild(a); row.appendChild(s);
-      box.appendChild(row);
-    }
-    lead.appendChild(box);
-  };
-  mkLead("Money rotating in — 3m leaders vs SPY", sorted3.slice(0, 4), "up");
-  mkLead("Money rotating out — 3m laggards vs SPY", sorted3.slice(-4).reverse(), "down");
+  function renderStamp() {
+    $("#stamp").textContent = "Live prices fetched " +
+      new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
+      " · " + rows.length + " themes · benchmark SPY " + pct(spyM[relWin]) +
+      " over " + WINLABEL[relWin];
+  }
 
-  // table with sortable columns
-  let sortKey = "rel3";
+  function renderLead() {
+    const lead = $("#lead");
+    lead.textContent = "";
+    const ranked = rows.filter(r => r.rel[relWin] != null)
+      .sort((a, b) => b.rel[relWin] - a.rel[relWin]);
+    const mkLead = (title, list, cls) => {
+      const box = document.createElement("div");
+      box.className = "leadbox " + cls;
+      const t = document.createElement("div"); t.className = "t"; t.textContent = title;
+      box.appendChild(t);
+      for (const r of list) {
+        const row = document.createElement("div"); row.className = "row";
+        const a = document.createElement("a"); a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener";
+        a.textContent = r.name;
+        const s = document.createElement("span");
+        s.textContent = pct(r.rel[relWin]) + " vs SPY";
+        s.className = "delta " + (r.rel[relWin] > 0 ? "up" : "down");
+        row.appendChild(a); row.appendChild(s);
+        box.appendChild(row);
+      }
+      lead.appendChild(box);
+    };
+    const lab = WINLABEL[relWin];
+    mkLead("Money rotating in — " + lab + " leaders vs SPY", ranked.slice(0, 4), "up");
+    mkLead("Money rotating out — " + lab + " laggards vs SPY", ranked.slice(-4).reverse(), "down");
+  }
+
+  // table with sortable columns; "rel" always means the selected window
+  let sortKey = "rel";
+  const sortVal = r => sortKey === "rel" ? r.rel[relWin] : r[sortKey];
   function renderTable() {
+    $("#relhead").textContent = "vs SPY " + WINLABEL[relWin];
     const tb = $("#tbl tbody");
     tb.textContent = "";
-    const data = [...rows].sort((a, b) => (b[sortKey] ?? -1e9) - (a[sortKey] ?? -1e9));
+    const data = [...rows].sort((a, b) => (sortVal(b) ?? -1e9) - (sortVal(a) ?? -1e9));
     for (const r of data) {
       const tr = document.createElement("tr");
       const name = document.createElement("td"); name.className = "left";
@@ -290,7 +320,7 @@
       const sym = document.createElement("span"); sym.className = "isym"; sym.textContent = r.sym;
       name.appendChild(a); name.appendChild(sym); tr.appendChild(name);
       const lastTd = document.createElement("td"); lastTd.textContent = price(r.last); tr.appendChild(lastTd);
-      [r.w1, r.m1, r.m3, r.m6, r.rel3].forEach(v => tr.appendChild(deltaTd(v)));
+      [r.w1, r.m1, r.m3, r.m6, r.rel[relWin]].forEach(v => tr.appendChild(deltaTd(v)));
       const ma = document.createElement("td");
       if (r.aboveMa == null) ma.textContent = "–";
       else {
@@ -309,7 +339,13 @@
     document.querySelectorAll("th[data-sort]").forEach(x => x.classList.toggle("active", x === th));
     renderTable();
   }));
-  renderTable();
+  document.querySelectorAll("#relwin .rangebtn").forEach(b => b.addEventListener("click", () => {
+    relWin = b.dataset.win;
+    document.querySelectorAll("#relwin .rangebtn").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    renderStamp(); renderLead(); renderTable();
+  }));
+  renderStamp(); renderLead(); renderTable();
 })();
 </script>
 </body>
