@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260808h">
+<link rel="stylesheet" href="styles.css?v=20260808i">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -81,7 +81,9 @@
     <strong>alert</strong> pings when price is beyond your level; <strong>negation</strong> is the
     invalidation — a close beyond it archives the trade automatically; <strong>target</strong> is where
     the thesis pays; <strong>breakthrough</strong> confirms entry when a close clears it (above for
-    longs, below for shorts). Data lives in this browser only — export before switching devices.</p>
+    longs, below for shorts). The shared list loads from the repo on every device; your edits (negations, manual moves,
+    extra setups) stay in this browser and re-apply on top. States are recomputed from price
+    history on every load, so every device shows the same breakouts without any syncing.</p>
   <form class="add" id="addform">
     <label>Symbol<input id="f-sym" required placeholder="e.g. GDX" autocomplete="off"></label>
     <label>Direction
@@ -109,11 +111,9 @@
   <h2>Watchlist</h2>
   <p class="lede">Setups waiting for their trigger. A close beyond the breakout level — above for
     longs, below for shorts — moves the trade to Confirmed breakouts automatically.</p>
-  <p id="empty-watch" class="lede" hidden><strong>This list is empty.</strong> Your watchlist lives
-    in this browser only — it is never uploaded anywhere. To load a list, click
-    <strong>Import JSON</strong> above and choose your file (e.g.
-    <code>TechCharts_watch_import_Aug8.json</code> in Downloads), or add a single setup with the form.
-    Each browser and device keeps its own copy — use Export/Import to move it.</p>
+  <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
+    <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
+    Import JSON, or add a single setup with the form above.</p>
   <div class="grid2" id="sec-watch"></div>
 
   <h2>Confirmed breakouts</h2>
@@ -138,8 +138,7 @@
   <footer>
     <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
       evaluated against daily closes only — intraday touches do not count, by design, so signals
-      match end-of-day discipline. Watchlist data is stored in this browser's localStorage and never
-      leaves your machine. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+      match end-of-day discipline. The shared setups live in the public repo (data/watchlist.json); personal edits and additions stay in this browser's localStorage. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
   </footer>
 </div>
 
@@ -153,23 +152,34 @@
     if (text !== undefined) n.textContent = text;
     return n;
   };
-  const KEY = "macro-compass-watchlist-v1";
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
-  const save = list => localStorage.setItem(KEY, JSON.stringify(list));
+  /* Storage model: the shared list ships in the repo (data/watchlist.json) so
+     every device sees it. localStorage holds only a personal overlay - extra
+     setups, negation edits, manual moves, deletions - keyed by sym|dir.
+     States are NOT stored: they are replayed from price history on every load,
+     so all devices agree without any syncing. */
+  const KEY = "macro-compass-watch-overlay-v2";
+  const loadOverlay = () => {
+    try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
+    catch { return { added: [], over: {} }; }
+  };
+  const saveOverlay = () => localStorage.setItem(KEY, JSON.stringify(OV));
   const fmt = v => v == null ? "–" : v.toLocaleString("en-US", { maximumFractionDigits: Math.abs(v) >= 100 ? 1 : 2 });
   const today = () => new Date().toISOString().slice(0, 10);
+  const idOf = p => p.sym + "|" + p.dir;
 
   const PROXIES = [
     u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   ];
-  async function fetchCloses(symbols) {
+  /* Full daily history for a year, so the state machine can be replayed from
+     each entry's creation date rather than trusting a stored state. */
+  async function fetchHistory(symbols) {
     if (!symbols.length) return {};
     const out = {};
     for (let i = 0; i < symbols.length; i += 10) {
       const chunk = symbols.slice(i, i + 10);
       const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
-        chunk.map(encodeURIComponent).join(",") + "&range=5d&interval=1d";
+        chunk.map(encodeURIComponent).join(",") + "&range=1y&interval=1d";
       for (const wrap of PROXIES) {
         try {
           const r = await fetch(wrap(url), { cache: "no-store" });
@@ -177,15 +187,13 @@
           const j = await r.json();
           for (const row of (j.spark?.result || [])) {
             const resp = row.response?.[0];
-            const closes = (resp?.indicators?.quote?.[0]?.close || []).filter(v => v != null);
+            const closes = resp?.indicators?.quote?.[0]?.close || [];
             const stamps = resp?.timestamp || [];
-            if (closes.length) out[row.symbol] = {
-              last: closes[closes.length - 1],
-              date: new Date(stamps[stamps.length - 1] * 1000).toISOString().slice(0, 10),
-              // Native listing currency, straight from the exchange metadata.
-              // Never converted: a JSE price stays in cents, a TSE price in yen.
-              currency: resp?.meta?.currency || "",
-            };
+            const pts = [];
+            for (let k = 0; k < stamps.length; k++) {
+              if (closes[k] != null) pts.push([new Date(stamps[k] * 1000).toISOString().slice(0, 10), closes[k]]);
+            }
+            if (pts.length) out[row.symbol] = { pts, currency: resp?.meta?.currency || "" };
           }
           break;
         } catch { /* next proxy */ }
@@ -194,51 +202,54 @@
     return out;
   }
 
-  /* State machine, evaluated on daily closes only:
-       watch    --close beyond breakthrough (long: >, short: <)-->  breakout
-       watch    --close beyond negation-->                          failed (negated pre-trigger)
-       breakout --close beyond negation-->                          failed
-       breakout --close at/beyond target-->                         target
-       target   --close beyond negation-->                          failed (was at target)
-     Negation is checked first: an invalidation outranks anything else that
-     happened on the same close. Target state is not terminal by design — the
-     trade may still be in play; only negation moves it out. */
-  function step(p, quote) {
-    if (!quote) return null;
-    const c = quote.last, long = p.dir === "long";
-    const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
-    const state = p.state || "watch";
-    if (negHit && state !== "failed") {
-      const was = state;
-      p.state = "failed";
-      p.failed = { when: quote.date, close: c,
-        reason: was === "watch" ? "negated before trigger" :
-                was === "target" ? "negated after reaching target" : "failed breakout" };
-      return "failed";
+  /* Replay from creation date. Rules on daily closes:
+       watch    --close beyond breakthrough (long >, short <)-->  breakout
+       watch/breakout/target --close beyond negation-->           failed
+       breakout --close at/beyond target-->                       target
+     Negation outranks the others on the same close. Target is not terminal. */
+  function replay(p, hist) {
+    const st = { state: "watch", breakout: null, targetHit: null, failed: null };
+    if (!hist) return st;
+    const long = p.dir === "long";
+    for (const [date, c] of hist.pts) {
+      if (p.created && date < p.created) continue;
+      const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
+      if (negHit) {
+        st.failed = { when: date, close: c,
+          reason: st.state === "watch" ? "negated before trigger" :
+                  st.state === "target" ? "negated after reaching target" : "failed breakout" };
+        st.state = "failed";
+        break;                       // failure ends the pattern
+      }
+      if (st.state === "watch" && p.breakthrough != null &&
+          (long ? c > p.breakthrough : c < p.breakthrough)) {
+        st.state = "breakout";
+        st.breakout = { when: date, close: c };
+        continue;
+      }
+      if (st.state === "breakout" && p.target != null &&
+          (long ? c >= p.target : c <= p.target)) {
+        st.state = "target";
+        st.targetHit = { when: date, close: c };
+      }
     }
-    if (state === "watch" && p.breakthrough != null &&
-        (long ? c > p.breakthrough : c < p.breakthrough)) {
-      p.state = "breakout";
-      p.breakout = { when: quote.date, close: c };
-      return "breakout";
-    }
-    if (state === "breakout" && p.target != null &&
-        (long ? c >= p.target : c <= p.target)) {
-      p.state = "target";
-      p.targetHit = { when: quote.date, close: c };
-      return "target";
-    }
-    return null;
+    return st;
   }
 
-  let LIST = load();
-  // Migrate entries from the earlier schema (active/archived).
-  for (const p of LIST) {
-    if (!p.state) p.state = p.archived ? "failed" : "watch";
-    if (p.archived && !p.failed) p.failed = { when: p.archived.when, close: null, reason: p.archived.reason };
-    delete p.archived;
+  let OV = loadOverlay();
+  let SHARED = [], HIST = {};
+
+  function workingList() {
+    const list = [];
+    for (const p of SHARED) {
+      const o = OV.over[idOf(p)] || {};
+      if (o.deleted) continue;
+      list.push({ ...p, negation: o.negation !== undefined ? o.negation : p.negation,
+        manualState: o.manualState || null, shared: true });
+    }
+    for (const p of OV.added) list.push({ ...p, shared: false });
+    return list;
   }
-  let QUOTES = {};
 
   function lvl(label, value, state, sub) {
     const box = h("div", "lvl" + (state ? " " + state : ""));
@@ -249,10 +260,11 @@
     return box;
   }
 
-  function card(p) {
-    const q = QUOTES[p.sym];
+  function card(p, st) {
+    const hist = HIST[p.sym];
+    const q = hist ? { last: hist.pts[hist.pts.length - 1][1], date: hist.pts[hist.pts.length - 1][0], currency: hist.currency } : null;
     const long = p.dir === "long";
-    const el = h("div", "pos" + (p.state === "failed" ? " archived" : ""));
+    const el = h("div", "pos" + (st.state === "failed" ? " archived" : ""));
     const head = h("div", "pos-head");
     const a = h("a", "psym", p.sym);
     a.href = "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym);
@@ -267,23 +279,24 @@
     if (p.note) el.appendChild(h("p", "pnote", p.note));
 
     const levels = h("div", "levels");
-    if (p.alert != null) {
-      const hit = q && (p.alertOp === ">" ? q.last > p.alert : q.last < p.alert);
-      levels.appendChild(lvl("Alert " + p.alertOp, p.alert, hit ? "warn" : null, hit ? "triggered" : "waiting"));
-    }
     if (p.breakthrough != null) levels.appendChild(lvl(long ? "Breakout >" : "Breakdown <", p.breakthrough,
-      p.state !== "watch" && p.breakout ? "hit" : null,
-      p.breakout ? "confirmed " + p.breakout.when + " @ " + fmt(p.breakout.close) : "waiting for close beyond"));
+      st.breakout ? "hit" : null,
+      st.breakout ? "confirmed " + st.breakout.when + " @ " + fmt(st.breakout.close) : "waiting for close beyond"));
     if (p.negation != null) levels.appendChild(lvl("Negation", p.negation,
-      p.state === "failed" ? "bad" : null, p.state === "failed" ? "hit" : "intact"));
+      st.state === "failed" ? "bad" : null, st.state === "failed" ? "hit" : "intact"));
     if (p.target != null) levels.appendChild(lvl("Target", p.target,
-      p.targetHit ? "hit" : null,
-      p.targetHit ? "reached " + p.targetHit.when + " @ " + fmt(p.targetHit.close) : "open"));
+      st.targetHit ? "hit" : null,
+      st.targetHit ? "reached " + st.targetHit.when + " @ " + fmt(st.targetHit.close) : "open"));
+    if (q && p.breakthrough != null && st.state === "watch") {
+      const gap = (long ? p.breakthrough / q.last - 1 : 1 - p.breakthrough / q.last) * 100;
+      levels.appendChild(lvl("To trigger", null, null, fmt(Math.abs(gap)) + "% away"));
+    }
     el.appendChild(levels);
 
-    if (p.state === "failed" && p.failed) el.appendChild(h("p", "archive-reason",
-      "Failed " + p.failed.when + " — " + p.failed.reason +
-      (p.failed.close != null ? " (close " + fmt(p.failed.close) + ")" : "")));
+    if (st.state === "failed" && st.failed) el.appendChild(h("p", "archive-reason",
+      "Failed " + st.failed.when + " — " + st.failed.reason +
+      (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "")));
+    if (p.manualState === "failed") el.appendChild(h("p", "archive-reason", "Moved to failed manually"));
 
     const actions = h("div", "pos-actions");
     const setNeg = h("button", null, p.negation != null ? "Edit negation" : "Set negation");
@@ -292,33 +305,42 @@
       const v = prompt("Negation level for " + p.sym + " (close " + (long ? "below" : "above") +
         " it fails the pattern). Empty to clear.", p.negation ?? "");
       if (v === null) return;
-      p.negation = v.trim() === "" ? null : Number(v);
-      save(LIST); refresh();
+      const nv = v.trim() === "" ? null : Number(v);
+      if (p.shared) {
+        OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), negation: nv };
+      } else {
+        const mine = OV.added.find(x => idOf(x) === idOf(p));
+        if (mine) mine.negation = nv;
+      }
+      saveOverlay(); render();
     });
     actions.appendChild(setNeg);
-    if (p.state !== "failed") {
+    if (p.manualState !== "failed") {
       const arch = h("button", null, "Move to failed");
       arch.type = "button";
       arch.addEventListener("click", () => {
-        p.state = "failed";
-        p.failed = { when: today(), close: null, reason: "archived manually" };
-        save(LIST); render();
+        if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), manualState: "failed" };
+        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) mine.manualState = "failed"; }
+        saveOverlay(); render();
       });
       actions.appendChild(arch);
     } else {
-      const rest = h("button", null, "Restore to watchlist");
+      const rest = h("button", null, "Restore");
       rest.type = "button";
       rest.addEventListener("click", () => {
-        p.state = "watch"; delete p.failed; delete p.breakout; delete p.targetHit;
-        save(LIST); refresh();
+        if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; }
+        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; }
+        saveOverlay(); render();
       });
       actions.appendChild(rest);
     }
-    const del = h("button", null, "Delete");
+    const del = h("button", null, p.shared ? "Hide" : "Delete");
     del.type = "button";
     del.addEventListener("click", () => {
-      if (!confirm("Delete " + p.sym + " permanently?")) return;
-      LIST = LIST.filter(x => x !== p); save(LIST); render();
+      if (!confirm((p.shared ? "Hide " : "Delete ") + p.sym + " " + p.dir + "?")) return;
+      if (p.shared) OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), deleted: true };
+      else OV.added = OV.added.filter(x => idOf(x) !== idOf(p));
+      saveOverlay(); render();
     });
     actions.appendChild(del);
     el.appendChild(actions);
@@ -328,33 +350,38 @@
   const SECTIONS = [["watch", "#sec-watch", "#empty-watch"], ["breakout", "#sec-breakout", "#empty-breakout"],
     ["target", "#sec-target", "#empty-target"], ["failed", "#sec-failed", "#empty-failed"]];
   function render() {
+    const list = workingList();
+    const items = { watch: [], breakout: [], target: [], failed: [] };
+    let newBreakouts = 0;
+    for (const p of list) {
+      const st = replay(p, HIST[p.sym]);
+      const state = p.manualState === "failed" ? "failed" : st.state;
+      items[state].push([p, st]);
+      if (state === "breakout") newBreakouts++;
+    }
     for (const [state, sec, empty] of SECTIONS) {
       const boxEl = $(sec);
       boxEl.textContent = "";
-      const items = LIST.filter(p => (p.state || "watch") === state);
-      $(empty).hidden = items.length > 0;
-      items.forEach(p => boxEl.appendChild(card(p)));
+      $(empty).hidden = items[state].length > 0;
+      items[state].forEach(([p, st]) => boxEl.appendChild(card(p, st)));
     }
+    const syms = [...new Set(list.map(p => p.sym))];
+    const missing = syms.filter(s => !HIST[s]);
+    $("#stamp").textContent = list.length + " setups · " + syms.length + " symbols, native currencies · " +
+      items.breakout.length + " confirmed · " + items.target.length + " at target · " +
+      items.failed.length + " failed" +
+      (missing.length ? " · no quote: " + missing.join(", ") : "") +
+      " · states replayed from closes on every load";
   }
 
   async function refresh() {
-    const syms = [...new Set(LIST.map(p => p.sym))];
-    $("#stamp").textContent = "Fetching closes…";
-    QUOTES = await fetchCloses(syms);
-    const moves = { breakout: 0, failed: 0, target: 0 };
-    for (const p of LIST) {
-      const m = step(p, QUOTES[p.sym]);
-      if (m) moves[m]++;
-    }
-    if (moves.breakout + moves.failed + moves.target) save(LIST);
-    const missing = syms.filter(s => !QUOTES[s]);
-    const bits = [];
-    if (syms.length) bits.push(syms.length + " symbols, native currencies");
-    if (moves.breakout) bits.push(moves.breakout + " new confirmed breakout" + (moves.breakout > 1 ? "s" : ""));
-    if (moves.target) bits.push(moves.target + " reached target");
-    if (moves.failed) bits.push(moves.failed + " failed");
-    if (missing.length) bits.push("no quote: " + missing.join(", "));
-    $("#stamp").textContent = (bits.length ? bits.join(" · ") : "Empty list") + " · rules use closes, not intraday";
+    $("#stamp").textContent = "Loading shared list and price history…";
+    try {
+      const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
+      SHARED = r.ok ? await r.json() : [];
+    } catch { SHARED = []; }
+    const syms = [...new Set(workingList().map(p => p.sym))];
+    HIST = await fetchHistory(syms);
     render();
   }
 
@@ -371,17 +398,16 @@
       breakthrough: num("#f-brk"),
       note: $("#f-note").value.trim(),
       created: today(),
-      state: "watch",
     };
     if (!p.sym) return;
-    LIST.push(p); save(LIST);
+    OV.added.push(p); saveOverlay();
     e.target.reset();
     refresh();
   });
 
   $("#refresh").addEventListener("click", refresh);
   $("#exportbtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(LIST, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(workingList(), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "macro-compass-watchlist.json";
@@ -395,16 +421,14 @@
     try {
       const data = JSON.parse(await f.text());
       if (!Array.isArray(data)) throw new Error("not a list");
-      // Merge on symbol+direction so re-importing an updated file doesn't duplicate.
-      const seen = new Set(LIST.map(p => p.sym + "|" + p.dir));
+      const seen = new Set(workingList().map(idOf));
       let added = 0;
       for (const p of data) {
-        if (!p.sym || !p.dir) continue;
-        if (seen.has(p.sym + "|" + p.dir)) continue;
-        if (!p.state) p.state = "watch";
-        LIST.push(p); added++;
+        if (!p.sym || !p.dir || seen.has(idOf(p))) continue;
+        seen.add(idOf(p));
+        OV.added.push(p); added++;
       }
-      save(LIST); refresh();
+      saveOverlay(); refresh();
       alert("Imported " + added + " new entries (" + (data.length - added) + " already present or invalid).");
     } catch (err) { alert("Could not import: " + err.message); }
     e.target.value = "";
