@@ -28,7 +28,7 @@ SUFFIX_TV = {
     ".TO": "TSX", ".MI": "MIL", ".L": "LSE", ".PA": "EURONEXT", ".MC": "BME",
     ".JO": "JSE", ".IS": "BIST", ".T": "TSE", ".NS": "NSE", ".AX": "ASX",
     ".HK": "HKEX", ".IR": "EURONEXT", ".DE": "XETR", ".HE": "OMXHEX",
-    ".OL": "OSL", ".BR": "EURONEXT", ".AS": "EURONEXT",
+    ".OL": "OSL", ".BR": "EURONEXT", ".AS": "EURONEXT", ".V": "TSXV",
 }
 US_PREFIXES = ["NASDAQ", "NYSE", "AMEX"]   # US listing venue unknown per symbol
 
