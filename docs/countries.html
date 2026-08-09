@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Countries — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1280px; margin:0 auto; padding:26px 22px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:17px; margin:34px 0 4px; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; max-width:84ch; margin-bottom:12px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  #status { color:var(--text-muted); font-size:13.5px; margin-top:20px; }
+
+  .switch { display:flex; gap:5px; align-items:center; margin:8px 0 14px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+
+  .leadgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:820px) { .leadgrid { grid-template-columns:1fr; } }
+  .leadbox { border:1px solid var(--border); border-radius:12px; padding:12px 15px; }
+  .leadbox.in { background:var(--on-bg); }
+  .leadbox.out { background:var(--off-bg); }
+  .leadbox h3 { font-size:12.5px; font-weight:600; color:var(--text-secondary); margin-bottom:7px; }
+  .leadrow { display:flex; justify-content:space-between; gap:10px; font-size:13.5px;
+    padding:2.5px 0; }
+  .leadrow b { font-weight:600; }
+  .leadrow .v { font-variant-numeric:tabular-nums; }
+
+  /* signal scan: six-column bull→bear, fast→slow layout */
+  .sigcols { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:6px; }
+  @media (max-width:1150px) { .sigcols { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:640px) { .sigcols { grid-template-columns:repeat(2,1fr); } }
+  .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:10px 12px; min-width:0; }
+  .sigcol h4 { margin:0 0 2px; font-size:12.5px; }
+  .sigcol.bull h4 { color:var(--up); }
+  .sigcol.bear h4 { color:var(--down); }
+  .sigcol .sigsub { font-size:10.5px; color:var(--text-muted); margin:0 0 8px; }
+  .sigitem { padding:5px 0; border-top:1px solid var(--grid); font-size:12.5px; }
+  .sigitem a { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .sigitem a:hover { text-decoration:underline; }
+  .sigitem .sighint { display:block; font-size:10.5px; color:var(--text-muted); white-space:normal; }
+  .sigitem .whiptag { color:var(--series-2); font-size:10px; border:1px solid var(--border);
+    border-radius:4px; padding:0 4px; margin-left:5px; }
+  .sigcol .signone { font-size:11.5px; color:var(--text-muted); margin:0; }
+
+  /* tabs */
+  .tabs { display:flex; gap:5px; margin:10px 0 12px; flex-wrap:wrap; }
+  .tabbtn { font:inherit; font-size:13px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:9px; padding:6px 15px; }
+  .tabbtn[aria-selected="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .tabbtn kbd { font:inherit; font-size:10px; color:var(--text-muted); margin-left:5px; }
+
+  /* tables */
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:9px 11px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  th.left { text-align:left; }
+  th.nosort { cursor:default; }
+  th.active { color:var(--text-primary); }
+  th.active::after { content:" ▾"; }
+  th.active.asc::after { content:" ▴"; }
+  td { padding:7px 11px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.left { text-align:left; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  tbody tr:hover td { background:var(--surface-2); }
+  .cname { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .cname:hover { text-decoration:underline; }
+  .cetf { color:var(--text-muted); font-size:11px; margin-left:6px; }
+  .reg { font-size:10.5px; color:var(--text-muted); display:block; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .rowhead td { background:var(--surface-2) !important; font-weight:650; font-size:11.5px;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); }
+
+  /* yearly heat table */
+  .heat { font-variant-numeric:tabular-nums; font-weight:600; border-radius:6px; }
+  td.heatcell { padding:6px 11px; }
+  .yearnote { font-size:12px; color:var(--text-muted); margin:8px 0 0; }
+
+  /* charts */
+  .chartgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+  .chartcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:10px 12px; }
+  .chartcard h4 { font-size:13px; margin:0 0 1px; }
+  .chartcard .csub { font-size:11px; color:var(--text-muted); margin-bottom:5px; }
+  .chartcard svg { width:100%; height:78px; display:block; }
+
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:84ch; }
+  footer a { color:var(--text-secondary); }
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
+    font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
+    justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
+  #totop.show { display:flex; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Countries</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="markets.html">Markets</a>
+    <a href="countries.html" class="here">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+  </nav>
+
+  <p id="status">Fetching live prices…</p>
+
+  <div id="content" hidden>
+    <h2>Leaders and laggards</h2>
+    <p class="lede">Country equity performance relative to the all-country world index (ACWI) over
+      the selected window. Every country is measured through its US-listed ETF, so all of these are
+      returns to a dollar investor — the currency move is part of the number, which is what makes
+      them comparable across countries.</p>
+    <div class="switch" id="relwin" role="group" aria-label="Relative window">
+      <span class="slabel">Window</span>
+      <button class="rangebtn" data-win="w1" type="button" aria-pressed="false">1W</button>
+      <button class="rangebtn" data-win="m1" type="button" aria-pressed="true">1M</button>
+      <button class="rangebtn" data-win="m3" type="button" aria-pressed="false">3M</button>
+      <button class="rangebtn" data-win="ytd" type="button" aria-pressed="false">YTD</button>
+      <button class="rangebtn" data-win="y1" type="button" aria-pressed="false">1Y</button>
+    </div>
+    <div class="leadgrid" id="lead"></div>
+
+    <h2>Signal scan — moving-average crosses</h2>
+    <p class="lede">Countries that crossed a key average in the last ten sessions, read left to
+      right from fastest to slowest signal. A cross that reverses again inside the window is
+      flagged as whipsawed rather than hidden.</p>
+    <div id="sigscan"></div>
+
+    <h2>All countries</h2>
+    <p class="lede">Forty-six country markets plus three benchmarks. Table and charts run on the
+      US-listed ETF; the yearly view can switch to each country's own local index.</p>
+    <div class="tabs" role="tablist">
+      <button class="tabbtn" id="tab-table" role="tab" aria-selected="true" type="button">Table<kbd>t</kbd></button>
+      <button class="tabbtn" id="tab-charts" role="tab" aria-selected="false" type="button">Charts<kbd>c</kbd></button>
+      <button class="tabbtn" id="tab-yearly" role="tab" aria-selected="false" type="button">Yearly<kbd>y</kbd></button>
+    </div>
+    <div id="view-table" role="tabpanel"></div>
+    <div id="view-charts" role="tabpanel" hidden></div>
+    <div id="view-yearly" role="tabpanel" hidden></div>
+  </div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Country
+      returns are price returns and exclude dividends. ETF figures are in US dollars, so they
+      combine the local market move with the currency move; local index figures are in local
+      currency and strip the currency out — the gap between the two columns is roughly the FX
+      effect. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  /* [ETF, country, region, local index or null]. The ETF is the dollar view of
+     the market; the local index is the same market in its own currency.
+     Local indices were checked for depth as well as existence — a symbol can
+     resolve and still carry one bar. Chile, Poland, Qatar, Egypt, Vietnam,
+     Colombia, Peru and the UAE have no index the feed will serve usably, so
+     they are ETF-only and sit out the local-currency view. */
+  const COUNTRIES = [
+    ["SPY", "United States", "Americas", "^GSPC"],
+    ["EWC", "Canada", "Americas", "^GSPTSE"],
+    ["EWW", "Mexico", "Americas", "^MXX"],
+    ["EWZ", "Brazil", "Americas", "^BVSP"],
+    ["ECH", "Chile", "Americas", null],
+    ["ARGT", "Argentina", "Americas", "^MERV"],
+    ["GXG", "Colombia", "Americas", null],
+    ["EPU", "Peru", "Americas", null],
+    ["EWU", "United Kingdom", "Europe", "^FTSE"],
+    ["EWG", "Germany", "Europe", "^GDAXI"],
+    ["EWQ", "France", "Europe", "^FCHI"],
+    ["EWI", "Italy", "Europe", "FTSEMIB.MI"],
+    ["EWP", "Spain", "Europe", "^IBEX"],
+    ["EWN", "Netherlands", "Europe", "^AEX"],
+    ["EWL", "Switzerland", "Europe", "^SSMI"],
+    ["EWD", "Sweden", "Europe", "^OMX"],
+    ["EWK", "Belgium", "Europe", "^BFX"],
+    ["EWO", "Austria", "Europe", "^ATX"],
+    ["EIRL", "Ireland", "Europe", "^ISEQ"],
+    ["ENOR", "Norway", "Europe", "OBX.OL"],
+    ["EDEN", "Denmark", "Europe", "^OMXC25"],
+    ["EFNL", "Finland", "Europe", "^OMXH25"],
+    ["PGAL", "Portugal", "Europe", "PSI20.LS"],
+    ["GREK", "Greece", "Europe", "GD.AT"],
+    ["EPOL", "Poland", "Europe", null],
+    ["EWJ", "Japan", "Asia-Pacific", "^N225"],
+    ["MCHI", "China", "Asia-Pacific", "000300.SS"],
+    ["EWH", "Hong Kong", "Asia-Pacific", "^HSI"],
+    ["EWT", "Taiwan", "Asia-Pacific", "^TWII"],
+    ["EWY", "South Korea", "Asia-Pacific", "^KS11"],
+    ["INDA", "India", "Asia-Pacific", "^NSEI"],
+    ["EIDO", "Indonesia", "Asia-Pacific", "^JKSE"],
+    ["EWM", "Malaysia", "Asia-Pacific", "^KLSE"],
+    ["THD", "Thailand", "Asia-Pacific", "^SET.BK"],
+    ["EPHE", "Philippines", "Asia-Pacific", "PSEI.PS"],
+    ["EWS", "Singapore", "Asia-Pacific", "^STI"],
+    ["VNM", "Vietnam", "Asia-Pacific", null],
+    ["EWA", "Australia", "Asia-Pacific", "^AXJO"],
+    ["ENZL", "New Zealand", "Asia-Pacific", "^NZ50"],
+    ["EZA", "South Africa", "Middle East & Africa", "^J203.JO"],
+    ["TUR", "Turkey", "Middle East & Africa", "XU100.IS"],
+    ["KSA", "Saudi Arabia", "Middle East & Africa", "^TASI.SR"],
+    ["QAT", "Qatar", "Middle East & Africa", null],
+    ["EIS", "Israel", "Middle East & Africa", "^TA125.TA"],
+    ["EGPT", "Egypt", "Middle East & Africa", null],
+    ["UAE", "United Arab Emirates", "Middle East & Africa", null],
+  ];
+  const BENCH = [["ACWI", "All-country world", "Benchmark"],
+                 ["EFA", "Developed ex-US (EAFE)", "Benchmark"],
+                 ["EEM", "Emerging markets", "Benchmark"]];
+  const REGIONS = ["Americas", "Europe", "Asia-Pacific", "Middle East & Africa", "Benchmark"];
+  const BASE = "ACWI";
+
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  /* Five years of daily closes: the yearly view needs the last close of 2021 to
+     anchor the 2022 calendar year. */
+  async function fetchSeries(symbols) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=5y&interval=1d")).spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) {
+        if (closes[i] != null)
+          pts.push([new Date(stamps[i] * 1000).toISOString().slice(0, 10), closes[i]]);
+      }
+      if (pts.length) out[row.symbol] = pts;
+    }
+    return out;
+  }
+
+  const sma = (pts, n) => {
+    if (pts.length < n) return [];
+    const out = []; let sum = 0;
+    for (let i = 0; i < pts.length; i++) {
+      sum += pts[i][1];
+      if (i >= n) sum -= pts[i - n][1];
+      if (i >= n - 1) out.push([pts[i][0], sum / n]);
+    }
+    return out;
+  };
+  const ema = (pts, n) => {
+    if (pts.length < n) return [];
+    const k = 2 / (n + 1), out = [];
+    let prev = pts[0][1];
+    for (let i = 0; i < pts.length; i++) { prev = pts[i][1] * k + prev * (1 - k); out.push([pts[i][0], prev]); }
+    return out.slice(n);
+  };
+  const CROSS_DEFS = [
+    ["price crossed the 200-day SMA", (P, S) => [P, S.s200]],
+    ["50-day crossed the 200-day (golden/death)", (P, S) => [S.s50, S.s200]],
+    ["price crossed the 50-day SMA", (P, S) => [P, S.s50]],
+    ["21-day EMA crossed the 50-day SMA", (P, S) => [S.e21, S.s50]],
+    ["5-day EMA crossed the 21-day EMA", (P, S) => [S.e5, S.e21]],
+  ];
+  function crossEvents(pts, lookback = 10) {
+    if (pts.length < 220) return [];
+    const S = { s50: sma(pts, 50), s200: sma(pts, 200), e21: ema(pts, 21), e5: ema(pts, 5) };
+    const events = [];
+    CROSS_DEFS.forEach(([label, pick], tier) => {
+      const [fast, slow] = pick(pts, S);
+      const bySlow = new Map(slow.map(p => [p[0], p[1]]));
+      const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
+      if (pair.length < lookback + 2) return;
+      const tail = pair.slice(-(lookback + 1));
+      for (let i = 1; i < tail.length; i++) {
+        const prev = tail[i - 1][1], now = tail[i][1];
+        if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
+        let whip = false;
+        for (let k = i + 1; k < tail.length; k++) {
+          if ((tail[k][1] < 0) !== (now < 0)) { whip = true; break; }
+        }
+        events.push({ tier, label, bullish: now > 0, daysAgo: tail.length - 1 - i, whip });
+      }
+    });
+    return events;
+  }
+
+  /* Trailing-window returns. Windows are in sessions except YTD, which anchors
+     on the last close of the previous calendar year. */
+  function metrics(pts) {
+    const last = pts[pts.length - 1][1];
+    const back = n => pts.length > n ? (last / pts[pts.length - 1 - n][1] - 1) * 100 : null;
+    const yr = new Date().getFullYear();
+    let ytdBase = null;
+    for (const [d, v] of pts) { if (d < yr + "-01-01") ytdBase = v; else break; }
+    const win = pts.slice(-200).map(p => p[1]);
+    const ma = win.length >= 150 ? win.reduce((a, b) => a + b, 0) / win.length : null;
+    return { last, w1: back(5), m1: back(21), m3: back(63), y1: back(252),
+      ytd: ytdBase ? (last / ytdBase - 1) * 100 : null,
+      aboveMa: ma == null ? null : last >= ma,
+      maGap: ma == null ? null : (last / ma - 1) * 100 };
+  }
+  /* Calendar-year returns from 2022. Each year runs from the last close of the
+     prior year to the last close inside the year, so the current year is a YTD
+     by construction. */
+  const FIRST_YEAR = 2022;
+  const THIS_YEAR = new Date().getFullYear();
+  const YEARS = [];
+  for (let y = FIRST_YEAR; y <= THIS_YEAR; y++) YEARS.push(y);
+  function yearly(pts) {
+    const out = {};
+    if (!pts || !pts.length) return out;
+    for (const y of YEARS) {
+      let base = null, end = null;
+      for (const [d, v] of pts) {
+        if (d < y + "-01-01") base = v;
+        else if (d < (y + 1) + "-01-01") end = v;
+      }
+      out[y] = (base && end) ? (end / base - 1) * 100 : null;
+    }
+    return out;
+  }
+
+  const status = $("#status");
+  const symbols = COUNTRIES.map(c => c[0]).concat(BENCH.map(b => b[0]));
+  let series = {};
+  try {
+    series = await fetchSeries(symbols);
+  } catch { /* handled below */ }
+  const have = symbols.filter(s => series[s]);
+  if (!have.length) {
+    status.textContent = "Could not reach the price feed. Reload in a moment.";
+    throw new Error("no data");
+  }
+  status.hidden = true;
+  $("#content").hidden = false;
+
+  /* Delisted funds do not disappear from the feed — Yahoo keeps serving the
+     old history and pads a null bar at today's timestamp, so a liquidated ETF
+     reads as current until you look at the last real close. iShares closed the
+     Portugal and Egypt funds in 2024 and both looked live here. Anything whose
+     last real close is older than this is dropped from every price view rather
+     than shown as a live quote. */
+  const STALE_DAYS = 14;
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const daysOld = pts => Math.round((new Date(todayISO) - new Date(pts[pts.length - 1][0])) / 864e5);
+  const dropped = [];
+  const live = sym => {
+    const pts = series[sym];
+    if (!pts || !pts.length) return null;
+    const age = daysOld(pts);
+    if (age > STALE_DAYS) { dropped.push([sym, pts[pts.length - 1][0]]); return null; }
+    return pts;
+  };
+  const mkRow = (etf, name, region, idx) => {
+    const pts = live(etf);
+    return { etf, name, region, idx, pts, m: pts ? metrics(pts) : null,
+             yr: pts ? yearly(pts) : {} };
+  };
+  const ROWS = COUNTRIES.map(c => mkRow(c[0], c[1], c[2], c[3]))
+    .concat(BENCH.map(b => mkRow(b[0], b[1], b[2], null)))
+    // A country survives if it still has a tradable ETF, or an index that can
+    // carry it in the local-currency view.
+    .filter(r => r.m || r.idx);
+  const PRICED = ROWS.filter(r => r.m);
+
+  const baseM = PRICED.find(r => r.etf === BASE)?.m;
+  const rel = (r, win) => (r.m && baseM && r.m[win] != null && baseM[win] != null)
+    ? r.m[win] - baseM[win] : null;
+
+  $("#stamp").textContent = "Live prices fetched " +
+    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
+    PRICED.filter(r => r.region !== "Benchmark").length + " countries trading · benchmark ACWI " +
+    pct(baseM ? baseM.m1 : null) + " over 1m" +
+    (dropped.length ? " · no longer trading: " + dropped.map(d => d[0]).join(", ") : "");
+
+  // ---------- leaders and laggards ----------
+  let relWin = "m1";
+  const WINLAB = { w1: "1w", m1: "1m", m3: "3m", ytd: "YTD", y1: "1y" };
+  function renderLead() {
+    const box = $("#lead");
+    box.textContent = "";
+    const scored = PRICED.filter(r => r.region !== "Benchmark" && rel(r, relWin) != null)
+      .sort((a, b) => rel(b, relWin) - rel(a, relWin));
+    const mk = (title, list, cls) => {
+      const d = h("div", "leadbox " + cls);
+      d.appendChild(h("h3", null, title));
+      for (const r of list) {
+        const row = h("div", "leadrow");
+        row.appendChild(h("b", null, r.name));
+        row.appendChild(h("span", "v", pct(rel(r, relWin)) + " vs ACWI"));
+        d.appendChild(row);
+      }
+      box.appendChild(d);
+    };
+    mk("Leading the world index — " + WINLAB[relWin], scored.slice(0, 6), "in");
+    mk("Lagging the world index — " + WINLAB[relWin], scored.slice(-6).reverse(), "out");
+  }
+  document.querySelectorAll("#relwin .rangebtn").forEach(b => b.addEventListener("click", () => {
+    relWin = b.dataset.win;
+    document.querySelectorAll("#relwin .rangebtn").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    renderLead(); renderTable();
+  }));
+
+  // ---------- signal scan ----------
+  (function renderSignals() {
+    const box = $("#sigscan");
+    const found = [];
+    for (const r of PRICED) {
+      if (r.region === "Benchmark") continue;
+      for (const ev of crossEvents(r.pts)) found.push({ sym: r.etf, name: r.name, ...ev });
+    }
+    if (!found.length) {
+      box.appendChild(h("p", "lede", "No moving-average crosses in the last ten sessions."));
+      return;
+    }
+    const TLAB = ["price × 200", "50 × 200", "price × 50", "21 × 50", "5 × 21"];
+    const SPEEDS = [
+      ["Short-term", "5×21 · 21×50 EMA triggers", t => t >= 3],
+      ["Swing", "price × 50-day SMA", t => t === 2],
+      ["Long-term", "price × 200 · golden/death", t => t <= 1],
+    ];
+    const wrap = h("div", "sigcols");
+    for (const bullish of [true, false]) {
+      for (const [label, sub, match] of SPEEDS) {
+        const col = h("div", "sigcol " + (bullish ? "bull" : "bear"));
+        col.appendChild(h("h4", null, (bullish ? "▲ Bullish · " : "▼ Bearish · ") + label));
+        col.appendChild(h("p", "sigsub", sub));
+        const mine = found.filter(f => f.bullish === bullish && match(f.tier))
+          .sort((a, b) => a.daysAgo - b.daysAgo || b.tier - a.tier);
+        if (!mine.length) { col.appendChild(h("p", "signone", "none")); wrap.appendChild(col); continue; }
+        for (const f of mine) {
+          const it = h("div", "sigitem");
+          const a = h("a", null, f.name);
+          a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+          it.appendChild(a);
+          if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
+          it.appendChild(h("span", "sighint", f.sym + " — " + TLAB[f.tier] + " · " +
+            (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
+          col.appendChild(it);
+        }
+        wrap.appendChild(col);
+      }
+    }
+    box.appendChild(wrap);
+  })();
+
+  // ---------- table ----------
+  let sortKey = "ytd", sortAsc = false;
+  const COLS = [
+    ["name", "Country", "left"], ["last", "Last"], ["w1", "1W"], ["m1", "1M"],
+    ["m3", "3M"], ["ytd", "YTD"], ["y1", "1Y"], ["rel", "vs ACWI"], ["maGap", "vs 200-day"],
+  ];
+  const valOf = (r, k) => {
+    if (k === "name") return r.name;
+    if (k === "rel") return rel(r, relWin);
+    if (k === "last") return r.m.last;
+    return r.m[k];
+  };
+  function renderTable() {
+    const host = $("#view-table");
+    host.textContent = "";
+    const wrap = h("div", "tablewrap");
+    const table = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [key, label, cls] of COLS) {
+      const th = h("th", (cls || "") + (key === sortKey ? " active" + (sortAsc ? " asc" : "") : ""));
+      th.textContent = label + (key === "rel" ? " (" + WINLAB[relWin] + ")" : "");
+      th.addEventListener("click", () => {
+        if (sortKey === key) sortAsc = !sortAsc;
+        else { sortKey = key; sortAsc = key === "name"; }
+        renderTable();
+      });
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr); table.appendChild(thead);
+    const tb = h("tbody");
+    // Group by region unless the reader has sorted by a number.
+    const grouped = sortKey === "name";
+    const order = grouped ? REGIONS : [null];
+    for (const region of order) {
+      let rows = grouped ? PRICED.filter(r => r.region === region) : PRICED.slice();
+      rows.sort((a, b) => {
+        const va = valOf(a, sortKey), vb = valOf(b, sortKey);
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+        return sortAsc ? c : -c;
+      });
+      if (!rows.length) continue;
+      if (grouped) {
+        const trh = h("tr", "rowhead");
+        const td = h("td", "left"); td.colSpan = COLS.length; td.textContent = region;
+        trh.appendChild(td); tb.appendChild(trh);
+      }
+      for (const r of rows) {
+        const tr = h("tr");
+        const td0 = h("td", "left");
+        const a = h("a", "cname", r.name);
+        a.href = YQ(r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
+        td0.appendChild(a);
+        td0.appendChild(h("span", "cetf", r.etf));
+        if (!grouped) td0.appendChild(h("span", "reg", r.region));
+        tr.appendChild(td0);
+        tr.appendChild(h("td", null, fmt(r.m.last, 2)));
+        for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
+          const v = r.m[k];
+          tr.appendChild(h("td", v == null ? null : v >= 0 ? "up" : "down", pct(v)));
+        }
+        const rv = rel(r, relWin);
+        tr.appendChild(h("td", rv == null ? null : rv >= 0 ? "up" : "down", pct(rv)));
+        const g = r.m.maGap;
+        tr.appendChild(h("td", g == null ? null : g >= 0 ? "up" : "down", pct(g)));
+        tb.appendChild(tr);
+      }
+    }
+    table.appendChild(tb);
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+  }
+
+  // ---------- charts ----------
+  function lineChart(pts, aboveMa) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    const w = 260, hgt = 78;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + hgt);
+    svg.setAttribute("preserveAspectRatio", "none");
+    const v = pts.map(p => p[1]);
+    const ma = sma(pts, 200);
+    const lo = Math.min(...v), hi = Math.max(...v);
+    const x = i => 1 + (i / (v.length - 1)) * (w - 2);
+    const y = val => hi === lo ? hgt / 2 : 3 + (1 - (val - lo) / (hi - lo)) * (hgt - 6);
+    if (ma.length) {
+      const off = pts.length - ma.length;
+      const mp = document.createElementNS(NS, "path");
+      mp.setAttribute("d", ma.map((p, i) => (i ? "L" : "M") + x(i + off).toFixed(1) + " " + y(p[1]).toFixed(1)).join(""));
+      mp.setAttribute("fill", "none");
+      mp.setAttribute("stroke", css("--baseline"));
+      mp.setAttribute("stroke-width", "1");
+      mp.setAttribute("stroke-dasharray", "3 3");
+      svg.appendChild(mp);
+    }
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", v.map((val, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(val).toFixed(1)).join(""));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", css(aboveMa ? "--up" : "--down"));
+    path.setAttribute("stroke-width", "1.4");
+    svg.appendChild(path);
+    return svg;
+  }
+  function renderCharts() {
+    const host = $("#view-charts");
+    if (host.dataset.done) return;
+    const grid = h("div", "chartgrid");
+    for (const r of PRICED) {
+      const card = h("div", "chartcard");
+      card.appendChild(h("h4", null, r.name));
+      card.appendChild(h("p", "csub", r.etf + " · 5y · " + pct(r.m.ytd) + " YTD · " +
+        (r.m.aboveMa ? "above" : "below") + " the 200-day"));
+      card.appendChild(lineChart(r.pts, r.m.aboveMa));
+      grid.appendChild(card);
+    }
+    host.appendChild(grid);
+    host.dataset.done = "1";
+  }
+
+  // ---------- yearly ----------
+  let yearMode = "usd";              // usd = ETF in dollars, local = home index
+  let localSeries = null;            // fetched on demand
+  const heatColour = v => {
+    if (v == null) return "";
+    const a = Math.min(Math.abs(v) / 30, 1) * 0.5;
+    return "background:rgba(" + (v >= 0 ? "12,163,12," : "208,59,59,") + a.toFixed(2) + ")";
+  };
+  async function renderYearly() {
+    const host = $("#view-yearly");
+    host.textContent = "";
+    const sw = h("div", "switch");
+    sw.appendChild(h("span", "slabel", "Measured in"));
+    for (const [mode, label] of [["usd", "US dollars (ETF)"], ["local", "Local currency (index)"]]) {
+      const b = h("button", "rangebtn", label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(yearMode === mode));
+      b.addEventListener("click", async () => { yearMode = mode; await renderYearly(); });
+      sw.appendChild(b);
+    }
+    host.appendChild(sw);
+
+    if (yearMode === "local" && !localSeries) {
+      host.appendChild(h("p", "lede", "Fetching local indices…"));
+      localSeries = await fetchSeries(COUNTRIES.map(c => c[3]).filter(Boolean));
+      return renderYearly();
+    }
+    const wrap = h("div", "tablewrap");
+    const table = h("table");
+    const thead = h("thead"), hr = h("tr");
+    const th0 = h("th", "left nosort"); th0.textContent = "Country"; hr.appendChild(th0);
+    for (const y of YEARS) {
+      const th = h("th", "nosort");
+      th.textContent = y === THIS_YEAR ? y + " YTD" : y;
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr); table.appendChild(thead);
+    const tb = h("tbody");
+    for (const region of REGIONS) {
+      const rows = ROWS.filter(r => r.region === region);
+      if (!rows.length) continue;
+      const trh = h("tr", "rowhead");
+      const tdh = h("td", "left"); tdh.colSpan = YEARS.length + 1; tdh.textContent = region;
+      trh.appendChild(tdh); tb.appendChild(trh);
+      for (const r of rows) {
+        const local = yearMode === "local";
+        const src = local ? (r.idx && localSeries ? localSeries[r.idx] : null) : r.pts;
+        const ys = local ? yearly(src) : r.yr;
+        if (!local && !r.pts && !Object.keys(ys).length) { /* dead ETF: dashes below */ }
+        const tr = h("tr");
+        const td0 = h("td", "left");
+        const a = h("a", "cname", r.name);
+        a.href = YQ(local && r.idx ? r.idx : r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
+        td0.appendChild(a);
+        /* Some exchanges lag in this feed by a few weeks. Complete calendar
+           years are unaffected, but the running year would silently be an
+           as-of number, so the cell says how far the data actually runs. */
+        let label;
+        if (local) {
+          label = r.idx || "no index";
+          if (src && src.length) {
+            const age = daysOld(src);
+            if (age > 14) label += " · to " + src[src.length - 1][0].slice(8, 10) +
+              "-" + src[src.length - 1][0].slice(5, 7);
+          }
+        } else {
+          label = r.pts ? r.etf : r.etf + " · not trading";
+        }
+        td0.appendChild(h("span", "cetf", label));
+        tr.appendChild(td0);
+        for (const y of YEARS) {
+          const v = ys[y];
+          const td = h("td", "heatcell", pct(v));
+          if (v != null) td.setAttribute("style", heatColour(v));
+          tr.appendChild(td);
+        }
+        tb.appendChild(tr);
+      }
+    }
+    table.appendChild(tb);
+    wrap.appendChild(table);
+    host.appendChild(wrap);
+    if (dropped.length) {
+      host.appendChild(h("p", "yearnote", "Not trading: " +
+        dropped.map(d => d[0] + " (last close " + d[1] + ")").join(", ") +
+        " — these funds were closed, so they are excluded from every price view. Where the " +
+        "country still has an index, the local-currency view above still covers it."));
+    }
+    host.appendChild(h("p", "yearnote", yearMode === "usd"
+      ? "Dollar returns: each year runs from the previous year's last close to the last close inside the year, so " +
+        THIS_YEAR + " is a year to date. Currency moves are included — a country can be up at home and down here."
+      : "Local-currency returns from each country's own index, so the currency is stripped out. Compare against " +
+        "the dollar view to see what FX did. No usable index for: " +
+        ROWS.filter(r => r.region !== "Benchmark" && !r.idx).map(r => r.name).join(", ") + "."));
+  }
+
+  // ---------- tabs ----------
+  const TABS = [["table", $("#tab-table")], ["charts", $("#tab-charts")], ["yearly", $("#tab-yearly")]];
+  function showTab(which) {
+    for (const [name, btn] of TABS) {
+      btn.setAttribute("aria-selected", String(name === which));
+      $("#view-" + name).hidden = name !== which;
+    }
+    if (which === "charts") renderCharts();
+    if (which === "yearly") renderYearly();
+  }
+  TABS.forEach(([name, btn]) => btn.addEventListener("click", () => showTab(name)));
+  addEventListener("keydown", e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
+    if (e.key === "t") showTab("table");
+    if (e.key === "c") showTab("charts");
+    if (e.key === "y") showTab("yearly");
+  });
+
+  renderLead();
+  renderTable();
+
+  const tt = h("button", null, "↑");
+  tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";
+  document.body.appendChild(tt);
+  addEventListener("scroll", () => tt.classList.toggle("show", scrollY > 600), { passive: true });
+  tt.addEventListener("click", () => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: rm ? "auto" : "smooth" });
+  });
+})();
+</script>
+</body>
+</html>
