@@ -121,6 +121,21 @@
   .heat { font-variant-numeric:tabular-nums; font-weight:600; border-radius:6px; }
   td.heatcell { padding:6px 11px; }
   .yearnote { font-size:12px; color:var(--text-muted); margin:8px 0 0; }
+  /* beat-the-US summary, one card per year */
+  .beatstrip { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;
+    margin:0 0 14px; }
+  .beatcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:10px 13px; }
+  .beatcard .by { font-size:12px; color:var(--text-muted); font-weight:600; letter-spacing:0.03em; }
+  .beatcard .bn { font-size:19px; font-weight:680; letter-spacing:-0.01em;
+    font-variant-numeric:tabular-nums; }
+  .beatcard .bn .of { font-size:12.5px; font-weight:500; color:var(--text-secondary); }
+  .beatcard .bbar { height:5px; border-radius:3px; background:var(--surface-2); margin:6px 0 5px;
+    overflow:hidden; }
+  .beatcard .bbar i { display:block; height:100%; background:var(--up); }
+  .beatcard .bmed { font-size:11.5px; color:var(--text-secondary);
+    font-variant-numeric:tabular-nums; }
+  .beatcard.usdown { border-color:var(--up); }
 
   /* charts */
   .chartgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
@@ -651,19 +666,74 @@
   }
 
   // ---------- yearly ----------
-  let yearMode = "usd";              // usd = ETF in dollars, local = home index
+  let yearMode = "usd";   // usd = ETF in dollars, local = home index, vs = excess over the US
   let localSeries = null;            // fetched on demand
   const heatColour = v => {
     if (v == null) return "";
     const a = Math.min(Math.abs(v) / 30, 1) * 0.5;
     return "background:rgba(" + (v >= 0 ? "12,163,12," : "208,59,59,") + a.toFixed(2) + ")";
   };
+  /* Excess return over the US, in percentage points, year by year. Only
+     meaningful on the dollar basis: both legs are then the same currency, so
+     the difference is a real relative return rather than two currencies
+     subtracted from each other. */
+  const US = "SPY";
+  const usYr = () => (ROWS.find(r => r.etf === US) || {}).yr || {};
+  const excessYears = r => {
+    const us = usYr(), out = {};
+    for (const y of YEARS) {
+      out[y] = (r.yr[y] != null && us[y] != null) ? r.yr[y] - us[y] : null;
+    }
+    return out;
+  };
+  const median = a => {
+    if (!a.length) return null;
+    const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  };
+  /* How many countries beat the US each year — the headline the table is
+     there to support. Benchmarks and the US itself are excluded from both
+     the count and the base. */
+  function beatSummary(host) {
+    const us = usYr();
+    const strip = h("div", "beatstrip");
+    for (const y of YEARS) {
+      const peers = ROWS.filter(r => r.region !== "Benchmark" && r.etf !== US && r.yr[y] != null);
+      const card = h("div", "beatcard");
+      card.appendChild(h("div", "by", y === THIS_YEAR ? y + " YTD" : String(y)));
+      if (us[y] == null || !peers.length) {
+        card.appendChild(h("div", "bn", "–"));
+        strip.appendChild(card);
+        continue;
+      }
+      const excess = peers.map(r => r.yr[y] - us[y]);
+      const beat = excess.filter(v => v > 0).length;
+      const share = beat / peers.length;
+      if (share > 0.5) card.classList.add("usdown");
+      const n = h("div", "bn", String(beat));
+      n.appendChild(h("span", "of", " of " + peers.length + " beat the US"));
+      card.appendChild(n);
+      const bar = h("div", "bbar");
+      const fill = h("i");
+      fill.style.width = (share * 100).toFixed(0) + "%";
+      bar.appendChild(fill);
+      card.appendChild(bar);
+      const med = median(excess);
+      card.appendChild(h("div", "bmed", "US " + pct(us[y]) + " · median country " +
+        (med > 0 ? "+" : "") + fmt(med) + "pp"));
+      strip.appendChild(card);
+    }
+    host.appendChild(strip);
+  }
+
   async function renderYearly() {
     const host = $("#view-yearly");
     host.textContent = "";
+    beatSummary(host);
     const sw = h("div", "switch");
     sw.appendChild(h("span", "slabel", "Measured in"));
-    for (const [mode, label] of [["usd", "US dollars (ETF)"], ["local", "Local currency (index)"]]) {
+    for (const [mode, label] of [["usd", "US dollars (ETF)"], ["local", "Local currency (index)"],
+                                 ["vs", "Excess vs the US"]]) {
       const b = h("button", "rangebtn", label);
       b.type = "button";
       b.setAttribute("aria-pressed", String(yearMode === mode));
@@ -696,9 +766,10 @@
       trh.appendChild(tdh); tb.appendChild(trh);
       for (const r of rows) {
         const local = yearMode === "local";
+        const vs = yearMode === "vs";
         const src = local ? (r.idx && localSeries ? localSeries[r.idx] : null) : r.pts;
-        const ys = local ? yearly(src) : r.yr;
-        if (!local && !r.pts && !Object.keys(ys).length) { /* dead ETF: dashes below */ }
+        const ys = local ? yearly(src) : vs ? excessYears(r) : r.yr;
+        const isUS = r.etf === US;
         const tr = h("tr");
         const td0 = h("td", "left");
         const a = h("a", "cname", r.name);
@@ -717,12 +788,16 @@
           }
         } else {
           label = r.pts ? r.etf : r.etf + " · not trading";
+          if (vs && isUS) label += " · benchmark";
         }
         td0.appendChild(h("span", "cetf", label));
         tr.appendChild(td0);
         for (const y of YEARS) {
           const v = ys[y];
-          const td = h("td", "heatcell", pct(v));
+          // The US is the yardstick in excess mode; a row of zeroes is noise.
+          if (vs && isUS) { tr.appendChild(h("td", "heatcell", "–")); continue; }
+          const td = h("td", "heatcell",
+            v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + (vs ? "pp" : "%"));
           if (v != null) td.setAttribute("style", heatColour(v));
           tr.appendChild(td);
         }
@@ -738,12 +813,18 @@
         " — these funds were closed, so they are excluded from every price view. Where the " +
         "country still has an index, the local-currency view above still covers it."));
     }
-    host.appendChild(h("p", "yearnote", yearMode === "usd"
-      ? "Dollar returns: each year runs from the previous year's last close to the last close inside the year, so " +
-        THIS_YEAR + " is a year to date. Currency moves are included — a country can be up at home and down here."
-      : "Local-currency returns from each country's own index, so the currency is stripped out. Compare against " +
-        "the dollar view to see what FX did. No usable index for: " +
-        ROWS.filter(r => r.region !== "Benchmark" && !r.idx).map(r => r.name).join(", ") + "."));
+    const NOTE = {
+      usd: "Dollar returns: each year runs from the previous year's last close to the last close inside " +
+        "the year, so " + THIS_YEAR + " is a year to date. Currency moves are included — a country can be " +
+        "up at home and down here.",
+      local: "Local-currency returns from each country's own index, so the currency is stripped out. " +
+        "Compare against the dollar view to see what FX did. No usable index for: " +
+        ROWS.filter(r => r.region !== "Benchmark" && !r.idx).map(r => r.name).join(", ") + ".",
+      vs: "Percentage points ahead of (green) or behind (red) the US that year, both measured in dollars " +
+        "through their ETFs — so this is relative performance, not a currency effect. A country can be up " +
+        "on the year and still red here if the US was up more.",
+    };
+    host.appendChild(h("p", "yearnote", NOTE[yearMode]));
   }
 
   // ---------- tabs ----------
