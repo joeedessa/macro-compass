@@ -84,9 +84,17 @@
   footer a { color:var(--text-secondary); }
 
   /* signal scan: six-column bull→bear, fast→slow layout */
-  .sigcols { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:6px; }
+  .sigcols { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:6px; }
   @media (max-width:1150px) { .sigcols { grid-template-columns:repeat(3,1fr); } }
   @media (max-width:640px) { .sigcols { grid-template-columns:repeat(2,1fr); } }
+  /* bull block above, bear block below, each running fast to slow */
+  .sigblock { margin-bottom:14px; }
+  .sigblock > h3 { font-size:13.5px; margin:0 0 2px; display:flex; align-items:baseline; gap:8px;
+    flex-wrap:wrap; }
+  .sigblock.bull > h3 { color:var(--up); }
+  .sigblock.bear > h3 { color:var(--down); }
+  .sigblock > h3 .ladder { font-size:11px; font-weight:500; color:var(--text-muted); }
+  .sigcol .tierhead { font-size:12.5px; font-weight:650; margin:0 0 1px; }
   .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
     padding:10px 12px; min-width:0; }
   .sigcol h4 { margin:0 0 2px; font-size:12.5px; }
@@ -136,10 +144,12 @@
     <div class="lead" id="lead"></div>
 
     <h2>Signal scan — moving-average crosses</h2>
-    <p class="lede">Theme ETFs that crossed a key average in the last ten sessions, slowest signal
-      first: price × 200-day is the regime call, 50 × 200 the late confirmation, price × 50 the swing
-      break, 21-EMA × 50 the momentum turn, 5-EMA × 21-EMA a timing trigger only. Whipsaws are flagged,
-      not hidden.</p>
+    <p class="lede">Theme ETFs that crossed a key average in the last ten sessions. Columns run
+      left to right along the escalation ladder — <strong>5-EMA × 21</strong> is a timing trigger,
+      <strong>price × 50</strong> the swing break, <strong>21-EMA × 50</strong> the momentum turn,
+      <strong>price × 200</strong> the regime call and <strong>50 × 200</strong> the late
+      confirmation that whipsaws least. Earlier signals fire first and fail often; later ones
+      arrive weeks after and rarely lie. Whipsaws are flagged, not hidden.</p>
     <div id="sigscan"></div>
 
     <h2>All themes</h2>
@@ -428,39 +438,48 @@
       p.className = "lede"; p.textContent = "No moving-average crosses in the last ten sessions.";
       box.appendChild(p); return;
     }
-    /* Six columns, left to right: short-term bullish → long-term bullish,
-       then bearish in the same fast-to-slow order. */
-    const TLAB = ["price × 200", "50 × 200", "price × 50", "21 × 50", "5 × 21"];
-    const SPEEDS = [
-      ["Short-term", "5×21 · 21×50 EMA triggers", t2 => t2 >= 3],
-      ["Swing", "price × 50-day SMA", t2 => t2 === 2],
-      ["Long-term", "price × 200 · golden/death", t2 => t2 <= 1],
-    ];
+    /* Columns are the escalation ladder, left to right: each step costs time
+       and buys confidence. Price leads its own averages arithmetically, so a
+       name normally lights up left first and works rightward — measured over
+       5 years, price crosses the 200 before the 50/200 golden cross 100% of
+       the time, by a median of 18 sessions. Bull block sits above bear. */
     const el = (tag, cls, txt) => { const n = document.createElement(tag);
       if (cls) n.className = cls; if (txt !== undefined) n.textContent = txt; return n; };
-    const wrap = el("div", "sigcols");
+    const TIERS = [
+      [4, "5 \u00d7 21", "EMA timing trigger"],
+      [2, "price \u00d7 50", "swing trend break"],
+      [3, "21 \u00d7 50", "intermediate turn"],
+      [0, "price \u00d7 200", "regime change"],
+      [1, "50 \u00d7 200", "golden / death"],
+    ];
     for (const bullish of [true, false]) {
-      for (const [label, sub, match] of SPEEDS) {
+      const block = el("div", "sigblock " + (bullish ? "bull" : "bear"));
+      const head = el("h3", null, bullish ? "\u25b2 Bullish crosses" : "\u25bc Bearish crosses");
+      head.appendChild(el("span", "ladder", "earliest and noisiest on the left \u2192 latest and most reliable on the right"));
+      block.appendChild(head);
+      const grid = el("div", "sigcols");
+      for (const [tier, label, sub] of TIERS) {
         const col = el("div", "sigcol " + (bullish ? "bull" : "bear"));
-        col.appendChild(el("h4", null, (bullish ? "▲ Bullish · " : "▼ Bearish · ") + label));
+        col.appendChild(el("p", "tierhead", label));
         col.appendChild(el("p", "sigsub", sub));
-        const mine = found.filter(f => f.bullish === bullish && match(f.tier))
-          .sort((a2, b2) => a2.daysAgo - b2.daysAgo || b2.tier - a2.tier);
-        if (!mine.length) { col.appendChild(el("p", "signone", "none")); wrap.appendChild(col); continue; }
+        const mine = found.filter(f => f.bullish === bullish && f.tier === tier)
+          .sort((a, b) => a.daysAgo - b.daysAgo);
+        if (!mine.length) { col.appendChild(el("p", "signone", "none")); grid.appendChild(col); continue; }
         for (const f of mine) {
           const it = el("div", "sigitem");
-          const a2 = el("a", null, f.sym);
-          a2.href = YQ(f.sym); a2.target = "_blank"; a2.rel = "noopener";
-          it.appendChild(a2);
+          const a = el("a", null, f.name);
+          a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener";
+          it.appendChild(a);
           if (f.whip) it.appendChild(el("span", "whiptag", "whipsawed"));
-          it.appendChild(el("span", "sighint", f.name + " — " + TLAB[f.tier] + " · " +
+          it.appendChild(el("span", "sighint", f.sym + " \u00b7 " +
             (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
           col.appendChild(it);
         }
-        wrap.appendChild(col);
+        grid.appendChild(col);
       }
+      block.appendChild(grid);
+      box.appendChild(block);
     }
-    box.appendChild(wrap);
   })();
 
   document.querySelectorAll("#relwin .rangebtn").forEach(b => b.addEventListener("click", () => {

@@ -291,9 +291,17 @@
   @media (prefers-reduced-motion:reduce) { .card-inner { transition:none; } }
 
 /* signal scan: six-column bull→bear, fast→slow layout */
-.sigcols { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:6px; }
+.sigcols { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:6px; }
 @media (max-width:1150px) { .sigcols { grid-template-columns:repeat(3,1fr); } }
 @media (max-width:640px) { .sigcols { grid-template-columns:repeat(2,1fr); } }
+/* bull block above, bear block below, each running fast to slow */
+.sigblock { margin-bottom:14px; }
+.sigblock > h3 { font-size:13.5px; margin:0 0 2px; display:flex; align-items:baseline; gap:8px;
+  flex-wrap:wrap; }
+.sigblock.bull > h3 { color:var(--up); }
+.sigblock.bear > h3 { color:var(--down); }
+.sigblock > h3 .ladder { font-size:11px; font-weight:500; color:var(--text-muted); }
+.sigcol .tierhead { font-size:12.5px; font-weight:650; margin:0 0 1px; }
 .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
   padding:10px 12px; min-width:0; }
 .sigcol h4 { margin:0 0 2px; font-size:12.5px; }

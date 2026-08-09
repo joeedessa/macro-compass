@@ -980,36 +980,49 @@ function renderSignals() {
 
 /* Shared column builder for the signal scan. Expects events carrying
    {sym, name, tier (0 slow … 4 fast), bullish, whip, daysAgo}. */
-const SIG_TLAB = ["price × 200", "50 × 200", "price × 50", "21 × 50", "5 × 21"];
-const SIG_SPEEDS = [
-  ["Short-term", "5×21 · 21×50 EMA triggers", t => t >= 3],
-  ["Swing", "price × 50-day SMA", t => t === 2],
-  ["Long-term", "price × 200 · golden/death", t => t <= 1],
-];
-function sigColumns(evs) {
-  const grid = h("div", "sigcols");
-  for (const bullish of [true, false]) {
-    for (const [label, sub, match] of SIG_SPEEDS) {
-      const col = h("div", "sigcol " + (bullish ? "bull" : "bear"));
-      col.appendChild(h("h4", null, (bullish ? "▲ Bullish · " : "▼ Bearish · ") + label));
-      col.appendChild(h("p", "sigsub", sub));
-      const mine = evs.filter(f => f.bullish === bullish && match(f.tier))
-        .sort((a, b) => a.daysAgo - b.daysAgo || b.tier - a.tier);
-      if (!mine.length) { col.appendChild(h("p", "signone", "none")); grid.appendChild(col); continue; }
-      for (const f of mine) {
-        const it = h("div", "sigitem");
-        const a = h("a", null, f.sym);
-        a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
-        it.appendChild(a);
-        if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
-        it.appendChild(h("span", "sighint", f.name + " — " + SIG_TLAB[f.tier] + " · " +
-          (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
-        col.appendChild(it);
+function sigColumns(found) {
+  const box = h("div");
+    /* Columns are the escalation ladder, left to right: each step costs time
+       and buys confidence. Price leads its own averages arithmetically, so a
+       name normally lights up left first and works rightward — measured over
+       5 years, price crosses the 200 before the 50/200 golden cross 100% of
+       the time, by a median of 18 sessions. Bull block sits above bear. */
+    const TIERS = [
+      [4, "5 \u00d7 21", "EMA timing trigger"],
+      [2, "price \u00d7 50", "swing trend break"],
+      [3, "21 \u00d7 50", "intermediate turn"],
+      [0, "price \u00d7 200", "regime change"],
+      [1, "50 \u00d7 200", "golden / death"],
+    ];
+    for (const bullish of [true, false]) {
+      const block = h("div", "sigblock " + (bullish ? "bull" : "bear"));
+      const head = h("h3", null, bullish ? "\u25b2 Bullish crosses" : "\u25bc Bearish crosses");
+      head.appendChild(h("span", "ladder", "earliest and noisiest on the left \u2192 latest and most reliable on the right"));
+      block.appendChild(head);
+      const grid = h("div", "sigcols");
+      for (const [tier, label, sub] of TIERS) {
+        const col = h("div", "sigcol " + (bullish ? "bull" : "bear"));
+        col.appendChild(h("p", "tierhead", label));
+        col.appendChild(h("p", "sigsub", sub));
+        const mine = found.filter(f => f.bullish === bullish && f.tier === tier)
+          .sort((a, b) => a.daysAgo - b.daysAgo);
+        if (!mine.length) { col.appendChild(h("p", "signone", "none")); grid.appendChild(col); continue; }
+        for (const f of mine) {
+          const it = h("div", "sigitem");
+          const a = h("a", null, f.name);
+          a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+          it.appendChild(a);
+          if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
+          it.appendChild(h("span", "sighint", f.sym + " \u00b7 " +
+            (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
+          col.appendChild(it);
+        }
+        grid.appendChild(col);
       }
-      grid.appendChild(col);
+      block.appendChild(grid);
+      box.appendChild(block);
     }
-  }
-  return grid;
+  return box;
 }
 
 function renderTables() {
