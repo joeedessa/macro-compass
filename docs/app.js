@@ -17,9 +17,7 @@ const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
 const GROUPS = [
   ["us", "US equity"],
   ["mag7", "Magnificent Seven"],
-  ["global", "Global & regional equity"],
-  ["europe", "Europe"],
-  ["asia", "Asia-Pacific & EM"],
+  ["global", "World equity benchmarks"],
   ["sector", "Sectors"],
   ["commodities", "Commodities"],
   ["miners", "Miners"],
@@ -54,23 +52,6 @@ const UNIVERSE = [
   ["GVAL", "Global value (GVAL)", "global"],
   ["EEM", "Emerging markets", "global"],
   ["EFA", "Developed ex-US", "global"],
-  ["ILF", "Latin America 40", "global"],
-  ["^GSPTSE", "Canada TSX", "global"],
-  ["^STOXX50E", "Euro Stoxx 50", "europe"],
-  ["^GDAXI", "Germany DAX", "europe"],
-  ["^FCHI", "France CAC 40", "europe"],
-  ["FTSEMIB.MI", "Italy FTSE MIB", "europe"],
-  ["^IBEX", "Spain IBEX 35", "europe"],
-  ["EWU", "UK (EWU)", "europe"],
-  ["EZU", "Eurozone (EZU)", "europe"],
-  ["^N225", "Japan Nikkei 225", "asia"],
-  ["^AXJO", "Australia ASX 200", "asia"],
-  ["000016.SS", "China SSE 50", "asia"],
-  ["CQQQ", "China tech (CQQQ)", "asia"],
-  ["^BSESN", "India Sensex", "asia"],
-  ["^NSEI", "India Nifty 50", "asia"],
-  ["XU100.IS", "Turkey BIST 100", "asia"],
-  ["TUR", "Turkey (TUR)", "asia"],
   ["IXG", "Global financials", "sector"],
   ["XLF", "US financials", "sector"],
   ["SMH", "Semiconductors", "sector"],
@@ -617,7 +598,7 @@ function renderRegime() {
   top.appendChild(tools);
   head.appendChild(top);
 
-  const eq = UNIVERSE.filter(u => ["us", "mag7", "global", "europe", "asia", "sector"].includes(u[2]) && METRICS[u[0]]);
+  const eq = UNIVERSE.filter(u => ["us", "mag7", "global", "sector"].includes(u[2]) && METRICS[u[0]]);
   const above = eq.filter(u => METRICS[u[0]].aboveMa).length;
   if (eq.length) {
     const b = h("div", "breadth");
