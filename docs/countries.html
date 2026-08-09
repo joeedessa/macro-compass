@@ -114,8 +114,36 @@
   .cetf { color:var(--text-muted); font-size:11px; margin-left:6px; }
   .reg { font-size:10.5px; color:var(--text-muted); display:block; }
   .up { color:var(--up); } .down { color:var(--down); }
-  .rowhead td { background:var(--surface-2) !important; font-weight:650; font-size:11.5px;
-    text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); }
+  th { position:relative; vertical-align:bottom; }
+  th .hlabel { cursor:pointer; display:block; }
+  th.nosort .hlabel { cursor:default; }
+  .hfilter { margin-top:5px; }
+  .hfilter input[type="text"] { font:inherit; font-size:11px; width:100%; min-width:76px;
+    color:var(--text-primary); background:var(--surface-2); border:1px solid var(--border);
+    border-radius:6px; padding:2px 6px; font-weight:400; text-transform:none; letter-spacing:0; }
+  .fbtn { display:block; width:100%; font:inherit; font-size:10.5px; text-transform:none;
+    letter-spacing:0; color:var(--text-muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:6px; padding:1px 6px; cursor:pointer; }
+  .fbtn:hover { color:var(--text-primary); }
+  .fbtn.on { color:#eda100; border-color:#eda100; font-weight:650; }
+  .fpop { position:absolute; top:100%; left:4px; z-index:20; min-width:180px; max-height:260px;
+    overflow:auto; background:var(--surface-1); border:1px solid var(--baseline); border-radius:10px;
+    padding:8px; text-align:left; text-transform:none; letter-spacing:0; font-weight:400;
+    box-shadow:0 8px 24px rgba(0,0,0,0.45); cursor:default; white-space:normal; }
+  .fpop input[type="text"] { width:100%; font:inherit; font-size:12px; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:3px 8px; margin-bottom:6px; }
+  .fpop label.opt { display:flex; gap:7px; align-items:center; font-size:12px;
+    color:var(--text-secondary); padding:2px 0; cursor:pointer; }
+  .fpop label.opt:hover { color:var(--text-primary); }
+  .fpop .fclear { font:inherit; font-size:11px; margin-top:6px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 10px; cursor:pointer; }
+  .fcount { font-size:12px; color:var(--text-muted); margin:0 0 8px; }
+  .fcount b { color:var(--text-primary); font-weight:640; }
+  .fcount button { font:inherit; font-size:11.5px; margin-left:8px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:7px;
+    padding:2px 9px; cursor:pointer; }
 
   /* yearly heat table */
   .heat { font-variant-numeric:tabular-nums; font-weight:600; border-radius:6px; }
@@ -198,8 +226,10 @@
     <div id="sigscan"></div>
 
     <h2>All countries</h2>
-    <p class="lede">Forty-six country markets plus three benchmarks. Table and charts run on the
-      US-listed ETF; the yearly view can switch to each country's own local index.</p>
+    <p class="lede">Forty-six country markets plus three benchmarks. Sort on any column header,
+      and filter by market name or continent from the header row — the filter carries across the
+      table, the charts and the yearly grid. Table and charts run on the US-listed ETF; the yearly
+      view can switch to each country's own local index, or to excess return over the US.</p>
     <div class="tabs" role="tablist">
       <button class="tabbtn" id="tab-table" role="tab" aria-selected="true" type="button">Table<kbd>t</kbd></button>
       <button class="tabbtn" id="tab-charts" role="tab" aria-selected="false" type="button">Charts<kbd>c</kbd></button>
@@ -544,14 +574,117 @@
     box.appendChild(wrap);
   })();
 
+  /* ---------- one filter, shared by every view ----------
+     Filtering in the table and then finding the charts unfiltered would be a
+     trap, so the same predicate gates the table, the charts and the yearly
+     grid. Continent is a column now rather than a run of sub-header rows, so
+     it can be sorted and filtered like anything else. */
+  const FILTER = { q: "", regions: new Set() };
+  const passes = r => {
+    if (FILTER.q && !(r.name + " " + r.etf).toLowerCase().includes(FILTER.q.toLowerCase())) return false;
+    if (FILTER.regions.size && !FILTER.regions.has(r.region)) return false;
+    return true;
+  };
+  const filterActive = () => FILTER.q || FILTER.regions.size;
+  let OPEN_POP = null;             // which header popover is open, and its search text
+
+  function repaint() {
+    renderTable();
+    if ($("#view-charts").dataset.rendered) renderCharts();
+    if ($("#view-yearly").dataset.rendered) renderYearly();
+  }
+
+  /* Text search on the country cell; checkbox multi-select with its own search
+     on continent. Both live inside the header cell. */
+  function headerFilter(th, kind, id) {
+    if (kind === "text") {
+      const box = h("div", "hfilter");
+      const inp = h("input"); inp.type = "text"; inp.placeholder = "search…"; inp.value = FILTER.q;
+      inp.addEventListener("click", e => e.stopPropagation());
+      inp.addEventListener("input", () => {
+        FILTER.q = inp.value;
+        repaint();
+        setTimeout(() => {
+          const el = document.querySelector("#" + id + " .hfilter input");
+          if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+        }, 0);
+      });
+      box.appendChild(inp);
+      th.appendChild(box);
+      return;
+    }
+    const chosen = FILTER.regions;
+    const btn = h("button", "fbtn" + (chosen.size ? " on" : ""),
+      chosen.size ? chosen.size + " selected" : "all");
+    btn.type = "button";
+    const key = id + "|region";
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      OPEN_POP = (OPEN_POP && OPEN_POP.key === key) ? null : { key, q: "" };
+      repaint();
+    });
+    const box = h("div", "hfilter");
+    box.appendChild(btn);
+    th.appendChild(box);
+    if (OPEN_POP && OPEN_POP.key === key) {
+      const pop = h("div", "fpop");
+      pop.addEventListener("click", e => e.stopPropagation());
+      const q = h("input"); q.type = "text"; q.placeholder = "search continents…"; q.value = OPEN_POP.q;
+      const opts = h("div");
+      const paint = () => {
+        opts.textContent = "";
+        for (const reg of REGIONS) {
+          if (OPEN_POP.q && !reg.toLowerCase().includes(OPEN_POP.q.toLowerCase())) continue;
+          const lab = h("label", "opt");
+          const cb = h("input"); cb.type = "checkbox"; cb.checked = chosen.has(reg);
+          cb.addEventListener("change", () => {
+            if (cb.checked) chosen.add(reg); else chosen.delete(reg);
+            repaint();
+          });
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode(reg));
+          opts.appendChild(lab);
+        }
+      };
+      q.addEventListener("input", () => { OPEN_POP.q = q.value; paint(); });
+      paint();
+      const clear = h("button", "fclear", "clear");
+      clear.type = "button";
+      clear.addEventListener("click", () => { chosen.clear(); OPEN_POP = null; repaint(); });
+      pop.appendChild(q); pop.appendChild(opts); pop.appendChild(clear);
+      th.appendChild(pop);
+      setTimeout(() => q.focus(), 0);
+    }
+  }
+
+  /* "showing N of M" with a reset, so a filtered view never looks like the
+     whole world. */
+  function filterCount(host, shown, total) {
+    const p = h("p", "fcount");
+    const b = h("b", null, String(shown));
+    p.appendChild(b);
+    p.appendChild(document.createTextNode(" of " + total + " shown"));
+    if (filterActive()) {
+      const btn = h("button", null, "clear filters");
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        FILTER.q = ""; FILTER.regions.clear(); OPEN_POP = null; repaint();
+      });
+      p.appendChild(btn);
+    }
+    host.appendChild(p);
+  }
+
   // ---------- table ----------
   let sortKey = "ytd", sortAsc = false;
   const COLS = [
-    ["name", "Country", "left"], ["last", "Last"], ["w1", "1W"], ["m1", "1M"],
-    ["m3", "3M"], ["ytd", "YTD"], ["y1", "1Y"], ["rel", "vs ACWI"], ["maGap", "vs 200-day"],
+    ["name", "Country", "left"], ["region", "Continent", "left"], ["last", "Last"],
+    ["w1", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["y1", "1Y"],
+    ["rel", "vs ACWI"], ["maGap", "vs 200-day"],
   ];
   const valOf = (r, k) => {
     if (k === "name") return r.name;
+    if (k === "region") return r.region;
     if (k === "rel") return rel(r, relWin);
     if (k === "last") return r.m.last;
     return r.m[k];
@@ -559,60 +692,59 @@
   function renderTable() {
     const host = $("#view-table");
     host.textContent = "";
+    const rows = PRICED.filter(passes);
+    filterCount(host, rows.length, PRICED.length);
     const wrap = h("div", "tablewrap");
     const table = h("table");
+    table.id = "tbl-main";
     const thead = h("thead"), hr = h("tr");
     for (const [key, label, cls] of COLS) {
       const th = h("th", (cls || "") + (key === sortKey ? " active" + (sortAsc ? " asc" : "") : ""));
-      th.textContent = label + (key === "rel" ? " (" + WINLAB[relWin] + ")" : "");
-      th.addEventListener("click", () => {
+      const lab = h("span", "hlabel", label + (key === "rel" ? " (" + WINLAB[relWin] + ")" : ""));
+      lab.addEventListener("click", () => {
         if (sortKey === key) sortAsc = !sortAsc;
-        else { sortKey = key; sortAsc = key === "name"; }
+        else { sortKey = key; sortAsc = key === "name" || key === "region"; }
         renderTable();
       });
+      th.appendChild(lab);
+      if (key === "name") headerFilter(th, "text", "tbl-main");
+      if (key === "region") headerFilter(th, "region", "tbl-main");
       hr.appendChild(th);
     }
     thead.appendChild(hr); table.appendChild(thead);
     const tb = h("tbody");
-    // Group by region unless the reader has sorted by a number.
-    const grouped = sortKey === "name";
-    const order = grouped ? REGIONS : [null];
-    for (const region of order) {
-      let rows = grouped ? PRICED.filter(r => r.region === region) : PRICED.slice();
-      rows.sort((a, b) => {
-        const va = valOf(a, sortKey), vb = valOf(b, sortKey);
-        if (va == null && vb == null) return 0;
-        if (va == null) return 1;
-        if (vb == null) return -1;
-        const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
-        return sortAsc ? c : -c;
-      });
-      if (!rows.length) continue;
-      if (grouped) {
-        const trh = h("tr", "rowhead");
-        const td = h("td", "left"); td.colSpan = COLS.length; td.textContent = region;
-        trh.appendChild(td); tb.appendChild(trh);
+    rows.sort((a, b) => {
+      const va = valOf(a, sortKey), vb = valOf(b, sortKey);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+      return sortAsc ? c : -c;
+    });
+    for (const r of rows) {
+      const tr = h("tr");
+      const td0 = h("td", "left");
+      const a = h("a", "cname", r.name);
+      a.href = YQ(r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
+      td0.appendChild(a);
+      td0.appendChild(h("span", "cetf", r.etf));
+      tr.appendChild(td0);
+      tr.appendChild(h("td", "left", r.region));
+      tr.appendChild(h("td", null, fmt(r.m.last, 2)));
+      for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
+        const v = r.m[k];
+        tr.appendChild(h("td", v == null ? null : v >= 0 ? "up" : "down", pct(v)));
       }
-      for (const r of rows) {
-        const tr = h("tr");
-        const td0 = h("td", "left");
-        const a = h("a", "cname", r.name);
-        a.href = YQ(r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
-        td0.appendChild(a);
-        td0.appendChild(h("span", "cetf", r.etf));
-        if (!grouped) td0.appendChild(h("span", "reg", r.region));
-        tr.appendChild(td0);
-        tr.appendChild(h("td", null, fmt(r.m.last, 2)));
-        for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
-          const v = r.m[k];
-          tr.appendChild(h("td", v == null ? null : v >= 0 ? "up" : "down", pct(v)));
-        }
-        const rv = rel(r, relWin);
-        tr.appendChild(h("td", rv == null ? null : rv >= 0 ? "up" : "down", pct(rv)));
-        const g = r.m.maGap;
-        tr.appendChild(h("td", g == null ? null : g >= 0 ? "up" : "down", pct(g)));
-        tb.appendChild(tr);
-      }
+      const rv = rel(r, relWin);
+      tr.appendChild(h("td", rv == null ? null : rv >= 0 ? "up" : "down", pct(rv)));
+      const g = r.m.maGap;
+      tr.appendChild(h("td", g == null ? null : g >= 0 ? "up" : "down", pct(g)));
+      tb.appendChild(tr);
+    }
+    if (!rows.length) {
+      const tr = h("tr"), td = h("td", "left");
+      td.colSpan = COLS.length; td.textContent = "No country matches this filter.";
+      tr.appendChild(td); tb.appendChild(tr);
     }
     table.appendChild(tb);
     wrap.appendChild(table);
@@ -651,9 +783,11 @@
   }
   function renderCharts() {
     const host = $("#view-charts");
-    if (host.dataset.done) return;
+    host.textContent = "";
+    const rows = PRICED.filter(passes);
+    filterCount(host, rows.length, PRICED.length);
     const grid = h("div", "chartgrid");
-    for (const r of PRICED) {
+    for (const r of rows) {
       const card = h("div", "chartcard");
       card.appendChild(h("h4", null, r.name));
       card.appendChild(h("p", "csub", r.etf + " · 5y · " + pct(r.m.ytd) + " YTD · " +
@@ -662,11 +796,12 @@
       grid.appendChild(card);
     }
     host.appendChild(grid);
-    host.dataset.done = "1";
+    host.dataset.rendered = "1";
   }
 
   // ---------- yearly ----------
   let yearMode = "usd";   // usd = ETF in dollars, local = home index, vs = excess over the US
+  const yearSort = { key: "name", asc: true };
   let localSeries = null;            // fetched on demand
   const heatColour = v => {
     if (v == null) return "";
@@ -729,6 +864,7 @@
   async function renderYearly() {
     const host = $("#view-yearly");
     host.textContent = "";
+    host.dataset.rendered = "1";
     beatSummary(host);
     const sw = h("div", "switch");
     sw.appendChild(h("span", "slabel", "Measured in"));
@@ -747,62 +883,91 @@
       localSeries = await fetchSeries(COUNTRIES.map(c => c[3]).filter(Boolean));
       return renderYearly();
     }
+    /* Rows carry their own continent rather than sitting under a sub-header,
+       so the grid stays sortable and filterable on every column. */
+    const local = yearMode === "local";
+    const vs = yearMode === "vs";
+    const yrOf = r => local ? yearly(r.idx && localSeries ? localSeries[r.idx] : null)
+                    : vs ? excessYears(r) : r.yr;
+    const rows = ROWS.filter(passes);
+    filterCount(host, rows.length, ROWS.length);
     const wrap = h("div", "tablewrap");
     const table = h("table");
+    table.id = "tbl-year";
     const thead = h("thead"), hr = h("tr");
-    const th0 = h("th", "left nosort"); th0.textContent = "Country"; hr.appendChild(th0);
-    for (const y of YEARS) {
-      const th = h("th", "nosort");
-      th.textContent = y === THIS_YEAR ? y + " YTD" : y;
+    const YCOLS = [["name", "Country", "left"], ["region", "Continent", "left"]]
+      .concat(YEARS.map(y => [String(y), y === THIS_YEAR ? y + " YTD" : String(y), ""]));
+    for (const [key, label, cls] of YCOLS) {
+      const th = h("th", (cls || "") + (key === yearSort.key ? " active" + (yearSort.asc ? " asc" : "") : ""));
+      const lab = h("span", "hlabel", label);
+      lab.addEventListener("click", () => {
+        if (yearSort.key === key) yearSort.asc = !yearSort.asc;
+        else { yearSort.key = key; yearSort.asc = (key === "name" || key === "region"); }
+        renderYearly();
+      });
+      th.appendChild(lab);
+      if (key === "name") headerFilter(th, "text", "tbl-year");
+      if (key === "region") headerFilter(th, "region", "tbl-year");
       hr.appendChild(th);
     }
     thead.appendChild(hr); table.appendChild(thead);
     const tb = h("tbody");
-    for (const region of REGIONS) {
-      const rows = ROWS.filter(r => r.region === region);
-      if (!rows.length) continue;
-      const trh = h("tr", "rowhead");
-      const tdh = h("td", "left"); tdh.colSpan = YEARS.length + 1; tdh.textContent = region;
-      trh.appendChild(tdh); tb.appendChild(trh);
-      for (const r of rows) {
-        const local = yearMode === "local";
-        const vs = yearMode === "vs";
-        const src = local ? (r.idx && localSeries ? localSeries[r.idx] : null) : r.pts;
-        const ys = local ? yearly(src) : vs ? excessYears(r) : r.yr;
-        const isUS = r.etf === US;
-        const tr = h("tr");
-        const td0 = h("td", "left");
-        const a = h("a", "cname", r.name);
-        a.href = YQ(local && r.idx ? r.idx : r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
-        td0.appendChild(a);
-        /* Some exchanges lag in this feed by a few weeks. Complete calendar
-           years are unaffected, but the running year would silently be an
-           as-of number, so the cell says how far the data actually runs. */
-        let label;
-        if (local) {
-          label = r.idx || "no index";
-          if (src && src.length) {
-            const age = daysOld(src);
-            if (age > 14) label += " · to " + src[src.length - 1][0].slice(8, 10) +
-              "-" + src[src.length - 1][0].slice(5, 7);
-          }
-        } else {
-          label = r.pts ? r.etf : r.etf + " · not trading";
-          if (vs && isUS) label += " · benchmark";
+    const yval = (r, k) => {
+      if (k === "name") return r.name;
+      if (k === "region") return r.region;
+      const v = yrOf(r)[Number(k)];
+      return v == null ? null : v;
+    };
+    rows.sort((a, b) => {
+      const va = yval(a, yearSort.key), vb = yval(b, yearSort.key);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+      return yearSort.asc ? c : -c;
+    });
+    for (const r of rows) {
+      const src = local ? (r.idx && localSeries ? localSeries[r.idx] : null) : r.pts;
+      const ys = yrOf(r);
+      const isUS = r.etf === US;
+      const tr = h("tr");
+      const td0 = h("td", "left");
+      const a = h("a", "cname", r.name);
+      a.href = YQ(local && r.idx ? r.idx : r.etf); a.target = "_blank"; a.rel = "noopener noreferrer";
+      td0.appendChild(a);
+      /* Some exchanges lag in this feed by a few weeks. Complete calendar
+         years are unaffected, but the running year would silently be an
+         as-of number, so the cell says how far the data actually runs. */
+      let label;
+      if (local) {
+        label = r.idx || "no index";
+        if (src && src.length) {
+          const age = daysOld(src);
+          if (age > 14) label += " · to " + src[src.length - 1][0].slice(8, 10) +
+            "-" + src[src.length - 1][0].slice(5, 7);
         }
-        td0.appendChild(h("span", "cetf", label));
-        tr.appendChild(td0);
-        for (const y of YEARS) {
-          const v = ys[y];
-          // The US is the yardstick in excess mode; a row of zeroes is noise.
-          if (vs && isUS) { tr.appendChild(h("td", "heatcell", "–")); continue; }
-          const td = h("td", "heatcell",
-            v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + (vs ? "pp" : "%"));
-          if (v != null) td.setAttribute("style", heatColour(v));
-          tr.appendChild(td);
-        }
-        tb.appendChild(tr);
+      } else {
+        label = r.pts ? r.etf : r.etf + " · not trading";
+        if (vs && isUS) label += " · benchmark";
       }
+      td0.appendChild(h("span", "cetf", label));
+      tr.appendChild(td0);
+      tr.appendChild(h("td", "left", r.region));
+      for (const y of YEARS) {
+        const v = ys[y];
+        // The US is the yardstick in excess mode; a row of zeroes is noise.
+        if (vs && isUS) { tr.appendChild(h("td", "heatcell", "–")); continue; }
+        const td = h("td", "heatcell",
+          v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + (vs ? "pp" : "%"));
+        if (v != null) td.setAttribute("style", heatColour(v));
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+    }
+    if (!rows.length) {
+      const tr = h("tr"), td = h("td", "left");
+      td.colSpan = YCOLS.length; td.textContent = "No country matches this filter.";
+      tr.appendChild(td); tb.appendChild(tr);
     }
     table.appendChild(tb);
     wrap.appendChild(table);
@@ -846,6 +1011,8 @@
     if (e.key === "c") showTab("charts");
     if (e.key === "y") showTab("yearly");
   });
+
+  document.addEventListener("click", () => { if (OPEN_POP) { OPEN_POP = null; repaint(); } });
 
   renderLead();
   renderTable();
