@@ -76,20 +76,30 @@
   .sigblock.bull > h3 { color:var(--up); }
   .sigblock.bear > h3 { color:var(--down); }
   .sigblock > h3 .ladder { font-size:11px; font-weight:500; color:var(--text-muted); }
-  .sigcol .tierhead { font-size:12.5px; font-weight:650; margin:0 0 1px; }
+  .sigcol .tierhead { font-size:14px; font-weight:680; margin:0; padding:10px 12px 1px;
+    color:var(--text-primary); letter-spacing:-0.01em; }
+  .sigblock.bull .sigcol .tierhead, .sigblock.bull .sigcol .sigsub {
+    background:color-mix(in srgb, var(--surface-2) 84%, var(--up)); }
+  .sigblock.bear .sigcol .tierhead, .sigblock.bear .sigcol .sigsub {
+    background:color-mix(in srgb, var(--surface-2) 84%, var(--down)); }
+  .sigblock.bull .sigcol .sigsub { border-bottom:1px solid var(--up); }
+  .sigblock.bear .sigcol .sigsub { border-bottom:1px solid var(--down); }
   .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
-    padding:10px 12px; min-width:0; }
+    padding:0 0 8px; min-width:0; overflow:hidden; }
   .sigcol h4 { margin:0 0 2px; font-size:12.5px; }
   .sigcol.bull h4 { color:var(--up); }
   .sigcol.bear h4 { color:var(--down); }
-  .sigcol .sigsub { font-size:10.5px; color:var(--text-muted); margin:0 0 8px; }
-  .sigitem { padding:5px 0; border-top:1px solid var(--grid); font-size:12.5px; }
+  .sigcol .sigsub { font-size:11.5px; color:var(--text-secondary); margin:0;
+    padding:0 12px 8px; }
+  .sigitem { padding:5px 12px; border-top:1px solid var(--grid); font-size:12.5px; }
+  .sigcol div.sigitem:first-of-type { border-top:none; padding-top:8px; }
   .sigitem a { color:var(--text-primary); font-weight:600; text-decoration:none; }
   .sigitem a:hover { text-decoration:underline; }
   .sigitem .sighint { display:block; font-size:10.5px; color:var(--text-muted); white-space:normal; }
   .sigitem .whiptag { color:var(--series-2); font-size:10px; border:1px solid var(--border);
     border-radius:4px; padding:0 4px; margin-left:5px; }
-  .sigcol .signone { font-size:11.5px; color:var(--text-muted); margin:0; }
+  .sigcol .signone { font-size:11.5px; color:var(--text-muted);
+    margin:0; padding:9px 12px 2px; }
 
   /* tabs */
   .tabs { display:flex; gap:5px; margin:10px 0 12px; flex-wrap:wrap; }
