@@ -17,6 +17,7 @@ const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
 const GROUPS = [
   ["us", "US equity"],
   ["mag7", "Magnificent Seven"],
+  ["style", "Size and style"],
   ["global", "World equity benchmarks"],
   ["sector", "Sectors"],
   ["commodities", "Commodities"],
@@ -48,15 +49,31 @@ const UNIVERSE = [
   ["IYT", "Transportation", "family"],
   ["IBB", "Biotech", "family"],
   ["BTC-USD", "Bitcoin", "family"],
+  ["IVV", "S&P 500 large blend", "style"],
+  ["IVE", "S&P 500 large value", "style"],
+  ["IVW", "S&P 500 large growth", "style"],
+  ["IJH", "S&P 400 mid blend", "style"],
+  ["IJJ", "S&P 400 mid value", "style"],
+  ["IJK", "S&P 400 mid growth", "style"],
+  ["IJR", "S&P 600 small blend", "style"],
+  ["IJS", "S&P 600 small value", "style"],
+  ["IJT", "S&P 600 small growth", "style"],
   ["ACWI", "MSCI ACWI", "global"],
   ["GVAL", "Global value (GVAL)", "global"],
   ["EEM", "Emerging markets", "global"],
   ["EFA", "Developed ex-US", "global"],
-  ["IXG", "Global financials", "sector"],
-  ["XLF", "US financials", "sector"],
+  ["XLK", "Technology", "sector"],
   ["SMH", "Semiconductors", "sector"],
+  ["XLF", "Financials", "sector"],
   ["XLY", "Consumer discretionary", "sector"],
+  ["XLI", "Industrials", "sector"],
+  ["XLE", "Energy", "sector"],
+  ["XLB", "Materials", "sector"],
+  ["XLC", "Communication services", "sector"],
+  ["XLV", "Health care", "sector"],
   ["XLP", "Consumer staples", "sector"],
+  ["XLU", "Utilities", "sector"],
+  ["XLRE", "Real estate", "sector"],
   ["GC=F", "Gold", "commodities"],
   ["SI=F", "Silver", "commodities"],
   ["PL=F", "Platinum", "commodities"],
@@ -108,6 +125,32 @@ const RATIOS = [
   ["GDX", "GLD", "Gold miners vs gold", "Miners leading the metal", "Miners lagging the metal"],
   ["GDXJ", "GDX", "Junior vs senior gold miners", "Risk appetite within miners rising", "Juniors being derisked"],
   ["COPX", "HG=F", "Copper miners vs copper", "Miners leading the metal", "Miners lagging the metal"],
+  ["XLU", "SPY", "Utilities vs market", "Defensive bid building", "Defensives being sold"],
+  ["IVE", "IVW", "Large value vs large growth", "Value leading", "Growth leading"],
+  ["IJS", "IVE", "Small value vs large value", "Value breadth widening down-cap", "Value concentrating in large caps"],
+  ["SPY", "TLT", "Equities vs long Treasuries", "Equities preferred over duration", "Duration preferred over equities"],
+  ["GLD", "STIP", "Gold vs short TIPS", "Gold outrunning real-rate protection", "Real-rate protection preferred"],
+  ["LQD", "IEF", "Credit vs Treasuries", "Investment-grade risk rewarded", "Quality being favoured"],
+];
+
+/* ---- US equity internals ----------------------------------------------
+   The size-and-style box: three capitalisation bands by three style tilts.
+   Reading it as a grid rather than a list is the point — leadership usually
+   travels along a row or a column, and that is the shape you want to see. */
+const STYLE_BOX = {
+  rows: [["Large", "IVE", "IVV", "IVW"],
+         ["Mid", "IJJ", "IJH", "IJK"],
+         ["Small", "IJS", "IJR", "IJT"]],
+  cols: ["Value", "Blend", "Growth"],
+};
+/* Risk appetite read as sector pairs. Each is a cyclical leg over a defensive
+   one, so all four rising together is a clean risk-on tape and a split is the
+   more common, more informative case. */
+const RISK_PAIRS = [
+  ["XLY", "XLP", "Discretionary vs staples"],
+  ["XLK", "XLU", "Technology vs utilities"],
+  ["XLI", "XLV", "Industrials vs health care"],
+  ["XLF", "XLU", "Financials vs utilities"],
 ];
 
 /* The Economic Modern Family — a framework published by Mish Schneider of
@@ -512,7 +555,7 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
-  if (live) { renderRegime(); renderMovers(); renderFamily(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
+  if (live) { renderRegime(); renderMovers(); renderFamily(); renderInternals(); renderCross(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
   renderMacro();
   renderOfficial();
   renderSentiment();
@@ -704,6 +747,223 @@ function renderMovers() {
     t.appendChild(sub);
     box.appendChild(t);
   }
+}
+
+/* ---- US equity internals: style box, risk appetite, breadth -------------
+   Markets answers two questions since Countries took geography: what is the
+   US equity market doing underneath the index, and what is moving across
+   asset classes. This renders the first. */
+function renderInternals() {
+  const box = $("#internals");
+  if (!box) return;
+  box.textContent = "";
+  const spec = WINDOWS.find(w => w[0] === RS_WINDOW)[1];
+  const winRet = sym => {
+    const s = SERIES[sym];
+    if (!s || s.length < 3) return null;
+    const view = windowSlice(s, spec);
+    if (!view || view.length < 2) return null;
+    return (view[view.length - 1][1] / view[0][1] - 1) * 100;
+  };
+  const spx = winRet("SPY");
+  const label = (WINDOWS.find(w => w[0] === RS_WINDOW) || [null, null, RS_WINDOW])[2] || RS_WINDOW;
+
+  // --- style box: 3 x 3, coloured by excess over SPY ---
+  const sec = h("section", "intblock");
+  const head = h("h3", null, "Size and style");
+  head.appendChild(h("span", "intsub", "return over " + label + ", shaded by excess over SPY"));
+  sec.appendChild(head);
+  const grid = h("div", "stylebox");
+  grid.appendChild(h("div", "sbcorner", ""));
+  for (const c of STYLE_BOX.cols) grid.appendChild(h("div", "sbcol", c));
+  for (const [rowName, ...syms] of STYLE_BOX.rows) {
+    grid.appendChild(h("div", "sbrow", rowName));
+    for (const sym of syms) {
+      const v = winRet(sym);
+      const cell = h("div", "sbcell");
+      if (v == null) { cell.appendChild(h("div", "sbval", "–")); grid.appendChild(cell); continue; }
+      const ex = spx == null ? null : v - spx;
+      if (ex != null) {
+        const a = Math.min(Math.abs(ex) / 8, 1) * 0.45;
+        cell.setAttribute("style", "background:rgba(" +
+          (ex >= 0 ? "12,163,12," : "208,59,59,") + a.toFixed(2) + ")");
+      }
+      cell.appendChild(h("div", "sbval", (v > 0 ? "+" : "") + fmtNum(v, 1) + "%"));
+      cell.appendChild(h("div", "sbex", ex == null ? sym
+        : sym + " · " + (ex > 0 ? "+" : "") + fmtNum(ex, 1) + " vs SPY"));
+      grid.appendChild(cell);
+    }
+  }
+  sec.appendChild(grid);
+  // read the grid out loud: which row and which column is winning
+  const rowAvg = STYLE_BOX.rows.map(([n, ...s]) => {
+    const v = s.map(winRet).filter(x => x != null);
+    return [n, v.length ? v.reduce((a, b) => a + b, 0) / v.length : null];
+  }).filter(x => x[1] != null);
+  const colAvg = STYLE_BOX.cols.map((c, i) => {
+    const v = STYLE_BOX.rows.map(r => winRet(r[i + 1])).filter(x => x != null);
+    return [c, v.length ? v.reduce((a, b) => a + b, 0) / v.length : null];
+  }).filter(x => x[1] != null);
+  if (rowAvg.length && colAvg.length) {
+    const bestRow = rowAvg.slice().sort((a, b) => b[1] - a[1])[0];
+    const worstRow = rowAvg.slice().sort((a, b) => a[1] - b[1])[0];
+    const bestCol = colAvg.slice().sort((a, b) => b[1] - a[1])[0];
+    sec.appendChild(h("p", "secsum",
+      bestRow[0].toLowerCase() + " caps lead over " + label + " (" + fmtNum(bestRow[1], 1) + "%) and " +
+      worstRow[0].toLowerCase() + " lag (" + fmtNum(worstRow[1], 1) + "%); " +
+      bestCol[0].toLowerCase() + " is the winning tilt across sizes. " +
+      (bestRow[0] === "Large" ? "Leadership is still up-cap — the index is carrying the market."
+                              : "Leadership has moved down-cap, which is a broader tape.")));
+  }
+  box.appendChild(sec);
+
+  // --- risk appetite: cyclical over defensive pairs ---
+  const sec2 = h("section", "intblock");
+  const head2 = h("h3", null, "Risk appetite");
+  head2.appendChild(h("span", "intsub", "cyclical leg over defensive leg, " + label));
+  sec2.appendChild(head2);
+  const strip = h("div", "riskstrip");
+  let on = 0, tot = 0;
+  for (const [a, b, name] of RISK_PAIRS) {
+    const va = winRet(a), vb = winRet(b);
+    if (va == null || vb == null) continue;
+    const sp = va - vb;
+    tot++; if (sp > 0) on++;
+    const card = h("div", "riskcard " + (sp > 0 ? "on" : "off"));
+    card.appendChild(h("div", "rcname", name));
+    card.appendChild(h("div", "rcval", (sp > 0 ? "+" : "") + fmtNum(sp, 1) + "pp"));
+    card.appendChild(h("div", "rcsub", a + " " + (va > 0 ? "+" : "") + fmtNum(va, 1) +
+      "% vs " + b + " " + (vb > 0 ? "+" : "") + fmtNum(vb, 1) + "%"));
+    strip.appendChild(card);
+  }
+  sec2.appendChild(strip);
+  if (tot) {
+    sec2.appendChild(h("p", "secsum", on + " of " + tot + " cyclical-over-defensive pairs positive over " +
+      label + " — " + (on === tot ? "a clean risk-on tape."
+        : on === 0 ? "defensives are winning across the board, a risk-off tape."
+        : "a split tape: risk appetite is selective, not general.")));
+  }
+  box.appendChild(sec2);
+
+  // --- breadth: how much of the market is actually participating ---
+  const eq = UNIVERSE.filter(u => ["us", "style", "sector", "mag7", "family"].includes(u[2]));
+  const withMa = eq.map(u => METRICS[u[0]]).filter(m => m && m.aboveMa != null);
+  if (withMa.length >= 10) {
+    const above = withMa.filter(m => m.aboveMa).length;
+    const share = Math.round(above / withMa.length * 100);
+    const up1 = eq.map(u => METRICS[u[0]]).filter(m => m && m.d1 != null);
+    const upToday = up1.filter(m => m.d1 > 0).length;
+    const sec3 = h("section", "intblock");
+    const head3 = h("h3", null, "Breadth");
+    head3.appendChild(h("span", "intsub", "US equity instruments on this page"));
+    sec3.appendChild(head3);
+    const bs = h("div", "riskstrip");
+    const mk = (name, val, sub, good) => {
+      const c = h("div", "riskcard " + (good ? "on" : "off"));
+      c.appendChild(h("div", "rcname", name));
+      c.appendChild(h("div", "rcval", val));
+      c.appendChild(h("div", "rcsub", sub));
+      return c;
+    };
+    bs.appendChild(mk("Above the 200-day", share + "%", above + " of " + withMa.length, share >= 50));
+    bs.appendChild(mk("Higher today", Math.round(upToday / up1.length * 100) + "%",
+      upToday + " of " + up1.length, upToday * 2 >= up1.length));
+    sec3.appendChild(bs);
+    sec3.appendChild(h("p", "secsum", share >= 70
+      ? "Broad participation — the trend is carried by the many, not the few."
+      : share >= 40
+        ? "Mixed participation: roughly half the market is above its own 200-day, so index strength is selective."
+        : "Narrow participation — most instruments are below their 200-day, and the index is being held up by a few."));
+    box.appendChild(sec3);
+  }
+}
+
+/* ---- cross-asset map ----------------------------------------------------
+   The second question Markets owns: what is driving what across asset
+   classes. Each row pairs an official macro series (real yields, breakevens,
+   credit, the curve) with the market that trades off it, and states the
+   relationship in words rather than leaving the reader to infer it. */
+const CROSS = [
+  { macro: "us_real_10y", mkt: "GLD", name: "Real yields \u2192 gold",
+    why: "Gold pays no coupon, so the real yield is its opportunity cost. Rising real yields are a headwind; gold rising anyway means something else is bidding it.",
+    align: {
+      upUp: "Real yields rising and gold rising anyway \u2014 gold is being bid for a reason other than rates.",
+      upDown: "Real yields rising and gold falling \u2014 the textbook headwind, working as expected.",
+      downUp: "Real yields falling with gold rising \u2014 the textbook tailwind.",
+      downDown: "Real yields falling but gold soft \u2014 the tailwind is not being taken." } },
+  { macro: "us_breakeven_10y", mkt: "CL=F", name: "Breakevens \u2192 oil",
+    why: "Market-implied inflation and crude feed each other; energy is the largest single input to headline inflation expectations.",
+    align: {
+      upUp: "Breakevens and crude rising together \u2014 an inflation impulse with a real driver behind it.",
+      upDown: "Breakevens rising without crude \u2014 inflation expectations building on something other than energy.",
+      downUp: "Crude rising while breakevens ease \u2014 the market is reading it as supply, not inflation.",
+      downDown: "Both easing \u2014 the inflation impulse is draining." } },
+  { macro: "cr_hy_oas", mkt: "SPY", name: "Credit spreads \u2192 equity",
+    why: "Credit usually cracks before equity does. Spreads widening while equity holds is the classic warning; the reverse is a healthy risk tape.",
+    align: {
+      upUp: "Spreads widening while equity rises \u2014 credit is not confirming the equity move.",
+      upDown: "Spreads widening with equity falling \u2014 both markets derisking together.",
+      downUp: "Spreads tightening with equity rising \u2014 risk appetite confirmed by both markets.",
+      downDown: "Spreads tightening but equity soft \u2014 credit says the tape is fine." } },
+  { macro: "us_yield_spread", mkt: "XLF", name: "Curve \u2192 banks",
+    why: "Banks borrow short and lend long, so a steepening 2s10s curve widens net interest margin. Financials leading a steepening is the market pricing that through.",
+    align: {
+      upUp: "Curve steepening with financials leading \u2014 margin expansion being priced.",
+      upDown: "Curve steepening but financials lagging \u2014 the market doubts banks capture it.",
+      downUp: "Curve flattening while financials lead \u2014 leadership is coming from somewhere other than margin.",
+      downDown: "Curve flattening with financials lagging \u2014 margin pressure being priced." } },
+];
+
+function renderCross() {
+  const box = $("#crossasset");
+  if (!box) return;
+  box.textContent = "";
+  const M = (MACRO && MACRO.series) || {};
+  const chg = (pts, days) => {
+    if (!pts || pts.length < 2) return null;
+    const last = pts[pts.length - 1][1];
+    const i = Math.max(0, pts.length - 1 - days);
+    const base = pts[i][1];
+    return { last, delta: last - base, pct: base ? (last / base - 1) * 100 : null };
+  };
+  const DAYS = 63;                    // about a quarter of trading
+  let built = 0;
+  for (const row of CROSS) {
+    const ms = M[row.macro];
+    const mpts = ms && (ms.points || ms.data);
+    const mk = SERIES[row.mkt];
+    if (!mpts || !mk) continue;
+    const a = chg(mpts, Math.min(DAYS, mpts.length - 1));
+    const b = chg(mk, Math.min(DAYS, mk.length - 1));
+    if (!a || !b) continue;
+    /* Keyed by the sign pair (macro leg, market leg) rather than by position:
+       the four rows describe their combinations in different natural orders,
+       and a positional lookup silently mismatched two of them. */
+    const key = (a.delta >= 0 ? "up" : "down") + (b.pct >= 0 ? "Up" : "Down");
+    const verdict = row.align[key] || "";
+    const card = h("div", "crosscard");
+    const hd = h("div", "chead");
+    hd.appendChild(h("span", "cname", row.name));
+    hd.appendChild(h("span", "cwin", "3-month"));
+    card.appendChild(hd);
+    const legs = h("div", "clegs");
+    const leg = (label, val, up) => {
+      const d = h("div", "cleg " + (up ? "up" : "down"));
+      d.appendChild(h("span", "clabel", label));
+      d.appendChild(h("span", "cval", val));
+      return d;
+    };
+    legs.appendChild(leg(ms.label || row.macro,
+      (a.delta > 0 ? "+" : "") + fmtNum(a.delta, 2) + (ms.unit === "pp" ? "pp" : "pp") +
+      " → " + fmtNum(a.last, 2) + (ms.unit === "pp" ? "pp" : "%"), a.delta >= 0));
+    legs.appendChild(leg(row.mkt, (b.pct > 0 ? "+" : "") + fmtNum(b.pct, 1) + "%", b.pct >= 0));
+    card.appendChild(legs);
+    card.appendChild(h("p", "cverdict", verdict));
+    card.appendChild(h("p", "cwhy", row.why));
+    box.appendChild(card);
+    built++;
+  }
+  if (!built) box.appendChild(h("p", "muted", "Cross-asset pairs need the macro feed; it has not loaded."));
 }
 
 function renderRatios() {

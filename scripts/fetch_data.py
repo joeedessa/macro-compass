@@ -296,6 +296,15 @@ SERIES = [
      lambda: wb_gold_component("jpn"),
      "World Bank", "https://data.worldbank.org/indicator/FI.RES.TOTL.CD?locations=JP"),
     # --- Credit spreads (the cleaner credit signal; HYG/IEF is only a proxy) ---
+    # Real yield and breakeven: the two legs the 10-year nominal splits into.
+    # Gold trades off the real leg and commodities off the inflation leg, so
+    # the cross-asset reads need them separated, not just the nominal yield.
+    ("us_real_10y", "10-year real yield (TIPS)", "%", "daily", "us",
+     lambda: trim(fetch_fred("DFII10"), 15),
+     "FRED · Treasury", FRED_URL + "DFII10"),
+    ("us_breakeven_10y", "10-year breakeven inflation", "%", "daily", "us",
+     lambda: trim(fetch_fred("T10YIE"), 15),
+     "FRED · Treasury", FRED_URL + "T10YIE"),
     ("cr_hy_oas", "US high yield OAS", "pp", "daily", "credit",
      lambda: trim(fetch_fred("BAMLH0A0HYM2"), 15),
      "FRED · ICE BofA", FRED_URL + "BAMLH0A0HYM2"),

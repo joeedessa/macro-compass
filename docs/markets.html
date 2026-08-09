@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809p">
+<link rel="stylesheet" href="styles.css?v=20260809q">
 </head>
 <body>
 <div class="wrap">
@@ -29,14 +29,30 @@
   </nav>
 
   <nav class="jump" id="jump" aria-label="Jump to section">
-    <a href="#s-signals" data-key="1">Signals<kbd>1</kbd></a>
-    <a href="#s-rs" data-key="2">Relative strength<kbd>2</kbd></a>
-    <a href="#s-markets" data-key="3">All instruments<kbd>3</kbd></a>
+    <a href="#s-cross" data-key="1">Cross-asset<kbd>1</kbd></a>
+    <a href="#s-internals" data-key="2">Internals<kbd>2</kbd></a>
+    <a href="#s-signals" data-key="3">Signals<kbd>3</kbd></a>
+    <a href="#s-rs" data-key="4">Relative strength<kbd>4</kbd></a>
+    <a href="#s-markets" data-key="5">All instruments<kbd>5</kbd></a>
   </nav>
 
   <p id="status" hidden></p>
 
   <div id="markets" hidden>
+    <h2 id="s-cross">Cross-asset — what is driving what</h2>
+    <p class="lede">Each pair puts an official macro series next to the market that trades off it,
+      over the last three months, and says whether they are moving together or fighting. The
+      relationship breaking is usually more informative than either leg on its own — gold rising
+      into rising real yields, or equity rising while credit spreads widen, is the market telling
+      you the obvious driver is not the one in charge.</p>
+    <div id="crossasset" class="crossgrid"></div>
+
+    <h2 id="s-internals">US equity internals</h2>
+    <p class="lede">What the index is hiding: which size and style box is actually leading, whether
+      cyclicals are beating defensives, and how much of the market is participating. Uses the
+      relative-strength window selected below.</p>
+    <div id="internals"></div>
+
     <h2 id="s-signals">Signal scan — moving-average crosses</h2>
     <p class="lede">Every cross in the last ten sessions across all instruments, laid out along the
       escalation ladder. Left to right: <strong>5-EMA × 21</strong> is a timing trigger only;
@@ -76,7 +92,7 @@
       Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
   </footer>
 </div>
-<script src="info.js?v=20260809p"></script>
-<script src="app.js?v=20260809p"></script>
+<script src="info.js?v=20260809q"></script>
+<script src="app.js?v=20260809q"></script>
 </body>
 </html>
