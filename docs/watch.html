@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809h">
+<link rel="stylesheet" href="styles.css?v=20260809i">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -98,11 +98,26 @@
   .albox.warn { background:var(--mixed-bg); }
   .albox.bad { background:var(--off-bg); }
   .albox strong { font-weight:650; }
-  details.addwrap { margin-bottom:14px; }
-  details.addwrap summary { cursor:pointer; list-style:none; }
+  details.addwrap { margin:0 0 10px; }
+  details.addwrap summary { cursor:pointer; list-style:none; display:inline-block;
+    font-size:12.5px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:8px; padding:5px 12px; }
+  details.addwrap summary:hover { color:var(--text-primary); }
   details.addwrap summary::before { content:"▸ "; color:var(--text-muted); }
   details.addwrap[open] summary::before { content:"▾ "; }
-  details.addwrap summary h2 { display:inline; margin:0; }
+  details.addwrap form { margin-top:10px; }
+  h2.secline { font-size:15.5px; margin:26px 0 3px; }
+  h2.secline .cnt { color:var(--text-muted); font-weight:500; font-size:13px; }
+  .lede.tight { margin-bottom:9px; font-size:12.5px; }
+  .toolbar { margin:0 0 12px; }
+  .days { display:block; font-size:11px; font-variant-numeric:tabular-nums; }
+  .days.d7 { color:var(--down); font-weight:650; }
+  .days.d14 { color:#c98500; font-weight:620; }
+  .days.dfar { color:var(--text-muted); }
+  td.riskcell { color:var(--down); }
+  /* frozen headers while the table is in view (JS-driven translateY) */
+  table.wl thead th { background:var(--surface-1); position:relative; z-index:4; }
+  table.wl thead th.left { z-index:6; }
   /* filters live inside the header cells, shown on demand */
   th .hlabel { cursor:pointer; display:block; }
   th.nosort .hlabel { cursor:default; }
@@ -153,7 +168,7 @@
   </nav>
 
   <details class="addwrap">
-  <summary><h2>Add a setup</h2></summary>
+  <summary>Add a setup</summary>
   <p class="lede">Four levels per trade, all optional except the alert:
     <strong>alert</strong> pings when price is beyond your level; <strong>negation</strong> is the
     invalidation — a close beyond it archives the trade automatically; <strong>target</strong> is where
@@ -189,32 +204,28 @@
 
   <div id="alerts"></div>
 
-  <h2>Watchlist</h2>
-  <p class="lede"><strong>Live</strong> is the latest price (delayed ~15 min and possibly mid-session);
-    <strong>Prev close</strong> is the last settled daily close. State changes use settled closes only
-    — a stock trading beyond its trigger intraday shows an amber alert above, and moves to Confirmed
-    breakouts when a close seals it. Click a header to sort; use the filter row to narrow.</p>
+  <h2 class="secline">Waiting for trigger <span class="cnt" id="cnt-watch"></span></h2>
+  <p class="lede tight">States change on settled closes only — Live is delayed and can be mid-session.
+    An amber alert above marks an intraday breach awaiting its close.</p>
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
     <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
     Import JSON, or add a single setup with the form above.</p>
   <div class="tablewrap wl" id="sec-watch"></div>
 
-  <h2>Confirmed breakouts</h2>
-  <p class="lede">Triggered trades, with the confirming close and date. From here a close beyond
-    the negation moves the trade to Failed; reaching the target moves it to Reached target.</p>
+  <h2 class="secline">Confirmed breakouts <span class="cnt" id="cnt-breakout"></span></h2>
+  <p class="lede tight">A close beyond the negation moves a trade to Failed; reaching the target
+    moves it to Reached target.</p>
   <p id="empty-breakout" class="lede" hidden>No confirmed breakouts yet.</p>
   <div class="tablewrap wl" id="sec-breakout"></div>
 
-  <h2>Reached price target</h2>
-  <p class="lede">Trades that closed at or beyond their target. They may well still be in play —
-    that's part of the game — so negation keeps being checked and a later invalidation still moves
-    them to Failed.</p>
+  <h2 class="secline">Reached price target <span class="cnt" id="cnt-target"></span></h2>
+  <p class="lede tight">Often still in play — negation keeps being checked and a later invalidation
+    still moves them to Failed.</p>
   <p id="empty-target" class="lede" hidden>None yet.</p>
   <div class="tablewrap wl" id="sec-target"></div>
 
-  <h2>Failed breakouts</h2>
-  <p class="lede">Negated patterns, with the close that invalidated them. Manually archived trades
-    land here too.</p>
+  <h2 class="secline">Failed breakouts <span class="cnt" id="cnt-failed"></span></h2>
+  <p class="lede tight">Negated patterns, with the close that invalidated them.</p>
   <p id="empty-failed" class="lede" hidden>None — nothing has been negated.</p>
   <div class="tablewrap wl" id="sec-failed"></div>
 
@@ -363,6 +374,22 @@
 
   const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
   const pct1 = v => v == null ? null : Math.round(v * 10) / 10;
+  // Display dates as DD-MM-YY; keep ISO internally for sorting and rules.
+  const fmtD = iso => {
+    if (!iso || iso.length < 10) return iso || "–";
+    return iso.slice(8, 10) + "-" + iso.slice(5, 7) + "-" + iso.slice(2, 4);
+  };
+  const daysUntil = iso => {
+    if (!iso) return null;
+    return Math.round((new Date(iso) - new Date(new Date().toISOString().slice(0, 10))) / 864e5);
+  };
+  // "in x days" tag with urgency colour: red ≤7d, amber ≤14d, muted beyond.
+  const daysTag = iso => {
+    const d = daysUntil(iso);
+    if (d == null || d < 0) return null;
+    const cls = d <= 7 ? "d7" : d <= 14 ? "d14" : "dfar";
+    return h("span", "days " + cls, d === 0 ? "today" : "in " + d + " day" + (d > 1 ? "s" : ""));
+  };
 
   function rowData(p, st) {
     const hist = HIST[p.sym];
@@ -378,10 +405,21 @@
       prevClose: prev ? prev[1] : null,
       prevDate: prev ? prev[0] : "",
       currency: hist ? hist.currency : "",
-      gap, ev,
-      // Payoff if the pattern completes: trigger level to price target.
-      upside: (p.breakthrough && p.target)
-        ? pct1((p.dir === "long" ? p.target / p.breakthrough - 1 : 1 - p.target / p.breakthrough) * 100)
+      // Signed distance to trigger: shorts read negative (price must fall).
+      gap: gap == null ? null : (p.dir === "short" ? -gap : gap),
+      ev,
+      /* Upside: waiting setups measure trigger → target (pattern payoff);
+         confirmed ones measure LIVE → target (what is left to capture).
+         Risk (confirmed only): live → negation, the give-back to invalidation. */
+      upside: (st.state === "watch")
+        ? ((p.breakthrough && p.target)
+          ? pct1((p.dir === "long" ? p.target / p.breakthrough - 1 : 1 - p.target / p.breakthrough) * 100)
+          : null)
+        : ((live && p.target)
+          ? pct1((p.dir === "long" ? p.target / live - 1 : 1 - p.target / live) * 100)
+          : null),
+      risk: (st.state !== "watch" && live && p.negation)
+        ? pct1((p.dir === "long" ? 1 - p.negation / live : p.negation / live - 1) * 100)
         : null,
       earnings: ev.earnings || null,
       // A manually set ex-div (via Edit) outranks the feed and is shown as-is.
@@ -395,19 +433,19 @@
      distance, payoff, calendar, then classification. Each key maps to one
      cell builder below, so reordering is a data change. */
   const COLS = {
-    watch:    [["sym","Symbol","left"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
+    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
                ["gap","% to trigger"],["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
-               ["when","Confirmed"],["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
+    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
+               ["when","Confirmed"],["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
+    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
                ["when","Reached"],["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    failed:   [["sym","Symbol","left"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
+    failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
                ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
                ["","Actions","nosort"]],
@@ -424,8 +462,10 @@
     if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
     if (key === "live") return r.live;
     if (key === "prev") return r.prevClose;
-    if (key === "gap") return r.gap;
+    if (key === "ccy") return r.currency || "";
+    if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
     if (key === "upside") return r.upside;
+    if (key === "risk") return r.risk;
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
     if (key === "exdiv") return r.exdiv || "9999";
@@ -555,7 +595,7 @@
             const td2 = h("td"); td2.colSpan = tr.children.length || 16; td2.className = "left";
             const surprise = e.surprise_pct != null ? (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "";
             td2.appendChild(h("span", "epsdetail",
-              "Last result (reported " + (e.reported || e.quarter_end || "n/a") + "): EPS " + e.actual +
+              "Last result (reported " + fmtD(e.reported || e.quarter_end) + "): EPS " + e.actual +
               (e.estimate != null ? " vs " + e.estimate + " est" : "") +
               (surprise ? " · surprise " + surprise : "") + " — " + (beat ? "beat" : "miss")));
             dtr.appendChild(td2);
@@ -567,40 +607,47 @@
         if (p.note) td.appendChild(h("span", "wname", p.note));
         return td;
       }
+      case "ccy": return h("td", null, r.currency || "–");
       case "live": {
         const td = h("td");
-        td.textContent = r.live != null ? fmt(r.live) + (r.currency ? " " + r.currency : "") : "–";
-        if (r.liveDate && r.liveDate !== r.prevDate) td.appendChild(h("span", "wname", "intraday " + r.liveDate));
+        td.textContent = r.live != null ? fmt(r.live) : "–";
+        if (r.liveDate && r.liveDate !== r.prevDate) td.appendChild(h("span", "wname", "intraday " + fmtD(r.liveDate)));
         return td;
       }
       case "prev": {
         const td = h("td");
         td.textContent = fmt(r.prevClose);
-        if (r.prevDate) td.appendChild(h("span", "wname", r.prevDate));
+        if (r.prevDate) td.appendChild(h("span", "wname", fmtD(r.prevDate)));
         return td;
       }
       case "breakthrough": return levelCell(p, "breakthrough", editing);
       case "negation": return levelCell(p, "negation", editing);
       case "target": return levelCell(p, "target", editing);
-      case "gap": return h("td", null, r.gap == null ? "–" : fmt(r.gap) + "%");
+      case "gap": return h("td", null, r.gap == null ? "–" : (r.gap > 0 ? "+" : "") + fmt(r.gap) + "%");
       case "upside": {
-        const td = h("td", null, r.upside == null ? "–" : "+" + fmt(r.upside) + "%");
-        if (r.upside != null) td.appendChild(h("span", "wname", "trigger → target"));
+        const td = h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
+        if (r.upside != null) td.appendChild(h("span", "wname", state === "watch" ? "trigger → target" : "live → target"));
+        return td;
+      }
+      case "risk": {
+        const td = h("td", r.risk != null ? "riskcell" : null,
+          r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
+        if (r.risk != null) td.appendChild(h("span", "wname", "live → negation"));
         return td;
       }
       case "when": {
         if (state === "breakout") {
-          const td = h("td", null, st.breakout ? st.breakout.when : "–");
+          const td = h("td", null, st.breakout ? fmtD(st.breakout.when) : "–");
           if (st.breakout && st.breakout.close != null) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
           else if (st.breakout) td.appendChild(h("span", "wname", "as listed by source"));
           return td;
         }
         if (state === "target") {
-          const td = h("td", null, st.targetHit ? st.targetHit.when : "–");
+          const td = h("td", null, st.targetHit ? fmtD(st.targetHit.when) : "–");
           if (st.targetHit) td.appendChild(h("span", "wname", "@ " + fmt(st.targetHit.close)));
           return td;
         }
-        return h("td", null, st.failed ? st.failed.when : "–");
+        return h("td", null, st.failed ? fmtD(st.failed.when) : "–");
       }
       case "exdiv": {
         const td = h("td");
@@ -611,15 +658,18 @@
           if (r.exdiv) inp.value = r.exdiv;
           td.appendChild(inp);
         } else {
-          td.textContent = r.exdiv || "–";
+          td.textContent = r.exdiv ? fmtD(r.exdiv) : "–";
+          const tag = r.exdiv && daysTag(r.exdiv);
+          if (tag) td.appendChild(tag);
           if (r.exdiv && p.ex_div) td.appendChild(h("span", "wname", "manual"));
         }
         return td;
       }
       case "earnings": {
-        const td = h("td", r.earningsSoon ? "soon" : null, r.earnings || "–");
-        if (r.ev.earnings_to && r.ev.earnings_to !== r.earnings) td.appendChild(h("span", "wname", "to " + r.ev.earnings_to));
-        if (r.earningsSoon) td.appendChild(h("span", "wname", "within a week"));
+        const td = h("td", null, r.earnings ? fmtD(r.earnings) : "–");
+        const tag = r.earnings && daysTag(r.earnings);
+        if (tag) td.appendChild(tag);
+        if (r.ev.earnings_to && r.ev.earnings_to !== r.earnings) td.appendChild(h("span", "wname", "to " + fmtD(r.ev.earnings_to)));
         return td;
       }
       case "dir": {
@@ -732,6 +782,21 @@
     setTimeout(layoutThumb, 250);
     body.addEventListener("scroll", layoutThumb, { passive: true });
     addEventListener("resize", layoutThumb, { passive: true });
+
+    /* Freeze the header rows while the table body is in view: sticky cannot
+       escape the overflow-x container, so the header is translated down by
+       however far the table top has scrolled past the viewport top. */
+    const theadEl = table.tHead;
+    function freezeHead() {
+      const rct = body.getBoundingClientRect();
+      const hh = theadEl.getBoundingClientRect().height;
+      const off = (rct.top < 0 && rct.bottom > hh + 60) ? -rct.top : 0;
+      theadEl.querySelectorAll("th").forEach(th2 => {
+        th2.style.transform = off ? "translateY(" + off + "px)" : "";
+      });
+    }
+    addEventListener("scroll", freezeHead, { passive: true });
+    freezeHead();
     let dragX = null, startLeft = 0;
     thumb.addEventListener("pointerdown", e => {
       dragX = e.clientX; startLeft = body.scrollLeft;
@@ -803,6 +868,8 @@
     renderAlerts(all);
     for (const state of SECTIONS) {
       $("#empty-" + state).hidden = items[state].length > 0;
+      const cnt = $("#cnt-" + state);
+      if (cnt) cnt.textContent = "(" + items[state].length + ")";
       buildTable(state, items[state]);
     }
     const syms = [...new Set(list.map(p => p.sym))];
@@ -811,7 +878,7 @@
       items.breakout.length + " confirmed · " + items.target.length + " at target · " +
       items.failed.length + " failed" +
       (missing.length ? " · no quote: " + missing.join(", ") : "") +
-      " · states use settled closes only";
+      "";
   }
 
   async function refresh() {
