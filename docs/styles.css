@@ -78,11 +78,11 @@
 
   /* back to top */
   #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
-    border-radius:50%; border:1px solid var(--border); background:var(--surface-1);
-    color:var(--text-secondary); font-size:17px; cursor:pointer; display:none;
-    align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+    border-radius:50%; border:1px solid #eda100; background:#eda100;
+    color:#241a03; font-size:17px; font-weight:700; cursor:pointer; display:none;
+    align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
-  #totop:hover { color:var(--text-primary); border-color:var(--baseline); }
+  #totop:hover { background:#fab219; border-color:#fab219; }
 
   /* per-section auto summary */
   .secsum { font-size:13.5px; color:var(--text-primary); background:var(--surface-2);

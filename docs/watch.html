@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809j">
+<link rel="stylesheet" href="styles.css?v=20260809k">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -216,15 +216,24 @@
   .dcard .dmeta { margin:3px 0; color:var(--text-secondary); }
   .dcard .beat { color:var(--up); font-weight:650; }
   .dcard .miss { color:var(--down); font-weight:650; }
-  .dcard .dlinks { margin:8px 0 0; display:flex; gap:10px; flex-wrap:wrap; }
+  .dblock { margin-top:9px; padding-top:8px; border-top:1px solid var(--grid); }
+  .dblock .dh { font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--text-muted); font-weight:650; margin-bottom:3px; }
+  .dblock .dh .dwhen { text-transform:none; letter-spacing:0; font-weight:500; }
+  .dblock .dh .days { display:inline; margin-left:2px; }
+  .dline { margin:2px 0; color:var(--text-secondary); }
+  .dline .k { color:var(--text-muted); }
+  .dline b { color:var(--text-primary); font-weight:620; font-variant-numeric:tabular-nums; }
+  .dcard .dlinks { margin:10px 0 0; display:flex; gap:10px; flex-wrap:wrap; }
   .dcard .dlinks a { font-size:12px; }
   .dcard:target { outline:2px solid #eda100; }
   /* back to top */
   #totop { position:fixed; right:18px; bottom:18px; z-index:30; width:42px; height:42px;
-    border-radius:50%; font:inherit; font-size:18px; color:var(--text-primary);
-    background:var(--surface-1); border:1px solid var(--baseline); cursor:pointer;
+    border-radius:50%; font:inherit; font-size:18px; font-weight:700; color:#241a03;
+    background:#eda100; border:1px solid #eda100; cursor:pointer;
     opacity:0; pointer-events:none; transition:opacity 0.2s; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
   #totop.show { opacity:1; pointer-events:auto; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
 </head>
 <body>
@@ -287,8 +296,11 @@
   <div class="tablewrap wl" id="sec-failed"></div>
 
   <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
-  <p class="lede tight">Jump here from the ▮ icon on any row. Last reported result plus outbound
-    news links per company.</p>
+  <p class="lede tight">Jump here from the ▮ icon on any row. What the last quarter delivered
+    against expectations — including how the market traded it — plus the consensus for the coming
+    report and the street's price target, plotted against your own. Estimates are analyst
+    consensus from TradingView, not company-issued guidance, and every figure stays in the
+    instrument's listing currency.</p>
   <div id="details"></div>
 
   <footer>
@@ -1004,8 +1016,36 @@
     g.appendChild(pill);
   }
 
-  /* Bottom-of-page cards, one per symbol: last reported result plus outbound
-     news links. Rows jump here via the ▮ earnings icon. */
+  /* Compact money formatting for revenue, kept in the listing currency —
+     GBX/ZAc stay in their quoted minor unit rather than being rescaled. */
+  const fmtBig = v => {
+    if (v == null) return null;
+    const a = Math.abs(v);
+    if (a >= 1e12) return (v / 1e12).toFixed(2) + "tn";
+    if (a >= 1e9) return (v / 1e9).toFixed(2) + "bn";
+    if (a >= 1e6) return (v / 1e6).toFixed(1) + "m";
+    if (a >= 1e3) return (v / 1e3).toFixed(1) + "k";
+    return String(v);
+  };
+  const signed = v => (v > 0 ? "+" : "") + fmt(v) + "%";
+
+  /* How the market actually took the last report: the move on the session the
+     result was traded. A result released before the open (or intraday) is
+     traded that same day; one released after the close is traded the next. */
+  function earningsReaction(hist, e) {
+    if (!hist || !e || !e.reported) return null;
+    const s = hist.settled;
+    const after = e.when === "after close" || !e.when;
+    const idx = s.findIndex(p => after ? p[0] > e.reported : p[0] >= e.reported);
+    if (idx < 1) return null;
+    const move = (s[idx][1] / s[idx - 1][1] - 1) * 100;
+    return { pct: pct1(move), when: s[idx][0] };
+  }
+
+  /* Bottom-of-page cards, one per symbol: what the last report delivered
+     against expectations, what the street expects next, and news links.
+     Rows jump here via the ▮ earnings icon. Consensus figures are analyst
+     estimates — company-issued guidance is not available from a free feed. */
   function renderDetails(all) {
     const box = $("#details");
     box.textContent = "";
@@ -1013,40 +1053,125 @@
     const rows = all.filter(r => !seen.has(r.p.sym) && seen.add(r.p.sym))
       .sort((a, b) => a.p.sym.localeCompare(b.p.sym));
     for (const r of rows) {
+      const p = r.p, ev = r.ev, ccy = ev.ccy || r.currency || "";
       const card = h("div", "dcard");
-      card.id = "d-" + r.p.sym;
-      const head = h("h3", null, r.p.sym + " ");
-      if (r.p.note) head.appendChild(h("span", "wname", r.p.note));
+      card.id = "d-" + p.sym;
+      const head = h("h3", null, p.sym + " ");
+      if (p.note) head.appendChild(h("span", "wname", p.note));
       card.appendChild(head);
       const meta = [];
-      if (r.ev.sector) meta.push(r.ev.sector);
-      if (r.p.country) meta.push(r.p.country + (r.p.exchange ? " · " + r.p.exchange : ""));
+      if (ev.sector) meta.push(ev.sector);
+      if (p.country) meta.push(p.country + (p.exchange ? " · " + p.exchange : ""));
       if (meta.length) card.appendChild(h("p", "dmeta", meta.join(" — ")));
-      const e = r.ev.last_eps;
+
+      /* line helper: label + value pairs with a highlighted number */
+      const line = (parent, label, parts) => {
+        const el = h("p", "dline");
+        if (label) el.appendChild(h("span", "k", label + " "));
+        parts.forEach(part => {
+          if (typeof part === "string") el.appendChild(document.createTextNode(part));
+          else el.appendChild(part);
+        });
+        parent.appendChild(el);
+      };
+      const strong = txt => h("b", null, txt);
+      const verdict = (pct, goodWhenPositive) => {
+        if (pct == null) return null;
+        const good = goodWhenPositive ? pct >= 0 : pct <= 0;
+        return h("span", good ? "beat" : "miss", (pct > 0 ? "+" : "") + pct + "%");
+      };
+
+      // ---- last reported quarter ----
+      const e = ev.last_eps;
+      const blk1 = h("div", "dblock");
+      const h1 = h("div", "dh", "Last reported");
+      if (e && e.reported) h1.appendChild(h("span", "dwhen",
+        " · " + fmtD(e.reported) + (e.when ? ", " + e.when : "")));
+      blk1.appendChild(h1);
       if (e) {
-        const beat = e.estimate != null ? e.actual >= e.estimate : (e.surprise_pct || 0) >= 0;
-        const line = h("p", "dmeta");
-        line.appendChild(document.createTextNode("Last result" +
-          (e.reported ? " (reported " + fmtD(e.reported) + ")" : "") + ": EPS " + e.actual +
-          (e.estimate != null ? " vs " + e.estimate + " est" : "") +
-          (e.surprise_pct != null ? " · surprise " + (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "") + " — "));
-        line.appendChild(h("span", beat ? "beat" : "miss", beat ? "beat" : "miss"));
-        card.appendChild(line);
+        if (e.actual != null) {
+          const parts = [strong(e.actual)];
+          if (e.estimate != null) parts.push(" vs " + e.estimate + " est ");
+          const v = verdict(e.surprise_pct, true);
+          if (v) { parts.push(v); }
+          else if (e.estimate == null) parts.push(" (no consensus on file)");
+          line(blk1, "EPS", parts);
+        }
+        if (e.revenue != null) {
+          const parts = [strong(fmtBig(e.revenue) + (ccy ? " " + ccy : ""))];
+          if (e.revenue_est != null) parts.push(" vs " + fmtBig(e.revenue_est) + " est ");
+          const v = verdict(e.revenue_surprise_pct, true);
+          if (v) parts.push(v);
+          line(blk1, "Revenue", parts);
+        }
+        if (e.eps_yoy != null)
+          line(blk1, "EPS year on year", [h("span", e.eps_yoy >= 0 ? "beat" : "miss", signed(e.eps_yoy))]);
+        const react = earningsReaction(HIST[p.sym], e);
+        if (react)
+          line(blk1, "Market reaction", [h("span", react.pct >= 0 ? "beat" : "miss", signed(react.pct)),
+            " on " + fmtD(react.when)]);
       } else {
-        card.appendChild(h("p", "dmeta", "No reported result in the feed."));
+        line(blk1, null, ["No reported result in the feed."]);
       }
+      card.appendChild(blk1);
+
+      // ---- what the street expects next ----
+      const blk2 = h("div", "dblock");
+      const h2 = h("div", "dh", "Next report");
       if (r.earnings) {
-        const line = h("p", "dmeta", "Next earnings " + fmtD(r.earnings) + " ");
+        const dw = h("span", "dwhen", " · " + fmtD(r.earnings) +
+          (ev.earnings_when ? ", " + ev.earnings_when : "") + " ");
         const tag = daysTag(r.earnings);
-        if (tag) line.appendChild(tag);
-        card.appendChild(line);
+        if (tag) dw.appendChild(tag);
+        h2.appendChild(dw);
       }
+      blk2.appendChild(h2);
+      if (r.earnings) {
+        const n = ev.next_est || {};
+        const parts = [];
+        if (n.eps != null) parts.push(strong(n.eps), " EPS");
+        if (n.revenue != null) {
+          if (parts.length) parts.push(" · ");
+          parts.push(strong(fmtBig(n.revenue) + (ccy ? " " + ccy : "")), " revenue");
+        }
+        if (parts.length) line(blk2, "Consensus", parts);
+        else line(blk2, null, ["No consensus estimates on file for the coming quarter."]);
+      } else {
+        line(blk2, null, ["No scheduled date in the feed."]);
+      }
+      card.appendChild(blk2);
+
+      // ---- street view: consensus target vs live and vs the user's target ----
+      if (ev.target_avg != null || ev.ratings) {
+        const blk3 = h("div", "dblock");
+        blk3.appendChild(h("div", "dh", "Street view"));
+        if (ev.target_avg != null) {
+          const parts = [strong(fmt(ev.target_avg) + (ccy ? " " + ccy : ""))];
+          if (r.live != null) {
+            const up = pct1((ev.target_avg / r.live - 1) * 100);
+            parts.push(" — ", h("span", up >= 0 ? "beat" : "miss", signed(up)), " vs live");
+          }
+          line(blk3, "Consensus target", parts);
+          if (p.target != null)
+            line(blk3, "Your target", [strong(fmt(p.target)),
+              ev.target_avg ? " — street is " + (p.target > ev.target_avg ? "below yours" : "above yours") : ""]);
+        }
+        const rt = ev.ratings;
+        if (rt && rt.total) {
+          const bull = (rt.buy || 0) + (rt.over || 0), bear = (rt.under || 0) + (rt.sell || 0);
+          line(blk3, "Analysts", [strong(rt.total), " covering — ",
+            h("span", "beat", bull + " bullish"), " · " + (rt.hold || 0) + " hold · ",
+            h("span", "miss", bear + " bearish")]);
+        }
+        card.appendChild(blk3);
+      }
+
       const links = h("p", "dlinks");
       const mk = (txt, url) => { const a = h("a", null, txt); a.href = url;
         a.target = "_blank"; a.rel = "noopener noreferrer"; return a; };
-      links.appendChild(mk("Yahoo news ↗", "https://finance.yahoo.com/quote/" + encodeURIComponent(r.p.sym) + "/news"));
-      links.appendChild(mk("Google News ↗", "https://news.google.com/search?q=" + encodeURIComponent((r.p.note || r.p.sym) + " stock")));
-      links.appendChild(mk("Chart ↗", YQ(r.p.sym) + "/chart"));
+      links.appendChild(mk("Yahoo news ↗", "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym) + "/news"));
+      links.appendChild(mk("Google News ↗", "https://news.google.com/search?q=" + encodeURIComponent((p.note || p.sym) + " stock")));
+      links.appendChild(mk("Chart ↗", YQ(p.sym) + "/chart"));
       card.appendChild(links);
       box.appendChild(card);
     }
