@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809f">
+<link rel="stylesheet" href="styles.css?v=20260809g">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -577,7 +577,7 @@
           const td = h("td"); td.colSpan = tr.children.length; td.className = "left";
           const surprise = e.surprise_pct != null ? (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "";
           td.appendChild(h("span", "epsdetail",
-            "Last reported quarter (ended " + (e.quarter_end || "n/a") + "): EPS " + e.actual +
+            "Last result (reported " + (e.reported || e.quarter_end || "n/a") + "): EPS " + e.actual +
             (e.estimate != null ? " vs " + e.estimate + " est" : "") +
             (surprise ? " · surprise " + surprise : "") + " — " + (beat ? "beat" : "miss")));
           dtr.appendChild(td);
