@@ -224,6 +224,17 @@
   .dline { margin:2px 0; color:var(--text-secondary); }
   .dline .k { color:var(--text-muted); }
   .dline b { color:var(--text-primary); font-weight:620; font-variant-numeric:tabular-nums; }
+  .cues { display:flex; gap:5px; flex-wrap:wrap; margin:1px 0 6px; }
+  .cue { font-size:10.5px; font-weight:650; border-radius:999px; padding:1px 8px;
+    border:1px solid var(--border); color:var(--text-secondary); }
+  .cue.good { color:var(--up); border-color:var(--up); }
+  .cue.bad { color:var(--down); border-color:var(--down); }
+  .heads { margin:0; padding:0; list-style:none; }
+  .heads li { padding:3px 0; border-top:1px dotted var(--grid); font-size:12px; line-height:1.35; }
+  .heads li:first-child { border-top:none; }
+  .heads a { color:var(--text-primary); text-decoration:none; }
+  .heads a:hover { text-decoration:underline; }
+  .heads .hsrc { color:var(--text-muted); font-size:10.5px; display:block; }
   .dcard .dlinks { margin:10px 0 0; display:flex; gap:10px; flex-wrap:wrap; }
   .dcard .dlinks a { font-size:12px; }
   .dcard:target { outline:2px solid #eda100; }
@@ -298,9 +309,11 @@
   <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
   <p class="lede tight">Jump here from the ▮ icon on any row. What the last quarter delivered
     against expectations — including how the market traded it — plus the consensus for the coming
-    report and the street's price target, plotted against your own. Estimates are analyst
-    consensus from TradingView, not company-issued guidance, and every figure stays in the
-    instrument's listing currency.</p>
+    report and the street's price target, plotted against your own. Where a name has reported
+    recently, the wire block classifies the language of post-release headlines — guidance raised
+    or cut, beat, miss — and links each headline verbatim. Numeric estimates are analyst consensus
+    from TradingView rather than company-issued figures, and everything stays in the instrument's
+    listing currency.</p>
   <div id="details"></div>
 
   <footer>
@@ -1114,6 +1127,39 @@
         line(blk1, null, ["No reported result in the feed."]);
       }
       card.appendChild(blk1);
+
+      /* ---- what the wires said about that release ----
+         Company guidance is not published as structured data anywhere free, but
+         the wires state it in words. These tags classify headline LANGUAGE only;
+         no number is ever parsed out of prose, and each headline is shown
+         verbatim and linked so the primary text is one click away. Headlines
+         published before the release date are filtered out upstream. */
+      const wire = ev.wire;
+      if (wire && wire.heads && wire.heads.length) {
+        const blk = h("div", "dblock");
+        blk.appendChild(h("div", "dh", "On the wire"));
+        if (wire.cues && wire.cues.length) {
+          const cues = h("div", "cues");
+          const GOOD = ["guidance raised", "beat", "record quarter"];
+          const BAD = ["guidance cut", "miss"];
+          for (const c of wire.cues) {
+            cues.appendChild(h("span", "cue " +
+              (GOOD.includes(c) ? "good" : BAD.includes(c) ? "bad" : ""), c));
+          }
+          blk.appendChild(cues);
+        }
+        const ul = h("ul", "heads");
+        for (const hd of wire.heads.slice(0, 4)) {
+          const li = h("li");
+          const a = h("a", null, hd.t);
+          a.href = hd.u; a.target = "_blank"; a.rel = "noopener noreferrer";
+          li.appendChild(a);
+          li.appendChild(h("span", "hsrc", fmtD(hd.d) + (hd.s ? " · " + hd.s : "")));
+          ul.appendChild(li);
+        }
+        blk.appendChild(ul);
+        card.appendChild(blk);
+      }
 
       // ---- what the street expects next ----
       const blk2 = h("div", "dblock");

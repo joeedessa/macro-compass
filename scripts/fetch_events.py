@@ -10,10 +10,14 @@ Run: python3 scripts/fetch_events.py
 """
 
 import json
+import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+import time
+import urllib.parse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 OUT = DOCS / "data" / "watch-events.json"
@@ -24,7 +28,7 @@ SCAN_URL = "https://scanner.tradingview.com/global/scan"
 # every fundamental in the instrument's own listing currency instead.
 PRICE_CONVERSION = {"to_symbol": True}
 COLUMNS = [
-    "name", "currency", "sector",
+    "name", "description", "currency", "sector",
     # calendar
     "earnings_release_next_date", "earnings_release_date",
     "earnings_publication_type_next_fq", "earnings_publication_type_fq",
@@ -42,6 +46,44 @@ COLUMNS = [
 # earnings_publication_type_* encodes the slot in its last digit; verified
 # against known reporters (JPM/Fastenal premarket, NVDA after the close).
 PUB_SLOT = {1: "before open", 2: "after close", 3: "during session"}
+
+# ---------------------------------------------------------------------------
+# Guidance wire. Company-issued guidance is not published as structured data by
+# any free source, but the wires say it in words. So we classify the LANGUAGE of
+# headlines and never parse a number out of prose — the headline is shown
+# verbatim and linked, so the reader always sees the primary text.
+#
+# The hard problem is making sure a headline describes THIS release and not the
+# previous quarter. The release date is the gate: anything published before it
+# is discarded outright.
+CUES = [
+    ("guide_up", "guidance raised",
+     ["raises guidance", "raises outlook", "raises forecast", "lifts forecast",
+      "lifts outlook", "lifts guidance", "lifts full-year", "boosts forecast",
+      "boosts outlook", "hikes forecast", "upbeat forecast", "raises full-year",
+      "raises fy", "upgrades outlook", "guides above", "raises annual"]),
+    ("guide_down", "guidance cut",
+     ["cuts guidance", "lowers outlook", "cuts forecast", "trims forecast",
+      "slashes forecast", "profit warning", "cuts full-year", "lowers guidance",
+      "cuts outlook", "guides below", "warns on", "lowers forecast", "cuts annual"]),
+    ("beat", "beat",
+     ["beats", "tops ", "above estimate", "above expectation", "exceeds",
+      "surpass", "better than expected", "stronger than expected", "blows past",
+      "crushes", "ahead of estimate"]),
+    ("miss", "miss",
+     ["misses", "falls short", "below estimate", "below expectation",
+      "worse than expected", "disappoint", "shortfall", "trails estimate"]),
+    ("record", "record quarter",
+     ["record revenue", "record profit", "record quarter", "record sales",
+      "record eps", "record results", "record high"]),
+    ("payout", "dividend/buyback",
+     ["dividend", "buyback", "share repurchase", "special dividend"]),
+]
+EARN_WORDS = ["earnings", "results", "profit", "revenue", "quarter", "q1", "q2",
+              "q3", "q4", "guidance", "outlook", "forecast", "beats", "misses",
+              "sales", "income"]
+WIRE_BACK_DAYS = 45     # look at names that reported inside this window
+WIRE_FWD_DAYS = 2       # ...or are about to report
 
 # Yahoo suffix → TradingView exchange prefix (probed and verified 2026-08-09).
 SUFFIX_TV = {
@@ -98,6 +140,58 @@ def slot(code):
     return PUB_SLOT.get(int(code) % 10) if code is not None else None
 
 
+def google_news(query):
+    """Google News RSS — keyless. Returns [(title, link, date, source)]."""
+    url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(query) +
+           "&hl=en-US&gl=US&ceid=US:en")
+    r = subprocess.run(
+        ["curl", "-s", "--max-time", "20", "-H",
+         "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", url],
+        capture_output=True, text=True, timeout=30)
+    out = []
+    try:
+        root = ET.fromstring(r.stdout)
+    except ET.ParseError:
+        return out
+    for item in root.iter("item"):
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        pub = (item.findtext("pubDate") or "").strip()
+        src = item.findtext("source") or ""
+        try:                       # RFC-822: "Tue, 14 Jul 2026 11:30:00 GMT"
+            when = datetime.strptime(pub[:16], "%a, %d %b %Y").strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+        # Google appends " - Publisher" to titles; drop it, we show source apart.
+        title = re.sub(r"\s+-\s+[^-]+$", "", title).strip()
+        if title:
+            out.append((title, link, when, src))
+    return out
+
+
+def guidance_wire(name, reported):
+    """Classify wire language about one company's latest results.
+
+    `reported` gates the search: a headline published before the release cannot
+    be describing it. Returns None when nothing on the wire qualifies."""
+    heads, cues = [], []
+    for title, link, when, src in google_news(f'"{name}" earnings results'):
+        if when < reported:
+            continue                      # published pre-release: wrong quarter
+        low = title.lower()
+        if not any(w in low for w in EARN_WORDS):
+            continue
+        for _key, label, pats in CUES:
+            if any(pat in low for pat in pats) and label not in cues:
+                cues.append(label)
+        heads.append({"t": title, "u": link, "d": when, "s": src})
+        if len(heads) >= 4:
+            break
+    if not heads:
+        return None
+    return {"cues": cues, "heads": heads, "gate": reported}
+
+
 def main():
     watchlist = json.loads((DOCS / "data" / "watchlist.json").read_text())
     syms = sorted({p["sym"] for p in watchlist})
@@ -109,6 +203,9 @@ def main():
             tickers.append(tv)
 
     rows = scan(tickers)
+    # Company name for the news query: TradingView's description, falling back
+    # to the note the watchlist itself carries.
+    names = {p["sym"]: p["note"] for p in watchlist if p.get("note")}
     out = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "source": "TradingView scanner",
            "symbols": {}}
@@ -117,6 +214,8 @@ def main():
         if not ysym or ysym in out["symbols"]:
             continue                      # first hit wins for US multi-prefix
         d = dict(zip(COLUMNS, row["d"]))
+        if d.get("description"):
+            names[ysym] = d["description"]
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         rec = {}
         if d.get("sector"):
@@ -162,6 +261,28 @@ def main():
             rec["ratings"] = ratings
         if rec:
             out["symbols"][ysym] = rec
+    # Guidance wire for names whose results are recent enough to still matter.
+    today_d = datetime.now(timezone.utc).date()
+    wired = 0
+    for ysym, rec in out["symbols"].items():
+        last = rec.get("last_eps", {})
+        reported = last.get("reported")
+        nxt = rec.get("earnings")
+        recent = reported and (today_d - datetime.strptime(reported, "%Y-%m-%d").date()).days <= WIRE_BACK_DAYS
+        imminent = nxt and 0 <= (datetime.strptime(nxt, "%Y-%m-%d").date() - today_d).days <= WIRE_FWD_DAYS
+        if not (recent or imminent):
+            continue
+        name = names.get(ysym) or ysym
+        try:
+            wire = guidance_wire(name, reported or today_d.isoformat())
+        except Exception:                  # noqa: BLE001 - the wire is a bonus
+            wire = None
+        if wire:
+            rec["wire"] = wire
+            wired += 1
+        time.sleep(0.25)                   # be polite to the news endpoint
+    print(f"guidance wire: {wired} names carry headlines")
+
     missing = [s for s in syms if s not in out["symbols"]]
     if not out["symbols"]:
         sys.exit("aborting: scanner returned nothing usable")
