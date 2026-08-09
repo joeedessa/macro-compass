@@ -21,7 +21,7 @@ OUT = DOCS / "data" / "watch-events.json"
 SCAN_URL = "https://scanner.tradingview.com/global/scan"
 COLUMNS = ["name", "earnings_release_next_date", "earnings_release_date",
            "dividend_ex_date_upcoming", "earnings_per_share_fq",
-           "earnings_per_share_forecast_fq"]
+           "earnings_per_share_forecast_fq", "sector"]
 
 # Yahoo suffix → TradingView exchange prefix (probed and verified 2026-08-09).
 SUFFIX_TV = {
@@ -79,8 +79,10 @@ def main():
         ysym = tv_to_yahoo.get(row["s"])
         if not ysym or ysym in out["symbols"]:
             continue                      # first hit wins for US multi-prefix
-        name, next_earn, last_earn, ex_div, eps, eps_est = row["d"]
+        name, next_earn, last_earn, ex_div, eps, eps_est, sector = row["d"]
         rec = {}
+        if sector:
+            rec["sector"] = sector
         if next_earn:
             rec["earnings"] = iso(next_earn)
         if ex_div:

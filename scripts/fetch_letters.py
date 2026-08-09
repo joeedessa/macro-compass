@@ -42,16 +42,24 @@ def get(url):
         return resp.read()
 
 
-def latest_13f(cik):
+def latest_13fs(cik, n=2):
+    """Latest n 13F filings (newest first). Amendments replace originals for
+    the same period, so keep only the first filing seen per reportDate."""
     data = json.loads(get(f"https://data.sec.gov/submissions/CIK{cik:010d}.json"))
     name = data.get("name", "")
     r = data["filings"]["recent"]
+    out, seen = [], set()
     for form, date, acc, period in zip(
         r["form"], r["filingDate"], r["accessionNumber"], r["reportDate"]
     ):
-        if form in ("13F-HR", "13F-HR/A"):
-            return name, date, acc, period
-    raise RuntimeError("no 13F-HR found")
+        if form in ("13F-HR", "13F-HR/A") and period not in seen:
+            seen.add(period)
+            out.append((date, acc, period))
+            if len(out) >= n:
+                break
+    if not out:
+        raise RuntimeError("no 13F-HR found")
+    return name, out
 
 
 def holdings_from_filing(cik, accession):
@@ -76,7 +84,7 @@ def holdings_from_filing(cik, accession):
                 return (c.text or "").strip()
         return ""
 
-    by_issuer = {}
+    by_issuer = {}          # name -> [value, shares]
     for it in root.iter():
         if local(it) != "infoTable":
             continue
@@ -85,25 +93,23 @@ def holdings_from_filing(cik, accession):
             value = float(childtext(it, "value") or 0)
         except ValueError:
             continue
-        by_issuer[name] = by_issuer.get(name, 0) + value
+        try:
+            shares = float(childtext(it, "sshPrnamt") or 0)
+        except ValueError:
+            shares = 0
+        cur = by_issuer.setdefault(name, [0, 0])
+        cur[0] += value
+        cur[1] += shares
     if not by_issuer:
         raise RuntimeError("info table parsed empty")
-    total = sum(by_issuer.values())
+    total = sum(v for v, _ in by_issuer.values())
     # Values are whole dollars since the 2023 rule change, but some filers
     # still report in thousands. A sub-$100m total for managers of this size
-    # is the tell; scale up so books are comparable.
+    # is the tell; scale value only (share counts are already real).
     if total < 1e8:
-        by_issuer = {k: v * 1000 for k, v in by_issuer.items()}
+        by_issuer = {k: [v * 1000, s] for k, (v, s) in by_issuer.items()}
         total *= 1000
-    top = sorted(by_issuer.items(), key=lambda kv: -kv[1])[:10]
-    return {
-        "total_value": total,
-        "positions": len(by_issuer),
-        "top": [
-            {"name": n.title(), "value": v, "pct": round(v / total * 100, 1)}
-            for n, v in top
-        ],
-    }
+    return {"total_value": total, "by_issuer": by_issuer}
 
 
 def main():
@@ -114,21 +120,50 @@ def main():
     failures = 0
     for cik, label, expect in MANAGERS:
         try:
-            name, filed, acc, period = latest_13f(cik)
+            name, filings = latest_13fs(cik, 2)
             if expect not in name.upper():
                 raise RuntimeError(f"CIK {cik} resolves to '{name}', expected '{expect}'")
             time.sleep(0.3)          # be polite to SEC
-            h = holdings_from_filing(cik, acc)
+            cur = holdings_from_filing(cik, filings[0][1])
+            prev = None
+            if len(filings) > 1:
+                time.sleep(0.3)
+                try:
+                    prev = holdings_from_filing(cik, filings[1][1])
+                except Exception:  # noqa: BLE001 - QoQ is best-effort
+                    prev = None
+            total = cur["total_value"]
+            top = sorted(cur["by_issuer"].items(), key=lambda kv: -kv[1][0])[:10]
+            prev_map = prev["by_issuer"] if prev else {}
+            top_out = []
+            for n, (v, s) in top:
+                rec = {"name": n.title(), "value": v,
+                       "pct": round(v / total * 100, 1), "shares": s}
+                if prev:
+                    ps = prev_map.get(n, [0, 0])[1]
+                    rec["shares_prev"] = ps
+                    rec["shares_delta"] = s - ps
+                    rec["new"] = ps == 0
+                top_out.append(rec)
+            # Positions that were top-10 by value last quarter and are gone now.
+            exited = []
+            if prev:
+                prev_top = sorted(prev["by_issuer"].items(), key=lambda kv: -kv[1][0])[:10]
+                exited = [n.title() for n, _ in prev_top if n not in cur["by_issuer"]]
             out["managers"].append({
                 "label": label,
                 "edgar_name": name,
                 "cik": cik,
-                "filed": filed,
-                "period": period,
+                "filed": filings[0][0],
+                "period": filings[0][2],
+                "prev_period": filings[1][2] if len(filings) > 1 else None,
                 "url": f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik:010d}&type=13F-HR&dateb=&owner=include&count=10",
-                **h,
+                "total_value": total,
+                "positions": len(cur["by_issuer"]),
+                "top": top_out,
+                "exited": exited,
             })
-            print(f"ok   {label}: {h['positions']} positions, filed {filed}, top {h['top'][0]['name']}")
+            print(f"ok   {label}: {len(cur['by_issuer'])} positions, QoQ vs {filings[1][2] if len(filings)>1 else 'n/a'}")
         except Exception as e:  # noqa: BLE001 - one manager must not sink the file
             failures += 1
             print(f"FAIL {label}: {e}", file=sys.stderr)

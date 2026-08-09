@@ -48,6 +48,12 @@
   ol.holdings li { display:flex; align-items:center; gap:8px; font-size:13px; padding:3.5px 0;
     border-bottom:1px solid var(--grid); }
   ol.holdings li:last-child { border-bottom:none; }
+  .hdelta { font-size:11px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .hdelta.up { color:var(--up); } .hdelta.down { color:var(--down); }
+  .hdelta.new { color:var(--series-2); font-weight:650; }
+  .hdelta.unch { color:var(--text-muted); }
+  .exited { font-size:12px; color:var(--text-secondary); margin-top:8px; }
+  .exited strong { color:var(--down); font-weight:650; }
   .hname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .hbar { height:5px; border-radius:3px; background:var(--series-1); opacity:0.75; flex:none; }
   .hpct { color:var(--text-secondary); font-variant-numeric:tabular-nums; flex:none; width:52px; text-align:right; }
@@ -138,6 +144,8 @@
       "Valuation-and-internals bear case, argued with data; a useful antidote."],
     ["Fairfax Financial — shareholder letters", "https://www.fairfax.ca/news/press-releases/", "Annual",
       "Prem Watsa's letters; insurance float investing outside the US lens."],
+    ["Praetorian Capital — Kuppy's letters & blog", "https://pracap.com/", "Quarterly",
+      "Harris Kupperman's inflection-investing letters and Kuppy's Korner posts."],
     ["Damodaran — Musings on Markets", "https://aswathdamodaran.blogspot.com/", "Occasional",
       "Valuation first principles applied to whatever the market is arguing about."],
   ];
@@ -181,6 +189,7 @@
     card.appendChild(h("p", "meta",
       "Q ending " + m.period + " · filed " + m.filed + " · " + m.positions +
       " positions · $" + fmt(bn) + "bn disclosed" +
+      (m.prev_period ? " · vs " + m.prev_period : "") +
       (ageDays > 200 ? " · ⚠ old filing — no recent 13F on record" : "")));
     const ol = h("ol", "holdings");
     const maxPct = Math.max(...m.top.map(t => t.pct));
@@ -191,9 +200,33 @@
       bar.style.width = Math.max(3, (t.pct / maxPct) * 70) + "px";
       li.appendChild(bar);
       li.appendChild(h("span", "hpct", t.pct.toFixed(1) + "%"));
+      /* Share-count change vs the prior quarter separates real buying and
+         selling from position weights drifting on price alone. */
+      if (t.shares_prev !== undefined) {
+        const fmtShs = n => { const a2 = Math.abs(n);
+          return a2 >= 1e6 ? (n / 1e6).toFixed(1) + "m" : a2 >= 1e3 ? Math.round(n / 1e3) + "k" : String(n); };
+        let tag;
+        if (t.new) tag = h("span", "hdelta new", "NEW");
+        else if (!t.shares_delta) tag = h("span", "hdelta unch", "shares unch");
+        else {
+          const up = t.shares_delta > 0;
+          const pc = t.shares_prev ? Math.round(t.shares_delta / t.shares_prev * 100) : null;
+          tag = h("span", "hdelta " + (up ? "up" : "down"),
+            (up ? "+" : "−") + fmtShs(Math.abs(t.shares_delta)) + " shs" +
+            (pc != null ? " (" + (up ? "+" : "") + pc + "%)" : ""));
+        }
+        li.appendChild(tag);
+      }
       ol.appendChild(li);
     }
     card.appendChild(ol);
+    if (m.exited && m.exited.length) {
+      const p2 = h("p", "exited");
+      p2.appendChild(h("strong", null, "Exited"));
+      p2.appendChild(document.createTextNode(" (in the top 10 last quarter, no position now): " +
+        m.exited.join(", ")));
+      card.appendChild(p2);
+    }
     box.appendChild(card);
   }
 })();

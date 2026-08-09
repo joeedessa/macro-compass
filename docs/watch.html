@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260809i">
+<link rel="stylesheet" href="styles.css?v=20260809j">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -147,36 +147,109 @@
     background:var(--surface-1); box-shadow:2px 0 0 var(--grid); }
   table.wl thead th.left { z-index:3; }
   table.wl tbody tr:hover td.left { background:var(--surface-2); }
+
+  /* header row + nav row */
+  header.wrow { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  header.wrow h1 { margin:0; }
+  header.wrow .stamp { margin:0; flex:1; min-width:200px; }
+  .navrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 16px; }
+  .navrow nav.pages { margin:0; }
+  .navrow .spacer { flex:1; }
+  .chip { font:inherit; font-size:12.5px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; }
+  .chip:hover { color:var(--text-primary); }
+  details.addwrap[open] { flex-basis:100%; }
+  /* section pills: oval headers that ride the viewport top, frozen with the
+     table header, instead of plain h2 + description lines */
+  .secpill { position:relative; z-index:8; display:inline-block; margin:26px 0 10px;
+    font-size:14px; font-weight:650; color:var(--text-primary); background:var(--surface-1);
+    border:1px solid var(--baseline); border-radius:999px; padding:7px 18px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.25); }
+  .secpill .cnt { color:var(--text-muted); font-weight:500; font-size:12.5px; margin-left:6px; }
+  /* universe pulse gauge */
+  #gauge { margin:0 0 10px; }
+  .gpill { display:inline-block; border:1px solid var(--border); border-radius:999px;
+    padding:6px 14px; font-size:13px; background:var(--surface-1); }
+  .gpill strong { font-weight:700; }
+  .gpill.warn { background:var(--mixed-bg); }
+  .gpill.bad { background:var(--off-bg); }
+  /* zebra rows (sticky first column needs an opaque colour) */
+  table.wl tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  table.wl tbody tr:nth-child(even) td.left { background:color-mix(in srgb, var(--surface-1) 93%, #7d96b4); }
+  table.wl tbody tr:hover td { background:var(--surface-2); }
+  /* wrapped pattern text */
+  table.wl td.pat { white-space:normal; min-width:110px; max-width:150px; font-size:12px; }
+  /* header sub-hints (formula reminders live here, not in every cell) */
+  th .hsub { display:block; font-size:9.5px; letter-spacing:0; text-transform:none;
+    color:var(--text-muted); font-weight:500; margin-top:1px; }
+  table.wl th { vertical-align:bottom; }
+  /* relative-move columns */
+  td.relup { color:var(--up); font-weight:620; }
+  td.reldown { color:var(--down); font-weight:620; }
+  /* filter buttons + popovers */
+  .fbtn { display:block; width:100%; font:inherit; font-size:10.5px; text-transform:none;
+    letter-spacing:0; color:var(--text-muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:6px; padding:1px 6px; cursor:pointer; }
+  .fbtn:hover { color:var(--text-primary); }
+  .fbtn.on { color:#eda100; border-color:#eda100; font-weight:650; }
+  .fpop { position:absolute; top:100%; right:4px; z-index:20; min-width:180px; max-height:260px;
+    overflow:auto; background:var(--surface-1); border:1px solid var(--baseline); border-radius:10px;
+    padding:8px; text-align:left; text-transform:none; letter-spacing:0; font-weight:400;
+    box-shadow:0 8px 24px rgba(0,0,0,0.45); cursor:default; white-space:normal; }
+  th.left .fpop { left:4px; right:auto; }
+  .fpop input[type="text"] { width:100%; font:inherit; font-size:12px; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:3px 8px; margin-bottom:6px; }
+  .fpop label.opt { display:flex; gap:7px; align-items:center; font-size:12px;
+    color:var(--text-secondary); padding:2px 0; cursor:pointer; }
+  .fpop label.opt:hover { color:var(--text-primary); }
+  .fpop .fclear { font:inherit; font-size:11px; margin-top:6px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 10px; cursor:pointer; }
+  a.epsbtn { text-decoration:none; display:inline-block; }
+  /* earnings & news detail cards */
+  #details { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
+  .dcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; font-size:12.5px; scroll-margin-top:24px; }
+  .dcard h3 { margin:0 0 4px; font-size:14px; }
+  .dcard h3 .wname { font-weight:500; }
+  .dcard .dmeta { margin:3px 0; color:var(--text-secondary); }
+  .dcard .beat { color:var(--up); font-weight:650; }
+  .dcard .miss { color:var(--down); font-weight:650; }
+  .dcard .dlinks { margin:8px 0 0; display:flex; gap:10px; flex-wrap:wrap; }
+  .dcard .dlinks a { font-size:12px; }
+  .dcard:target { outline:2px solid #eda100; }
+  /* back to top */
+  #totop { position:fixed; right:18px; bottom:18px; z-index:30; width:42px; height:42px;
+    border-radius:50%; font:inherit; font-size:18px; color:var(--text-primary);
+    background:var(--surface-1); border:1px solid var(--baseline); cursor:pointer;
+    opacity:0; pointer-events:none; transition:opacity 0.2s; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
+  #totop.show { opacity:1; pointer-events:auto; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>Watchlist</h1>
-      <p class="stamp" id="stamp">Swing positions and setups, checked against the latest close on every open.</p>
-    </div>
+  <header class="wrow">
+    <h1>Watchlist</h1>
+    <p class="stamp" id="stamp"></p>
     <button id="refresh" type="button">Refresh prices</button>
   </header>
-  <nav class="pages">
-    <a href="./">Overview</a>
-    <a href="markets.html">Markets</a>
-    <a href="themes.html">Themes</a>
-    <a href="macro.html">Macro &amp; flows</a>
-    <a href="letters.html">Letters &amp; 13F</a>
-    <a href="watch.html" class="here">Watchlist</a>
-  </nav>
-
-  <details class="addwrap">
-  <summary>Add a setup</summary>
-  <p class="lede">Four levels per trade, all optional except the alert:
-    <strong>alert</strong> pings when price is beyond your level; <strong>negation</strong> is the
-    invalidation — a close beyond it archives the trade automatically; <strong>target</strong> is where
-    the thesis pays; <strong>breakthrough</strong> confirms entry when a close clears it (above for
-    longs, below for shorts). The shared list loads from the repo on every device; your edits (negations, manual moves,
-    extra setups) stay in this browser and re-apply on top. States are recomputed from price
-    history on every load, so every device shows the same breakouts without any syncing.</p>
-  <form class="add" id="addform">
+  <div class="navrow">
+    <nav class="pages">
+      <a href="./">Overview</a>
+      <a href="markets.html">Markets</a>
+      <a href="themes.html">Themes</a>
+      <a href="macro.html">Macro &amp; flows</a>
+      <a href="letters.html">Letters &amp; 13F</a>
+      <a href="watch.html" class="here">Watchlist</a>
+    </nav>
+    <span class="spacer"></span>
+    <button id="exportbtn" type="button" class="chip">Export</button>
+    <button id="importbtn" type="button" class="chip">Import</button>
+    <input id="importfile" type="file" accept="application/json" hidden>
+    <details class="addwrap">
+      <summary>Add a setup</summary>
+      <form class="add" id="addform">
     <label>Symbol<input id="f-sym" required placeholder="e.g. GDX" autocomplete="off"></label>
     <label>Direction
       <select id="f-dir"><option value="long">Long</option><option value="short">Short</option></select>
@@ -193,41 +266,30 @@
     <label>Note<input id="f-note" placeholder="why this trade (optional)"></label>
     <button type="submit">Add</button>
   </form>
-  </details>
-
-  <div class="toolbar">
-    <button id="exportbtn" type="button">Export JSON</button>
-    <button id="importbtn" type="button">Import JSON</button>
-    <button id="filtertoggle" type="button">Show filters</button>
-    <input id="importfile" type="file" accept="application/json" hidden>
+    </details>
   </div>
 
+  <div id="gauge"></div>
   <div id="alerts"></div>
 
-  <h2 class="secline">Waiting for trigger <span class="cnt" id="cnt-watch"></span></h2>
-  <p class="lede tight">States change on settled closes only — Live is delayed and can be mid-session.
-    An amber alert above marks an intraday breach awaiting its close.</p>
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
     <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
     Import JSON, or add a single setup with the form above.</p>
   <div class="tablewrap wl" id="sec-watch"></div>
 
-  <h2 class="secline">Confirmed breakouts <span class="cnt" id="cnt-breakout"></span></h2>
-  <p class="lede tight">A close beyond the negation moves a trade to Failed; reaching the target
-    moves it to Reached target.</p>
   <p id="empty-breakout" class="lede" hidden>No confirmed breakouts yet.</p>
   <div class="tablewrap wl" id="sec-breakout"></div>
 
-  <h2 class="secline">Reached price target <span class="cnt" id="cnt-target"></span></h2>
-  <p class="lede tight">Often still in play — negation keeps being checked and a later invalidation
-    still moves them to Failed.</p>
   <p id="empty-target" class="lede" hidden>None yet.</p>
   <div class="tablewrap wl" id="sec-target"></div>
 
-  <h2 class="secline">Failed breakouts <span class="cnt" id="cnt-failed"></span></h2>
-  <p class="lede tight">Negated patterns, with the close that invalidated them.</p>
   <p id="empty-failed" class="lede" hidden>None — nothing has been negated.</p>
   <div class="tablewrap wl" id="sec-failed"></div>
+
+  <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
+  <p class="lede tight">Jump here from the ▮ icon on any row. Last reported result plus outbound
+    news links per company.</p>
+  <div id="details"></div>
 
   <footer>
     <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
@@ -405,6 +467,7 @@
       prevClose: prev ? prev[1] : null,
       prevDate: prev ? prev[0] : "",
       currency: hist ? hist.currency : "",
+      dayPct: dayPctOf(hist),
       // Signed distance to trigger: shorts read negative (price must fall).
       gap: gap == null ? null : (p.dir === "short" ? -gap : gap),
       ev,
@@ -433,26 +496,65 @@
      distance, payoff, calendar, then classification. Each key maps to one
      cell builder below, so reordering is a data change. */
   const COLS = {
-    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
-               ["gap","% to trigger"],["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
+    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
+               ["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
+               ["","Actions","nosort"]],
+    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Confirmed"],
+               ["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
-               ["when","Confirmed"],["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
-               ["negation","Negation"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
-               ["when","Reached"],["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
+    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Reached"],
+               ["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
     failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
-               ["dir","Dir"],["exchange","Exch"],["country","Country"],["pattern","Pattern"],["dur","Dur"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["","Actions","nosort"]],
   };
   const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false], failed: ["when", false] };
   const FILTERS = {};
-  let FILTERS_OPEN = false;
+  const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
+                   target: "Reached price target", failed: "Failed breakouts" };
+  // Local benchmark index per listing country (Yahoo symbols, all probed live).
+  const INDEX_MAP = { US: "^GSPC", Canada: "^GSPTSE", Japan: "^N225", UK: "^FTSE",
+    France: "^FCHI", Italy: "FTSEMIB.MI", Spain: "^IBEX", Germany: "^GDAXI",
+    "Hong Kong": "^HSI", India: "^NSEI", Australia: "^AXJO", Turkey: "XU100.IS",
+    "South Africa": "^J203.JO", Netherlands: "^AEX", Belgium: "^BFX",
+    Finland: "^OMXH25", Norway: "OBX.OL", Ireland: "^ISEQ" };
+  const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  /* Day-over-day % using the live tick vs the prior settled close (falls back
+     to the last two settled closes once the session has ended). */
+  function dayPctOf(hist) {
+    if (!hist || hist.live == null) return null;
+    const s = hist.settled;
+    if (!s.length) return null;
+    let base = s[s.length - 1];
+    if (hist.liveDate === base[0]) base = s[s.length - 2];
+    if (!base || base[1] == null) return null;
+    return (hist.live / base[1] - 1) * 100;
+  }
+  const HSUB = (state, key) =>
+    key === "upside" ? (state === "watch" ? "trigger → target" : "live → target") :
+    key === "risk" ? "live → negation" :
+    key === "gap" ? "last close → trigger" :
+    key === "relm" ? "day % vs index" :
+    key === "rels" ? "day % vs sector" : null;
+  // Columns filterable via checkbox multi-select, and how to read their value.
+  const FKEYS = { ccy: r => r.currency || "", dir: r => r.p.dir || "",
+    country: r => r.p.country || "", exchange: r => r.p.exchange || "",
+    pattern: r => r.p.pattern || "" };
+  let OPEN_POP = null;      // { sk: "state|key", q: "search text" }
+  // Frozen-header/scroller callbacks, re-registered on every render so the
+  // single global listener never runs against detached tables.
+  const FREEZERS = [], SIZERS = [];
+  addEventListener("scroll", () => FREEZERS.forEach(f => f()), { passive: true });
+  addEventListener("resize", () => SIZERS.forEach(f => f()), { passive: true });
 
   function sortVal(r, key) {
     if (key === "sym" || key === "dir") return r.p[key] || "";
@@ -465,6 +567,8 @@
     if (key === "ccy") return r.currency || "";
     if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
     if (key === "upside") return r.upside;
+    if (key === "relm") return r.relm;
+    if (key === "rels") return r.rels;
     if (key === "risk") return r.risk;
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
@@ -545,28 +649,61 @@
     return td;
   }
 
-  function headerFilter(state, key, rows, flt) {
-    const distinct = f => [...new Set(rows.map(r2 => f(r2)).filter(Boolean))].sort();
-    const sel = opts => {
-      const s = h("select");
-      const all = h("option", null, "all"); all.value = ""; s.appendChild(all);
-      opts.forEach(v => { const o = h("option", null, v); o.value = v; if (flt[key] === v) o.selected = true; s.appendChild(o); });
-      s.addEventListener("change", () => { flt[key] = s.value; render(); });
-      s.addEventListener("click", e => e.stopPropagation());
-      return s;
-    };
+  /* Header filters, always visible: free-text search on Symbol, checkbox
+     multi-select with its own search box for the enumerable columns. */
+  function headerFilter(state, key, rows, flt, th) {
     if (key === "sym") {
-      const inp = h("input"); inp.placeholder = "filter…"; inp.value = flt.sym || "";
+      const inp = h("input"); inp.placeholder = "search…"; inp.value = flt.sym || "";
       inp.addEventListener("click", e => e.stopPropagation());
       inp.addEventListener("input", () => { flt.sym = inp.value; render();
         setTimeout(() => { const el = $("#sec-" + state + " th .hfilter input"); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 0); });
       return inp;
     }
-    if (key === "dir") return sel(["long", "short"]);
-    if (key === "exchange") return sel(distinct(r2 => r2.p.exchange));
-    if (key === "country") return sel(distinct(r2 => r2.p.country));
-    if (key === "pattern") return sel(distinct(r2 => r2.p.pattern));
-    return null;
+    if (!(key in FKEYS)) return null;
+    const cur = Array.isArray(flt[key]) ? flt[key] : [];
+    const sk = state + "|" + key;
+    const btn = h("button", "fbtn" + (cur.length ? " on" : ""), cur.length ? cur.length + " selected" : "all");
+    btn.type = "button";
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      OPEN_POP = (OPEN_POP && OPEN_POP.sk === sk) ? null : { sk, q: "" };
+      render();
+    });
+    if (OPEN_POP && OPEN_POP.sk === sk) {
+      const pop = h("div", "fpop");
+      pop.addEventListener("click", e => e.stopPropagation());
+      const q = h("input"); q.type = "text"; q.placeholder = "search options…"; q.value = OPEN_POP.q;
+      const optbox = h("div");
+      const values = [...new Set(rows.map(FKEYS[key]).filter(Boolean))].sort();
+      const paint = () => {
+        optbox.textContent = "";
+        const needle = OPEN_POP.q.toLowerCase();
+        for (const v of values) {
+          if (needle && !v.toLowerCase().includes(needle)) continue;
+          const lab = h("label", "opt");
+          const cb = h("input"); cb.type = "checkbox";
+          cb.checked = (flt[key] || []).includes(v);
+          cb.addEventListener("change", () => {
+            const set = new Set(flt[key] || []);
+            if (cb.checked) set.add(v); else set.delete(v);
+            flt[key] = [...set];
+            render();
+          });
+          lab.appendChild(cb);
+          lab.appendChild(document.createTextNode(v));
+          optbox.appendChild(lab);
+        }
+      };
+      q.addEventListener("input", () => { OPEN_POP.q = q.value; paint(); });
+      paint();
+      const clear = h("button", "fclear", "clear");
+      clear.type = "button";
+      clear.addEventListener("click", () => { flt[key] = []; OPEN_POP = null; render(); });
+      pop.appendChild(q); pop.appendChild(optbox); pop.appendChild(clear);
+      th.appendChild(pop);
+      setTimeout(() => q.focus(), 0);
+    }
+    return btn;
   }
 
   /* One builder per column key; buildTable just walks COLS. */
@@ -584,24 +721,10 @@
         if (r.ev.last_eps) {
           const e = r.ev.last_eps;
           const beat = e.estimate != null ? e.actual >= e.estimate : (e.surprise_pct || 0) >= 0;
-          const btn = h("button", "epsbtn " + (beat ? "up" : "down"), beat ? "▮▲" : "▮▼");
-          btn.type = "button";
-          btn.title = "Latest earnings result — click for detail";
-          btn.addEventListener("click", ev2 => {
-            ev2.stopPropagation();
-            const existing = tr.nextElementSibling;
-            if (existing && existing.classList.contains("epsrow")) { existing.remove(); return; }
-            const dtr = h("tr", "epsrow");
-            const td2 = h("td"); td2.colSpan = tr.children.length || 16; td2.className = "left";
-            const surprise = e.surprise_pct != null ? (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "";
-            td2.appendChild(h("span", "epsdetail",
-              "Last result (reported " + fmtD(e.reported || e.quarter_end) + "): EPS " + e.actual +
-              (e.estimate != null ? " vs " + e.estimate + " est" : "") +
-              (surprise ? " · surprise " + surprise : "") + " — " + (beat ? "beat" : "miss")));
-            dtr.appendChild(td2);
-            tr.after(dtr);
-          });
-          symLine.appendChild(btn);
+          const jump = h("a", "epsbtn " + (beat ? "up" : "down"), beat ? "▮▲" : "▮▼");
+          jump.href = "#d-" + p.sym;
+          jump.title = "Latest earnings result — jump to the detail section below";
+          symLine.appendChild(jump);
         }
         td.appendChild(symLine);
         if (p.note) td.appendChild(h("span", "wname", p.note));
@@ -624,17 +747,14 @@
       case "negation": return levelCell(p, "negation", editing);
       case "target": return levelCell(p, "target", editing);
       case "gap": return h("td", null, r.gap == null ? "–" : (r.gap > 0 ? "+" : "") + fmt(r.gap) + "%");
-      case "upside": {
-        const td = h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
-        if (r.upside != null) td.appendChild(h("span", "wname", state === "watch" ? "trigger → target" : "live → target"));
-        return td;
+      case "relm": case "rels": {
+        const v = r[key];
+        const cls = v == null ? null : v >= 1.5 ? "relup" : v <= -1.5 ? "reldown" : null;
+        return h("td", cls, v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "pp");
       }
-      case "risk": {
-        const td = h("td", r.risk != null ? "riskcell" : null,
-          r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
-        if (r.risk != null) td.appendChild(h("span", "wname", "live → negation"));
-        return td;
-      }
+      case "upside": return h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
+      case "risk": return h("td", r.risk != null ? "riskcell" : null,
+        r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
       case "when": {
         if (state === "breakout") {
           const td = h("td", null, st.breakout ? fmtD(st.breakout.when) : "–");
@@ -679,7 +799,7 @@
       }
       case "exchange": return h("td", null, p.exchange || "–");
       case "country": return h("td", null, p.country || "–");
-      case "pattern": return h("td", null, p.pattern || "–");
+      case "pattern": return h("td", "pat", p.pattern || "–");
       case "dur": return h("td", null, p.duration_m != null ? p.duration_m + "m" : "–");
       default: return null;   // "" columns: Reason / Actions handled by caller
     }
@@ -688,14 +808,20 @@
   function buildTable(state, rows) {
     const wrap = $("#sec-" + state);
     wrap.textContent = "";
+    const pill = h("div", "secpill");
+    pill.appendChild(document.createTextNode(TITLES[state]));
+    pill.appendChild(h("span", "cnt", "(" + rows.length + ")"));
+    wrap.appendChild(pill);
     if (!rows.length) return;
     const flt = FILTERS[state] = FILTERS[state] || {};
-    const shown = rows.filter(r =>
-      (!flt.sym || (r.p.sym + " " + (r.p.note || "")).toLowerCase().includes(flt.sym.toLowerCase())) &&
-      (!flt.dir || r.p.dir === flt.dir) &&
-      (!flt.pattern || r.p.pattern === flt.pattern) &&
-      (!flt.country || r.p.country === flt.country) &&
-      (!flt.exchange || r.p.exchange === flt.exchange));
+    const shown = rows.filter(r => {
+      if (flt.sym && !(r.p.sym + " " + (r.p.note || "")).toLowerCase().includes(flt.sym.toLowerCase())) return false;
+      for (const k in FKEYS) {
+        const a = flt[k];
+        if (Array.isArray(a) && a.length && !a.includes(FKEYS[k](r))) return false;
+      }
+      return true;
+    });
     const [sortKey, asc] = SORT[state];
     shown.sort((a, b) => {
       const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
@@ -711,18 +837,18 @@
       const th = h("th", (cls || "") + (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""));
       const lab = h("span", "hlabel", label);
       th.appendChild(lab);
+      const sub = key && HSUB(state, key);
+      if (sub) th.appendChild(h("span", "hsub", sub));
       if (key && cls !== "nosort") lab.addEventListener("click", () => {
         const cur = SORT[state];
         SORT[state] = [key, cur[0] === key ? !cur[1] : (typeof sortVal(shown[0] || { p: {} }, key) === "string" || key === "gap")];
         render();
       });
-      if (FILTERS_OPEN) {
-        const ctl = headerFilter(state, key, rows, flt);
-        if (ctl) {
-          const box = h("div", "hfilter");
-          box.appendChild(ctl);
-          th.appendChild(box);
-        }
+      const ctl = key ? headerFilter(state, key, rows, flt, th) : null;
+      if (ctl) {
+        const box = h("div", "hfilter");
+        box.appendChild(ctl);
+        th.appendChild(box);
       }
       hr.appendChild(th);
     }
@@ -781,21 +907,27 @@
     setTimeout(layoutThumb, 0);
     setTimeout(layoutThumb, 250);
     body.addEventListener("scroll", layoutThumb, { passive: true });
-    addEventListener("resize", layoutThumb, { passive: true });
+    SIZERS.push(layoutThumb);
 
-    /* Freeze the header rows while the table body is in view: sticky cannot
-       escape the overflow-x container, so the header is translated down by
-       however far the table top has scrolled past the viewport top. */
+    /* Freeze the section pill and the header row while the table body is in
+       view: sticky cannot escape the overflow-x container, so both are
+       translated — the pill rides the viewport top, headers just beneath it.
+       offsetTop distances are layout values, unaffected by the transforms. */
     const theadEl = table.tHead;
     function freezeHead() {
       const rct = body.getBoundingClientRect();
+      const pillH = pill.offsetHeight + 6;
       const hh = theadEl.getBoundingClientRect().height;
-      const off = (rct.top < 0 && rct.bottom > hh + 60) ? -rct.top : 0;
+      const ended = rct.bottom < hh + pillH + 60;
+      const thOff = (!ended && rct.top < pillH) ? pillH - rct.top : 0;
+      const natural = rct.top - (body.offsetTop - pill.offsetTop);
+      const pillOff = (!ended && natural < 0) ? -natural : 0;
+      pill.style.transform = pillOff ? "translateY(" + pillOff + "px)" : "";
       theadEl.querySelectorAll("th").forEach(th2 => {
-        th2.style.transform = off ? "translateY(" + off + "px)" : "";
+        th2.style.transform = thOff ? "translateY(" + thOff + "px)" : "";
       });
     }
-    addEventListener("scroll", freezeHead, { passive: true });
+    FREEZERS.push(freezeHead);
     freezeHead();
     let dragX = null, startLeft = 0;
     thumb.addEventListener("pointerdown", e => {
@@ -853,8 +985,77 @@
     }
   }
 
+  /* One line above everything: how much of the universe is red today. A broad
+     down day means individual weakness is market forces, not stock signal. */
+  function renderGauge(active) {
+    const g = $("#gauge");
+    g.textContent = "";
+    const known = active.filter(r => r.dayPct != null);
+    if (!known.length) return;
+    const down = known.filter(r => r.dayPct < 0).length;
+    const pctDown = Math.round(down / known.length * 100);
+    const cls = pctDown > 60 ? "bad" : pctDown > 40 ? "warn" : "";
+    const pill = h("div", "gpill" + (cls ? " " + cls : ""));
+    pill.appendChild(h("strong", null, down + " of " + known.length));
+    pill.appendChild(document.createTextNode(" active names down today (" + pctDown + "%) — " +
+      (pctDown > 60 ? "broad risk-off: read individual weakness as market forces" :
+       pctDown > 40 ? "mixed tape: check Rel mkt / Rel sect before judging single names" :
+       "tape supportive: moves are mostly stock-specific")));
+    g.appendChild(pill);
+  }
+
+  /* Bottom-of-page cards, one per symbol: last reported result plus outbound
+     news links. Rows jump here via the ▮ earnings icon. */
+  function renderDetails(all) {
+    const box = $("#details");
+    box.textContent = "";
+    const seen = new Set();
+    const rows = all.filter(r => !seen.has(r.p.sym) && seen.add(r.p.sym))
+      .sort((a, b) => a.p.sym.localeCompare(b.p.sym));
+    for (const r of rows) {
+      const card = h("div", "dcard");
+      card.id = "d-" + r.p.sym;
+      const head = h("h3", null, r.p.sym + " ");
+      if (r.p.note) head.appendChild(h("span", "wname", r.p.note));
+      card.appendChild(head);
+      const meta = [];
+      if (r.ev.sector) meta.push(r.ev.sector);
+      if (r.p.country) meta.push(r.p.country + (r.p.exchange ? " · " + r.p.exchange : ""));
+      if (meta.length) card.appendChild(h("p", "dmeta", meta.join(" — ")));
+      const e = r.ev.last_eps;
+      if (e) {
+        const beat = e.estimate != null ? e.actual >= e.estimate : (e.surprise_pct || 0) >= 0;
+        const line = h("p", "dmeta");
+        line.appendChild(document.createTextNode("Last result" +
+          (e.reported ? " (reported " + fmtD(e.reported) + ")" : "") + ": EPS " + e.actual +
+          (e.estimate != null ? " vs " + e.estimate + " est" : "") +
+          (e.surprise_pct != null ? " · surprise " + (e.surprise_pct > 0 ? "+" : "") + e.surprise_pct + "%" : "") + " — "));
+        line.appendChild(h("span", beat ? "beat" : "miss", beat ? "beat" : "miss"));
+        card.appendChild(line);
+      } else {
+        card.appendChild(h("p", "dmeta", "No reported result in the feed."));
+      }
+      if (r.earnings) {
+        const line = h("p", "dmeta", "Next earnings " + fmtD(r.earnings) + " ");
+        const tag = daysTag(r.earnings);
+        if (tag) line.appendChild(tag);
+        card.appendChild(line);
+      }
+      const links = h("p", "dlinks");
+      const mk = (txt, url) => { const a = h("a", null, txt); a.href = url;
+        a.target = "_blank"; a.rel = "noopener noreferrer"; return a; };
+      links.appendChild(mk("Yahoo news ↗", "https://finance.yahoo.com/quote/" + encodeURIComponent(r.p.sym) + "/news"));
+      links.appendChild(mk("Google News ↗", "https://news.google.com/search?q=" + encodeURIComponent((r.p.note || r.p.sym) + " stock")));
+      links.appendChild(mk("Chart ↗", YQ(r.p.sym) + "/chart"));
+      card.appendChild(links);
+      box.appendChild(card);
+    }
+  }
+
   const SECTIONS = ["watch", "breakout", "target", "failed"];
   function render() {
+    FREEZERS.length = 0;
+    SIZERS.length = 0;
     const list = workingList();
     const items = { watch: [], breakout: [], target: [], failed: [] };
     const all = [];
@@ -862,16 +1063,30 @@
       const st = replay(p, HIST[p.sym]);
       const state = p.manualState === "failed" ? "failed" : st.state;
       const r = rowData(p, st);
+      r.section = state;
       items[state].push(r);
       all.push(r);
     }
+    /* Market-forces pass: each name's day% vs its local index and vs the
+       median of same-sector names across the whole universe (≥3 members). */
+    const bySec = {};
+    for (const r of all) {
+      if (r.ev.sector && r.dayPct != null)
+        (bySec[r.ev.sector] = bySec[r.ev.sector] || []).push(r.dayPct);
+    }
+    for (const r of all) {
+      const idx = dayPctOf(HIST[INDEX_MAP[r.p.country]]);
+      r.relm = (r.dayPct != null && idx != null) ? pct1(r.dayPct - idx) : null;
+      const peers = r.ev.sector ? bySec[r.ev.sector] : null;
+      r.rels = (r.dayPct != null && peers && peers.length >= 3) ? pct1(r.dayPct - median(peers)) : null;
+    }
+    renderGauge(all.filter(r => r.section !== "failed"));
     renderAlerts(all);
     for (const state of SECTIONS) {
       $("#empty-" + state).hidden = items[state].length > 0;
-      const cnt = $("#cnt-" + state);
-      if (cnt) cnt.textContent = "(" + items[state].length + ")";
       buildTable(state, items[state]);
     }
+    renderDetails(all);
     const syms = [...new Set(list.map(p => p.sym))];
     const missing = syms.filter(s => !HIST[s]);
     $("#stamp").textContent = list.length + " setups · " + syms.length + " symbols, native currencies · " +
@@ -892,7 +1107,9 @@
       EVENTS = r.ok ? (await r.json()).symbols || {} : {};
     } catch { EVENTS = {}; }
     const syms = [...new Set(workingList().map(p => p.sym))];
-    HIST = await fetchHistory(syms);
+    const idxSyms = [...new Set(workingList().map(p => INDEX_MAP[p.country]).filter(Boolean))]
+      .filter(s => !syms.includes(s));
+    HIST = await fetchHistory(syms.concat(idxSyms));
     render();
   }
 
@@ -917,11 +1134,6 @@
   });
 
   $("#refresh").addEventListener("click", refresh);
-  $("#filtertoggle").addEventListener("click", () => {
-    FILTERS_OPEN = !FILTERS_OPEN;
-    $("#filtertoggle").textContent = FILTERS_OPEN ? "Hide filters" : "Show filters";
-    render();
-  });
   $("#exportbtn").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(workingList(), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -948,6 +1160,19 @@
       alert("Imported " + added + " new entries (" + (data.length - added) + " already present or invalid).");
     } catch (err) { alert("Could not import: " + err.message); }
     e.target.value = "";
+  });
+
+  // Back to top, and close any open header-filter popover on outside click.
+  const tt = h("button", null, "↑");
+  tt.id = "totop"; tt.title = "Back to top"; tt.type = "button";
+  document.body.appendChild(tt);
+  addEventListener("scroll", () => tt.classList.toggle("show", scrollY > 600), { passive: true });
+  tt.addEventListener("click", () => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: rm ? "auto" : "smooth" });
+  });
+  document.addEventListener("click", () => {
+    if (OPEN_POP) { OPEN_POP = null; render(); }
   });
 
   refresh();

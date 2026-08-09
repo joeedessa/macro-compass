@@ -951,8 +951,10 @@ function crossEvents(pts, lookback) {
   return events;
 }
 
-/* Signal scan section (Markets page): every cross in the last ten sessions
-   across the whole universe, slowest signals first. */
+/* Signal scan (Markets page): six columns reading left to right from
+   short-term bullish through long-term bullish, then bearish in the same
+   fast-to-slow order. ST = 5×21 and 21×50 EMA triggers; Swing = price×50;
+   LT = price×200 and the 50×200 golden/death cross. */
 function renderSignals() {
   const box = $("#signals");
   if (!box) return;
@@ -972,38 +974,42 @@ function renderSignals() {
     found.length + " crosses in the last 10 sessions — " + bulls + " bullish and " +
     bears + " bearish still standing" +
     (found.some(f => f.whip) ? ", " + found.filter(f => f.whip).length + " whipsawed" : "") + "."));
+  const tierOf = f => CROSS_DEFS.findIndex(d => d[0] === f.key);
+  box.appendChild(sigColumns(found.map(f => ({ ...f, tier: tierOf(f) }))));
+}
 
-  /* Grouped by signal tier. The slow tiers are open — few events, each one
-     matters. The fast tiers collapse behind their count: at timing-trigger
-     speed the count is the signal and the list is reference. */
-  CROSS_DEFS.forEach(([key, label], tier) => {
-    const evs = found.filter(f => f.key === key).sort((x, y) => x.daysAgo - y.daysAgo);
-    if (!evs.length) return;
-    const det = document.createElement("details");
-    det.className = "siggroup";
-    if (tier < 3 && evs.length <= 30) det.open = true;   // a 70-row "open" group is still a wall
-    const sum = document.createElement("summary");
-    const b = evs.filter(e => e.bullish && !e.whip).length;
-    const s = evs.filter(e => !e.bullish && !e.whip).length;
-    sum.textContent = label.replace(/^price/, "Price").replace(/^(\d)/, "$1") +
-      " — " + evs.length + " (" + b + "▲ " + s + "▼" +
-      (evs.length - b - s ? " " + (evs.length - b - s) + " whipsawed" : "") + ")";
-    det.appendChild(sum);
-    const wrap = h("div", "sigwrap");
-    for (const f of evs) {
-      const row = h("div", "sigrow");
-      row.appendChild(h("span", "mark " + (f.bullish ? "up" : "down"), f.bullish ? "▲" : "▼"));
-      const a = h("a", "sname", f.name);
-      a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
-      row.appendChild(a);
-      row.appendChild(h("span", "ssym", f.sym));
-      if (f.whip) row.appendChild(h("span", "whip", "whipsawed"));
-      row.appendChild(h("span", "swhen", f.daysAgo === 0 ? "latest close" : f.daysAgo + " session" + (f.daysAgo > 1 ? "s" : "") + " ago"));
-      wrap.appendChild(row);
+/* Shared column builder for the signal scan. Expects events carrying
+   {sym, name, tier (0 slow … 4 fast), bullish, whip, daysAgo}. */
+const SIG_TLAB = ["price × 200", "50 × 200", "price × 50", "21 × 50", "5 × 21"];
+const SIG_SPEEDS = [
+  ["Short-term", "5×21 · 21×50 EMA triggers", t => t >= 3],
+  ["Swing", "price × 50-day SMA", t => t === 2],
+  ["Long-term", "price × 200 · golden/death", t => t <= 1],
+];
+function sigColumns(evs) {
+  const grid = h("div", "sigcols");
+  for (const bullish of [true, false]) {
+    for (const [label, sub, match] of SIG_SPEEDS) {
+      const col = h("div", "sigcol " + (bullish ? "bull" : "bear"));
+      col.appendChild(h("h4", null, (bullish ? "▲ Bullish · " : "▼ Bearish · ") + label));
+      col.appendChild(h("p", "sigsub", sub));
+      const mine = evs.filter(f => f.bullish === bullish && match(f.tier))
+        .sort((a, b) => a.daysAgo - b.daysAgo || b.tier - a.tier);
+      if (!mine.length) { col.appendChild(h("p", "signone", "none")); grid.appendChild(col); continue; }
+      for (const f of mine) {
+        const it = h("div", "sigitem");
+        const a = h("a", null, f.sym);
+        a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+        it.appendChild(a);
+        if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
+        it.appendChild(h("span", "sighint", f.name + " — " + SIG_TLAB[f.tier] + " · " +
+          (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
+        col.appendChild(it);
+      }
+      grid.appendChild(col);
     }
-    det.appendChild(wrap);
-    box.appendChild(det);
-  });
+  }
+  return grid;
 }
 
 function renderTables() {
