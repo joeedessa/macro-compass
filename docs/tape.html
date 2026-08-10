@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today's tape — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+    --mixed-bg:rgba(237,161,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+      --mixed-bg:rgba(237,161,0,0.16);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1280px; margin:0 auto; padding:26px 22px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:17px; margin:32px 0 4px; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; max-width:84ch; margin-bottom:12px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  #status { color:var(--text-muted); font-size:13.5px; margin-top:20px; }
+  button.refresh { font:inherit; font-size:13px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:9px;
+    padding:6px 14px; cursor:pointer; }
+  button.refresh:hover { color:var(--text-primary); border-color:var(--baseline); }
+
+  /* session clocks */
+  .sessions { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:9px;
+    margin-bottom:6px; }
+  .sess { border:1px solid var(--border); border-radius:11px; padding:8px 12px;
+    background:var(--surface-1); }
+  .sess.open { border-color:var(--up); background:var(--on-bg); }
+  .sess .sname { font-size:12px; color:var(--text-secondary); display:flex; align-items:center;
+    gap:6px; }
+  .sess .dot { width:7px; height:7px; border-radius:50%; background:var(--text-muted);
+    flex:none; }
+  .sess.open .dot { background:var(--up); }
+  .sess .sstate { font-size:14.5px; font-weight:650; }
+  .sess .stime { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+
+  /* headline strip with intraday paths */
+  .heads { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:9px; }
+  .hcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:9px 11px; }
+  .hcard .hname { font-size:11.5px; color:var(--text-secondary); white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; }
+  .hcard .hval { font-size:17px; font-weight:680; font-variant-numeric:tabular-nums;
+    letter-spacing:-0.01em; }
+  .hcard .hchg { font-size:12.5px; font-weight:640; font-variant-numeric:tabular-nums; }
+  .hcard svg { width:100%; height:30px; display:block; margin-top:3px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+
+  /* verdict banner */
+  .verdict { border:1px solid var(--border); border-radius:12px; padding:11px 15px;
+    font-size:14px; background:var(--surface-1); }
+  .verdict.on { background:var(--on-bg); border-color:var(--up); }
+  .verdict.off { background:var(--off-bg); border-color:var(--down); }
+  .verdict.mixed { background:var(--mixed-bg); }
+  .verdict b { font-weight:680; }
+  .verdict .vsub { display:block; font-size:12.5px; color:var(--text-secondary); margin-top:3px; }
+
+  /* movers */
+  .movegrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:820px) { .movegrid { grid-template-columns:1fr; } }
+  .movebox { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .movebox h3 { font-size:12.5px; font-weight:650; padding:9px 13px; margin:0;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .movebox.up h3 { color:var(--up); }
+  .movebox.down h3 { color:var(--down); }
+  .mrow { display:flex; align-items:baseline; gap:9px; padding:6px 13px;
+    border-bottom:1px solid var(--grid); font-size:13px; }
+  .mrow:last-child { border-bottom:none; }
+  .mrow a { color:var(--text-primary); font-weight:600; text-decoration:none; flex:none;
+    min-width:52px; }
+  .mrow a:hover { text-decoration:underline; }
+  .mrow .mn { color:var(--text-muted); font-size:11.5px; flex:1; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .mrow .mc { font-weight:650; font-variant-numeric:tabular-nums; }
+  .mrow .ms { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums;
+    min-width:36px; text-align:right; }
+  .mrow .ms.big { color:var(--series-2); font-weight:650; }
+
+  /* breadth */
+  .breadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:9px; }
+  .bcard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:9px 12px; }
+  .bcard .bname { font-size:11.5px; color:var(--text-secondary); }
+  .bcard .bval { font-size:17px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .bcard .bbar { height:5px; border-radius:3px; background:var(--off-bg); margin:5px 0 3px;
+    overflow:hidden; }
+  .bcard .bbar i { display:block; height:100%; background:var(--up); }
+  .bcard .bsub { font-size:10.5px; color:var(--text-muted); }
+
+  /* calendar */
+  .calgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
+  .calcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:11px 13px; }
+  .calcard h3 { font-size:12.5px; margin:0 0 6px; color:var(--text-secondary); }
+  .calcard ul { margin:0; padding:0; list-style:none; }
+  .calcard li { font-size:12.5px; padding:3px 0; border-top:1px solid var(--grid); }
+  .calcard li:first-child { border-top:none; }
+  .calcard li b { font-weight:640; }
+  .calcard li span { color:var(--text-muted); font-size:11px; }
+  .calcard .none { font-size:12px; color:var(--text-muted); }
+
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:84ch; }
+  footer a { color:var(--text-secondary); }
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
+    font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
+    justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
+  #totop.show { display:flex; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Today's tape</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+    <button class="refresh" id="refresh" type="button">Refresh</button>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="tape.html" class="here">Today</a>
+    <a href="markets.html">Markets</a>
+    <a href="countries.html">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+  </nav>
+
+  <p id="status">Fetching live prices…</p>
+
+  <div id="content" hidden>
+    <h2>Sessions</h2>
+    <p class="lede">Which cash equity sessions are trading right now. Everything below is the
+      current session where a market is open, and the last completed session where it is not —
+      each card says which.</p>
+    <div class="sessions" id="sessions"></div>
+
+    <h2>The tape</h2>
+    <p class="lede">The instruments that set the tone, with today's path drawn from five-minute
+      bars against the previous close. Flat lines mean the market has not opened yet.</p>
+    <div class="heads" id="heads"></div>
+
+    <h2>Read of the session</h2>
+    <div id="verdict"></div>
+
+    <h2>Movers</h2>
+    <p class="lede">Ranked by size of move against each instrument's own 60-day volatility, so a
+      2% day in something that never moves outranks a 4% day in something that always does. The
+      σ figure is that ratio.</p>
+    <div class="movegrid" id="movers"></div>
+
+    <h2>Breadth</h2>
+    <p class="lede">Share of each block trading higher on the session — where participation is
+      broad and where it is a handful of names.</p>
+    <div class="breadth" id="breadth"></div>
+
+    <h2>On the calendar</h2>
+    <p class="lede">Watchlist names with something scheduled today or tomorrow, from the
+      TradingView events feed.</p>
+    <div class="calgrid" id="calendar"></div>
+  </div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live on each load and delayed rather than real-time —
+      treat the tape as indicative, not executable. Intraday paths use five-minute bars against the
+      previous close; futures and FX trade nearly around the clock, so their "session" spans more
+      than the equity day. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  /* The instruments that set the tone, drawn intraday. Yields are quoted in
+     index points on Yahoo, so their "percent change" is a change in the yield
+     itself — flagged so it is never read as a price move. */
+  const HEADLINE = [
+    ["SPY", "S&P 500"], ["QQQ", "Nasdaq 100"], ["IWM", "Russell 2000"],
+    ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
+    ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"], ["CL=F", "WTI crude"],
+    ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
+  ];
+  /* Cash equity sessions worth a clock, each represented by a local index. */
+  const SESSIONS = [
+    ["Tokyo", "^N225"], ["London", "^FTSE"], ["Frankfurt", "^GDAXI"], ["New York", "SPY"],
+  ];
+  /* Breadth and movers universe: broad enough to be a real read on the day,
+     small enough to stay one round of requests. */
+  const TAPE = [
+    ["SPY", "S&P 500", "US equity"], ["QQQ", "Nasdaq 100", "US equity"],
+    ["IWM", "Russell 2000", "US equity"], ["DIA", "Dow Jones", "US equity"],
+    ["RSP", "S&P equal weight", "US equity"], ["MAGS", "Magnificent 7", "US equity"],
+    ["IVE", "Large value", "US equity"], ["IVW", "Large growth", "US equity"],
+    ["IJH", "Mid caps", "US equity"], ["IJR", "Small caps", "US equity"],
+    ["XLK", "Technology", "Sectors"], ["SMH", "Semiconductors", "Sectors"],
+    ["XLF", "Financials", "Sectors"], ["XLY", "Discretionary", "Sectors"],
+    ["XLI", "Industrials", "Sectors"], ["XLE", "Energy", "Sectors"],
+    ["XLB", "Materials", "Sectors"], ["XLC", "Communications", "Sectors"],
+    ["XLV", "Health care", "Sectors"], ["XLP", "Staples", "Sectors"],
+    ["XLU", "Utilities", "Sectors"], ["XLRE", "Real estate", "Sectors"],
+    ["EWJ", "Japan", "Countries"], ["EWG", "Germany", "Countries"],
+    ["EWU", "United Kingdom", "Countries"], ["EWQ", "France", "Countries"],
+    ["MCHI", "China", "Countries"], ["EWT", "Taiwan", "Countries"],
+    ["EWY", "South Korea", "Countries"], ["INDA", "India", "Countries"],
+    ["EWZ", "Brazil", "Countries"], ["EWC", "Canada", "Countries"],
+    ["EWA", "Australia", "Countries"], ["EZA", "South Africa", "Countries"],
+    ["ACWI", "World", "Countries"], ["EEM", "Emerging markets", "Countries"],
+    ["GC=F", "Gold", "Commodities"], ["SI=F", "Silver", "Commodities"],
+    ["HG=F", "Copper", "Commodities"], ["CL=F", "WTI crude", "Commodities"],
+    ["BCI", "Broad commodities", "Commodities"], ["URA", "Uranium", "Commodities"],
+    ["GDX", "Gold miners", "Miners"], ["GDXJ", "Junior gold miners", "Miners"],
+    ["SIL", "Silver miners", "Miners"], ["COPX", "Copper miners", "Miners"],
+    ["XME", "Metals & mining", "Miners"], ["REMX", "Rare earths", "Miners"],
+    ["TLT", "20y+ Treasuries", "Rates & credit"], ["IEF", "7-10y Treasuries", "Rates & credit"],
+    ["HYG", "High yield", "Rates & credit"], ["LQD", "Investment grade", "Rates & credit"],
+    ["STIP", "Short TIPS", "Rates & credit"],
+    ["BOTZ", "Robotics", "Themes"], ["ARKX", "Space", "Themes"], ["XBI", "Biotech", "Themes"],
+    ["ITA", "Defence", "Themes"], ["NLR", "Nuclear", "Themes"], ["PAVE", "Infrastructure", "Themes"],
+    ["GRID", "Grid", "Themes"], ["LIT", "Lithium & battery", "Themes"],
+    ["AIQ", "Artificial intelligence", "Themes"], ["MOO", "Agribusiness", "Themes"],
+  ];
+  const BLOCKS = ["US equity", "Sectors", "Countries", "Commodities", "Miners",
+                  "Rates & credit", "Themes"];
+
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  /* One fetch shape for both passes: daily bars carry the previous close and
+     enough history for a volatility baseline; 5-minute bars carry the path. */
+  async function fetchSpark(symbols, range, interval) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=" + range + "&interval=" + interval))
+          .spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) {
+        if (closes[i] != null) pts.push([stamps[i], closes[i]]);
+      }
+      if (pts.length) out[row.symbol] = { pts, meta: resp.meta || {} };
+    }
+    return out;
+  }
+
+  const nowSec = () => Date.now() / 1000;
+  /* A market is open when the exchange's own regular session brackets now. */
+  function sessionState(meta) {
+    const reg = meta?.currentTradingPeriod?.regular;
+    if (!reg) return null;
+    const n = nowSec();
+    return { open: n >= reg.start && n < reg.end, start: reg.start, end: reg.end };
+  }
+  const clock = epoch => new Date(epoch * 1000)
+    .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const dur = secs => {
+    const m = Math.max(0, Math.round(secs / 60));
+    return m >= 60 ? Math.floor(m / 60) + "h " + (m % 60) + "m" : m + "m";
+  };
+
+  const status = $("#status");
+  let DAILY = {}, INTRA = {};
+
+  async function load() {
+    status.hidden = false;
+    status.textContent = "Fetching live prices…";
+    $("#content").hidden = true;
+    const syms = [...new Set(TAPE.map(t => t[0]).concat(HEADLINE.map(x => x[0]),
+      SESSIONS.map(s => s[1])))];
+    // 6 months of daily bars: previous close plus a 60-day volatility baseline.
+    DAILY = await fetchSpark(syms, "6mo", "1d");
+    if (!Object.keys(DAILY).length) {
+      status.textContent = "Could not reach the price feed. Reload in a moment.";
+      return;
+    }
+    INTRA = await fetchSpark(HEADLINE.map(x => x[0]), "1d", "5m");
+    status.hidden = true;
+    $("#content").hidden = false;
+    render();
+  }
+
+  /* Today's move against the previous close, plus how big that is relative to
+     the instrument's own recent daily range. */
+  function dayOf(sym) {
+    const d = DAILY[sym];
+    if (!d || d.pts.length < 3) return null;
+    const last = d.pts[d.pts.length - 1][1];
+    let prev = d.meta.previousClose;
+    if (prev == null) prev = d.pts[d.pts.length - 2][1];
+    if (!prev) return null;
+    const chg = (last / prev - 1) * 100;
+    // 60-day daily-return standard deviation as the yardstick
+    const rets = [];
+    const tail = d.pts.slice(-61);
+    for (let i = 1; i < tail.length; i++) rets.push(tail[i][1] / tail[i - 1][1] - 1);
+    const mean = rets.reduce((a, b) => a + b, 0) / (rets.length || 1);
+    const sd = Math.sqrt(rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length || 1)) * 100;
+    return { last, prev, chg, sigma: sd ? chg / sd : null, state: sessionState(d.meta) };
+  }
+
+  function sparkPath(sym, chg) {
+    const d = INTRA[sym];
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    const w = 150, hgt = 30;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + hgt);
+    svg.setAttribute("preserveAspectRatio", "none");
+    if (!d || d.pts.length < 2) return svg;
+    const base = d.meta.previousClose ?? d.pts[0][1];
+    const v = d.pts.map(p => p[1]);
+    const lo = Math.min(base, ...v), hi = Math.max(base, ...v);
+    const x = i => (i / (v.length - 1)) * w;
+    const y = val => hi === lo ? hgt / 2 : 1 + (1 - (val - lo) / (hi - lo)) * (hgt - 2);
+    // previous close as the zero line: the whole point is distance from it
+    const zero = document.createElementNS(NS, "line");
+    zero.setAttribute("x1", 0); zero.setAttribute("x2", w);
+    zero.setAttribute("y1", y(base)); zero.setAttribute("y2", y(base));
+    zero.setAttribute("stroke", css("--baseline"));
+    zero.setAttribute("stroke-width", "1");
+    zero.setAttribute("stroke-dasharray", "2 3");
+    svg.appendChild(zero);
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", v.map((val, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " +
+      y(val).toFixed(1)).join(""));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", css(chg >= 0 ? "--up" : "--down"));
+    path.setAttribute("stroke-width", "1.5");
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function render() {
+    // ---------- sessions ----------
+    const sbox = $("#sessions");
+    sbox.textContent = "";
+    let anyOpen = false;
+    for (const [name, sym] of SESSIONS) {
+      const d = DAILY[sym];
+      const st = d && sessionState(d.meta);
+      const card = h("div", "sess" + (st && st.open ? " open" : ""));
+      const nm = h("div", "sname");
+      nm.appendChild(h("span", "dot"));
+      nm.appendChild(document.createTextNode(name));
+      card.appendChild(nm);
+      if (!st) {
+        card.appendChild(h("div", "sstate", "–"));
+        card.appendChild(h("div", "stime", "no session data"));
+      } else if (st.open) {
+        anyOpen = true;
+        card.appendChild(h("div", "sstate", "Open"));
+        card.appendChild(h("div", "stime", "closes in " + dur(st.end - nowSec()) +
+          " · " + clock(st.end)));
+      } else {
+        const ahead = st.start - nowSec();
+        card.appendChild(h("div", "sstate", "Closed"));
+        card.appendChild(h("div", "stime", ahead > 0
+          ? "opens in " + dur(ahead) + " · " + clock(st.start)
+          : "closed " + dur(nowSec() - st.end) + " ago"));
+      }
+      sbox.appendChild(card);
+    }
+
+    // ---------- headline strip ----------
+    const hbox = $("#heads");
+    hbox.textContent = "";
+    for (const [sym, name, kind] of HEADLINE) {
+      const d = dayOf(sym);
+      const card = h("div", "hcard");
+      card.appendChild(h("div", "hname", name));
+      if (!d) { card.appendChild(h("div", "hval", "–")); hbox.appendChild(card); continue; }
+      const isYield = kind === "yield";
+      card.appendChild(h("div", "hval", isYield ? fmt(d.last, 2) + "%" : fmt(d.last, 2)));
+      const chg = h("div", "hchg " + (d.chg >= 0 ? "up" : "down"));
+      chg.textContent = isYield
+        ? ((d.last - d.prev) >= 0 ? "+" : "") + fmt((d.last - d.prev) * 100, 0) + "bp"
+        : pct(d.chg);
+      card.appendChild(chg);
+      card.appendChild(sparkPath(sym, d.chg));
+      hbox.appendChild(card);
+    }
+
+    // ---------- read of the session ----------
+    const vbox = $("#verdict");
+    vbox.textContent = "";
+    const g = s => { const x = dayOf(s); return x ? x.chg : null; };
+    const spy = g("SPY"), tlt = g("TLT"), hyg = g("HYG"), vix = g("^VIX"),
+          gold = g("GC=F"), dxy = g("DX-Y.NYB"), iwm = g("IWM");
+    const signals = [];
+    if (spy != null) signals.push(spy >= 0);
+    if (hyg != null) signals.push(hyg >= 0);
+    if (iwm != null) signals.push(iwm >= 0);
+    if (vix != null) signals.push(vix < 0);
+    const onCount = signals.filter(Boolean).length;
+    const cls = !signals.length ? "" : onCount === signals.length ? "on"
+      : onCount === 0 ? "off" : "mixed";
+    const v = h("div", "verdict " + cls);
+    const headline = !signals.length ? "No read available."
+      : onCount === signals.length ? "Risk-on across the board."
+      : onCount === 0 ? "Risk-off across the board."
+      : "A split tape.";
+    v.appendChild(h("b", null, headline));
+    const bits = [];
+    if (spy != null) bits.push("S&P " + pct(spy));
+    if (iwm != null) bits.push("small caps " + pct(iwm));
+    if (hyg != null) bits.push("high yield " + pct(hyg));
+    if (vix != null) bits.push("VIX " + pct(vix));
+    if (tlt != null) bits.push("long Treasuries " + pct(tlt));
+    if (gold != null) bits.push("gold " + pct(gold));
+    if (dxy != null) bits.push("dollar " + pct(dxy));
+    v.appendChild(h("span", "vsub", bits.join(" · ") + "."));
+    // the divergences worth a sentence
+    const notes = [];
+    if (spy != null && hyg != null && spy > 0 && hyg < 0)
+      notes.push("Equity is up while high yield is down — credit is not confirming.");
+    if (spy != null && vix != null && spy > 0 && vix > 0)
+      notes.push("Both the index and volatility are higher, which usually means the move is being hedged rather than chased.");
+    if (gold != null && dxy != null && gold > 0 && dxy > 0)
+      notes.push("Gold and the dollar rising together points at haven demand rather than a rate story.");
+    if (spy != null && iwm != null && Math.abs(spy - iwm) > 1)
+      notes.push("Small caps and the index have parted by " + fmt(Math.abs(spy - iwm), 1) +
+        " points — leadership is " + (iwm > spy ? "broadening" : "narrowing") + ".");
+    if (notes.length) v.appendChild(h("span", "vsub", notes.join(" ")));
+    vbox.appendChild(v);
+
+    // ---------- movers ----------
+    const rows = TAPE.map(([sym, name, block]) => {
+      const d = dayOf(sym);
+      return d ? { sym, name, block, ...d } : null;
+    }).filter(Boolean);
+    const mbox = $("#movers");
+    mbox.textContent = "";
+    const byMove = rows.slice().sort((a, b) => (b.sigma ?? 0) - (a.sigma ?? 0));
+    const mk = (title, list, cls2) => {
+      const box = h("div", "movebox " + cls2);
+      box.appendChild(h("h3", null, title));
+      for (const r of list) {
+        const row = h("div", "mrow");
+        const a = h("a", null, r.sym);
+        a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+        row.appendChild(a);
+        row.appendChild(h("span", "mn", r.name));
+        row.appendChild(h("span", "mc " + (r.chg >= 0 ? "up" : "down"), pct(r.chg)));
+        row.appendChild(h("span", "ms" + (Math.abs(r.sigma ?? 0) >= 2 ? " big" : ""),
+          r.sigma == null ? "" : fmt(Math.abs(r.sigma), 1) + "σ"));
+        box.appendChild(row);
+      }
+      mbox.appendChild(box);
+    };
+    mk("Higher", byMove.filter(r => r.chg > 0).slice(0, 10), "up");
+    mk("Lower", byMove.filter(r => r.chg < 0).slice(-10).reverse(), "down");
+
+    // ---------- breadth ----------
+    const bbox = $("#breadth");
+    bbox.textContent = "";
+    for (const block of BLOCKS) {
+      const list = rows.filter(r => r.block === block);
+      if (!list.length) continue;
+      const up = list.filter(r => r.chg > 0).length;
+      const share = Math.round(up / list.length * 100);
+      const card = h("div", "bcard");
+      card.appendChild(h("div", "bname", block));
+      card.appendChild(h("div", "bval", share + "%"));
+      const bar = h("div", "bbar");
+      const fill = h("i");
+      fill.style.width = share + "%";
+      bar.appendChild(fill);
+      card.appendChild(bar);
+      card.appendChild(h("div", "bsub", up + " of " + list.length + " higher"));
+      bbox.appendChild(card);
+    }
+
+    $("#stamp").textContent = "Fetched " +
+      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
+      rows.length + " instruments · " +
+      (anyOpen ? "a session is open, figures are live" : "all cash sessions closed, figures are the last completed session");
+  }
+
+  // ---------- calendar from the watchlist events feed ----------
+  async function renderCalendar() {
+    const box = $("#calendar");
+    box.textContent = "";
+    let ev = {}, list = [];
+    try {
+      const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
+      ev = r.ok ? (await r.json()).symbols || {} : {};
+    } catch { ev = {}; }
+    try {
+      const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
+      list = r.ok ? await r.json() : [];
+    } catch { list = []; }
+    const nameOf = {};
+    for (const p of list) if (p.note) nameOf[p.sym] = p.note;
+    const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    const pick = (field, days) => Object.entries(ev)
+      .filter(([, v]) => days.includes(v[field]))
+      .map(([sym, v]) => ({ sym, name: nameOf[sym] || "", when: v[field],
+                            slot: v.earnings_when || "" }));
+    const cards = [
+      ["Reporting today", pick("earnings", [today])],
+      ["Reporting tomorrow", pick("earnings", [tomorrow])],
+      ["Ex-dividend today or tomorrow", pick("ex_div", [today, tomorrow])],
+    ];
+    for (const [title, items] of cards) {
+      const card = h("div", "calcard");
+      card.appendChild(h("h3", null, title));
+      if (!items.length) { card.appendChild(h("p", "none", "Nothing scheduled.")); box.appendChild(card); continue; }
+      const ul = h("ul");
+      for (const it of items.sort((a, b) => a.sym.localeCompare(b.sym))) {
+        const li = h("li");
+        li.appendChild(h("b", null, it.sym));
+        if (it.name) li.appendChild(document.createTextNode(" " + it.name));
+        if (it.slot) li.appendChild(h("span", null, " · " + it.slot));
+        ul.appendChild(li);
+      }
+      card.appendChild(ul);
+      box.appendChild(card);
+    }
+  }
+
+  $("#refresh").addEventListener("click", () => { load(); renderCalendar(); });
+
+  const tt = h("button", null, "↑");
+  tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";
+  document.body.appendChild(tt);
+  addEventListener("scroll", () => tt.classList.toggle("show", scrollY > 600), { passive: true });
+  tt.addEventListener("click", () => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: rm ? "auto" : "smooth" });
+  });
+
+  await load();
+  renderCalendar();
+})();
+</script>
+</body>
+</html>
