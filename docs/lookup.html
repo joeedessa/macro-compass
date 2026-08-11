@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lookup — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+    --mixed-bg:rgba(237,161,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+      --mixed-bg:rgba(237,161,0,0.16);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1180px; margin:0 auto; padding:26px 22px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:17px; margin:32px 0 4px; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; max-width:84ch; margin-bottom:12px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  #status { color:var(--text-muted); font-size:13.5px; margin-top:20px; }
+
+  /* combobox */
+  .picker { position:relative; max-width:460px; margin:18px 0 6px; }
+  .picker label { display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px; }
+  .picker input { width:100%; font:inherit; font-size:15px; color:var(--text-primary);
+    background:var(--surface-1); border:1px solid var(--baseline); border-radius:11px;
+    padding:10px 38px 10px 14px; }
+  .picker input:focus { outline:2px solid var(--series-1); outline-offset:1px; }
+  .picker .caret { position:absolute; right:14px; top:34px; color:var(--text-muted);
+    pointer-events:none; font-size:12px; }
+  .picker ul { position:absolute; z-index:30; top:100%; left:0; right:0; margin-top:5px;
+    background:var(--surface-1); border:1px solid var(--baseline); border-radius:11px;
+    padding:5px; list-style:none; max-height:300px; overflow:auto;
+    box-shadow:0 10px 28px rgba(0,0,0,0.35); }
+  .picker ul[hidden] { display:none; }
+  .picker li { padding:8px 11px; border-radius:8px; cursor:pointer; font-size:14px; }
+  .picker li .sub { display:block; font-size:11.5px; color:var(--text-muted); }
+  .picker li:hover, .picker li.active { background:var(--surface-2); }
+  .picker li.none { color:var(--text-muted); cursor:default; font-size:13px; }
+
+  /* subject head */
+  .subjhead { background:var(--surface-1); border:1px solid var(--border); border-radius:14px;
+    padding:15px 18px; margin-top:6px; }
+  .subjhead h3 { font-size:20px; margin:0; letter-spacing:-0.01em; }
+  .subjhead .thesis { font-size:13.5px; color:var(--text-secondary); margin-top:5px;
+    max-width:82ch; }
+  .subjhead .quote { display:flex; gap:18px; margin-top:10px; flex-wrap:wrap; }
+  .qitem .ql { font-size:11px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .qitem .qv { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .up { color:var(--up); } .down { color:var(--down); }
+
+  /* generic table */
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:9px 11px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; }
+  th.left { text-align:left; }
+  td { padding:7px 11px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.left { text-align:left; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  .iname { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .iname:hover { text-decoration:underline; }
+  .isym { color:var(--text-muted); font-size:11px; margin-left:6px; }
+  .lead td { font-weight:650; }
+
+  /* driver cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(285px,1fr)); gap:11px; }
+  .card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; }
+  .card.ok { border-color:var(--up); }
+  .card.diverge { border-color:var(--series-2); }
+  .card.shift { border-color:#eda100; }
+  .card .cname { font-size:13.5px; font-weight:650; }
+  .card .cexp { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .card .legs { display:flex; gap:8px; margin:8px 0 7px; flex-wrap:wrap; }
+  .leg { flex:1 1 110px; border:1px solid var(--border); border-radius:9px; padding:5px 9px;
+    min-width:0; }
+  .leg.up { background:var(--on-bg); } .leg.down { background:var(--off-bg); }
+  .leg .ll { display:block; font-size:10.5px; color:var(--text-secondary);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .leg .lv { font-size:13.5px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .card .verdict { font-size:12.5px; margin:0 0 5px; }
+  .card .verdict b { font-weight:680; }
+  .card .why { font-size:11.5px; color:var(--text-muted); margin:0; }
+
+  /* ratio rows */
+  .ratios { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .rrow { display:flex; align-items:baseline; gap:11px; padding:9px 14px;
+    border-bottom:1px solid var(--grid); font-size:13px; flex-wrap:wrap; }
+  .rrow:last-child { border-bottom:none; }
+  .rrow .rp { font-weight:650; min-width:118px; }
+  .rrow .rv { font-weight:650; font-variant-numeric:tabular-nums; min-width:64px; }
+  .rrow .rt { color:var(--text-secondary); flex:1; min-width:200px; }
+
+  /* signals */
+  .sigwrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
+  .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:0 0 8px; overflow:hidden; }
+  .sigcol .th { font-size:12.5px; font-weight:650; padding:9px 12px 8px;
+    background:var(--surface-2); border-bottom:1px solid var(--baseline); }
+  .sigitem { padding:6px 12px; border-top:1px solid var(--grid); font-size:12.5px; }
+  .sigcol .sigitem:first-of-type { border-top:none; }
+  .sigitem b { font-weight:640; }
+  .sigitem span { display:block; font-size:10.5px; color:var(--text-muted); }
+  .sigcol .none { font-size:11.5px; color:var(--text-muted); padding:9px 12px 2px; }
+
+  /* chips */
+  .chips { display:flex; gap:7px; flex-wrap:wrap; }
+  .chip { font-size:12.5px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 12px;
+    background:var(--surface-1); }
+  .chip:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .chip b { color:var(--text-primary); font-weight:640; }
+
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:84ch; }
+  footer a { color:var(--text-secondary); }
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
+    font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
+    justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
+  #totop.show { display:flex; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Lookup</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="tape.html">Today</a>
+    <a href="markets.html">Markets</a>
+    <a href="countries.html">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+    <a href="lookup.html" class="here">Lookup</a>
+  </nav>
+
+  <p class="lede" style="margin-top:16px">Pick a subject and this pulls together everything the
+    rest of the dashboard knows about it — the instruments that express it, the macro series that
+    drive it and whether those relationships are currently behaving, the relative strength inside
+    its own complex, any moving-average crosses, and the names on your watchlist that ride on it.
+    Three subjects to start; the page is built so adding more is a data change.</p>
+
+  <div class="picker" id="picker">
+    <label for="q">Subject</label>
+    <input id="q" type="text" autocomplete="off" role="combobox" aria-expanded="false"
+           aria-controls="opts" placeholder="Search — try gold, dollar, copper…">
+    <span class="caret">▾</span>
+    <ul id="opts" role="listbox" hidden></ul>
+  </div>
+
+  <p id="status">Fetching live prices…</p>
+  <div id="content" hidden></div>
+
+  <footer>
+    <p>Prices from Yahoo Finance fetched live on each load (delayed, not real-time); macro series
+      from the hourly official pull. Driver relationships are measured over the last three months
+      and describe co-movement, not causation — a relationship "behaving" is context, not a signal
+      to act on. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
+  const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
+
+  /* ------------------------------------------------------------------
+     A subject is a dossier spec: what expresses it, what drives it, what
+     to compare inside its own complex, and where else on the dashboard it
+     shows up. Everything below is data — adding a subject is adding a key.
+     `expect` on a driver is the sign the relationship is supposed to have,
+     so the page can say whether it is behaving rather than just plotting.
+  ------------------------------------------------------------------ */
+  const SUBJECTS = {
+    gold: {
+      name: "Gold",
+      terms: ["gold", "xau", "gld", "gc=f", "bullion", "precious metals", "miners", "gdx"],
+      blurb: "The metal, its ETF wrapper and the equity leg",
+      thesis: "Gold pays no coupon, so it is priced against the real yield and the dollar. " +
+        "The miners are a levered claim on the metal — when they lead it, the market is pricing " +
+        "the move as durable; when they lag, it is being treated as a hedge rather than a trend.",
+      lead: "GC=F",
+      complex: [
+        ["GC=F", "Gold (futures)"], ["GLD", "Gold ETF"],
+        ["GDX", "Senior gold miners"], ["GDXJ", "Junior gold miners"],
+        ["SI=F", "Silver"], ["SIL", "Silver miners"], ["SILJ", "Junior silver miners"],
+      ],
+      drivers: [
+        { macro: "us_real_10y", expect: -1, name: "10-year real yield",
+          why: "The opportunity cost of holding a metal that yields nothing. Rising real yields are the textbook headwind." },
+        { macro: "mkt_dollar", expect: -1, name: "US dollar index",
+          why: "Gold is priced in dollars, so a stronger dollar mechanically raises its price to every other buyer." },
+        { macro: "us_breakeven_10y", expect: 1, name: "10-year breakeven inflation",
+          why: "Gold is bought as an inflation hedge, so rising market-implied inflation should support it." },
+        { macro: "cr_hy_oas", expect: 1, name: "High yield credit spread",
+          why: "Widening spreads mean stress, and stress sends money into havens. This one is meant to be a weak link most of the time." },
+      ],
+      ratios: [
+        ["GDX", "GC=F", "Miners vs the metal", "Miners leading — the move is being priced as durable",
+          "Miners lagging — the metal is being treated as a hedge, not a trend"],
+        ["GDXJ", "GDX", "Juniors vs seniors", "Risk appetite inside the complex rising",
+          "Juniors being derisked first"],
+        ["GC=F", "SI=F", "Gold vs silver", "Gold leading — defensive character",
+          "Silver leading — the industrial and risk-on character"],
+        ["GLD", "SPY", "Gold vs equities", "Gold preferred to equity risk",
+          "Equity risk preferred to gold"],
+      ],
+      sectors: ["Non-Energy Minerals"],
+      context: ["res_cn_gold", "res_jp_gold"],
+      links: [["Markets — cross-asset", "markets.html#s-cross"],
+              ["Macro & flows — central bank gold", "macro.html"],
+              ["Themes — where miners rank", "themes.html"]],
+    },
+    dollar: {
+      name: "US dollar",
+      terms: ["dollar", "usd", "dxy", "dx-y.nyb", "greenback", "fx", "currency"],
+      blurb: "The denominator under every other asset",
+      thesis: "The dollar is the price of everything else's funding. It trades off rate " +
+        "differentials against the rest of the developed world, and it transmits straight into " +
+        "commodities, emerging markets and gold — usually with the opposite sign.",
+      lead: "DX-Y.NYB",
+      complex: [
+        ["DX-Y.NYB", "Dollar index"], ["EURUSD=X", "EUR/USD"], ["JPY=X", "USD/JPY"],
+        ["UUP", "Dollar bull ETF"], ["EEM", "Emerging markets"], ["BCI", "Broad commodities"],
+        ["GLD", "Gold ETF"],
+      ],
+      drivers: [
+        { macro: "us_treasury_10y", expect: 1, name: "US 10-year yield",
+          why: "Higher US yields pull capital in and bid the dollar, provided the rest of the world is not moving with it." },
+        { macro: "de_bund_10y", expect: -1, name: "German 10-year bund",
+          why: "The other half of the differential. Bunds rising faster than Treasuries narrows the gap and weakens the dollar." },
+        { macro: "us_fed_funds", expect: 1, name: "Fed funds target",
+          why: "The policy anchor for the front end, and the cleanest signal of relative carry." },
+        { macro: "cr_hy_oas", expect: 1, name: "High yield credit spread",
+          why: "The dollar is the world's haven. Stress widens spreads and bids the dollar at the same time." },
+      ],
+      ratios: [
+        ["EEM", "SPY", "Emerging vs US equity", "EM leading — a weak-dollar tell",
+          "US leading — the usual strong-dollar pattern"],
+        ["BCI", "SPY", "Commodities vs equity", "Commodities bid despite the dollar",
+          "Commodities lagging equity"],
+        ["GLD", "SPY", "Gold vs equity", "Haven demand present", "Risk assets preferred"],
+        ["EFA", "SPY", "Developed ex-US vs US", "Ex-US leading", "US leading"],
+      ],
+      sectors: [],
+      context: ["eur_usd", "usd_jpy", "us_yield_spread"],
+      links: [["Markets — cross-asset", "markets.html#s-cross"],
+              ["Countries — dollar returns vs local", "countries.html"],
+              ["Macro & flows — reserves", "macro.html"]],
+    },
+    copper: {
+      name: "Copper and the growth cycle",
+      terms: ["copper", "hg=f", "copx", "growth", "cycle", "industrial metals", "doctor copper"],
+      blurb: "The industrial metal read as a growth signal",
+      thesis: "Copper is the cyclical metal with the shortest line to real activity — grids, " +
+        "construction, vehicles. Read against gold it strips out the monetary story and leaves " +
+        "the growth one, which is why the copper/gold ratio tracks long yields.",
+      lead: "HG=F",
+      complex: [
+        ["HG=F", "Copper (futures)"], ["COPX", "Copper miners"], ["XME", "Metals & mining"],
+        ["FCX", "Freeport-McMoRan"], ["PAVE", "US infrastructure"], ["GRID", "Grid & electrification"],
+        ["MCHI", "China equity"],
+      ],
+      drivers: [
+        { macro: "cmd_copper", expect: 1, name: "Copper (official series)",
+          why: "The official price series, as a check that the futures leg and the reported price agree." },
+        { macro: "us_treasury_10y", expect: 1, name: "US 10-year yield",
+          why: "Both are growth-sensitive. Copper rising with yields is a growth impulse; copper rising without them is a supply story." },
+        { macro: "us_yield_spread", expect: 1, name: "10y minus 2y curve",
+          why: "A steepening curve prices a recovering cycle, which is the same thing copper is supposed to be pricing." },
+        { macro: "cr_hy_oas", expect: -1, name: "High yield credit spread",
+          why: "Tightening spreads and rising copper both say the cycle is intact; the two disagreeing is worth noticing." },
+      ],
+      ratios: [
+        ["HG=F", "GC=F", "Copper vs gold", "Growth expectations over fear",
+          "Fear over growth expectations"],
+        ["COPX", "HG=F", "Miners vs the metal", "Miners leading the metal",
+          "Miners lagging the metal"],
+        ["XME", "SPY", "Metals & mining vs market", "Cyclical materials leading",
+          "Cyclical materials lagging"],
+        ["MCHI", "SPY", "China vs US equity", "China leading — a demand tell",
+          "China lagging — demand doubt"],
+      ],
+      sectors: ["Non-Energy Minerals", "Producer Manufacturing"],
+      context: ["cmd_aluminum", "cmd_nickel"],
+      links: [["Markets — cross-asset", "markets.html#s-cross"],
+              ["Themes — grid and infrastructure", "themes.html"],
+              ["Countries — China and the miners' home markets", "countries.html"]],
+    },
+  };
+  const KEYS = Object.keys(SUBJECTS);
+
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  async function fetchSeries(symbols) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=2y&interval=1d")).spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) {
+        if (closes[i] != null) pts.push([new Date(stamps[i] * 1000).toISOString().slice(0, 10), closes[i]]);
+      }
+      if (pts.length) out[row.symbol] = pts;
+    }
+    return out;
+  }
+
+  const sma = (pts, n) => {
+    if (pts.length < n) return null;
+    let s = 0;
+    for (let i = pts.length - n; i < pts.length; i++) s += pts[i][1];
+    return s / n;
+  };
+  const smaSeries = (pts, n) => {
+    if (pts.length < n) return [];
+    const out = []; let s = 0;
+    for (let i = 0; i < pts.length; i++) {
+      s += pts[i][1];
+      if (i >= n) s -= pts[i - n][1];
+      if (i >= n - 1) out.push([pts[i][0], s / n]);
+    }
+    return out;
+  };
+  const emaSeries = (pts, n) => {
+    if (pts.length < n) return [];
+    const k = 2 / (n + 1), out = [];
+    let prev = pts[0][1];
+    for (let i = 0; i < pts.length; i++) { prev = pts[i][1] * k + prev * (1 - k); out.push([pts[i][0], prev]); }
+    return out.slice(n);
+  };
+  const back = (pts, n) => pts.length > n ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
+  function stats(pts) {
+    if (!pts || pts.length < 3) return null;
+    const last = pts[pts.length - 1][1];
+    const ma200 = sma(pts, 200);
+    const yr = new Date().getFullYear();
+    let ytdBase = null;
+    for (const [d, v] of pts) { if (d < yr + "-01-01") ytdBase = v; else break; }
+    return { last, d1: back(pts, 1), w1: back(pts, 5), m1: back(pts, 21), m3: back(pts, 63),
+      ytd: ytdBase ? (last / ytdBase - 1) * 100 : null,
+      maGap: ma200 == null ? null : (last / ma200 - 1) * 100 };
+  }
+  /* Ratio of two series joined on calendar date — ETF and futures calendars
+     differ, so joining on index silently misaligns them. */
+  function ratioChange(a, b, days) {
+    if (!a || !b) return null;
+    const mb = new Map(b.map(p => [p[0], p[1]]));
+    const joined = a.filter(p => mb.has(p[0])).map(p => [p[0], p[1] / mb.get(p[0])]);
+    if (joined.length < days + 1) return null;
+    const last = joined[joined.length - 1][1];
+    const base = joined[joined.length - 1 - days][1];
+    return (last / base - 1) * 100;
+  }
+  const CROSS_DEFS = [
+    [4, "5 × 21", (P, S) => [S.e5, S.e21]],
+    [2, "price × 50", (P, S) => [P, S.s50]],
+    [3, "21 × 50", (P, S) => [S.e21, S.s50]],
+    [0, "price × 200", (P, S) => [P, S.s200]],
+    [1, "50 × 200", (P, S) => [S.s50, S.s200]],
+  ];
+  function crossEvents(pts, lookback = 10) {
+    if (!pts || pts.length < 220) return [];
+    const S = { s50: smaSeries(pts, 50), s200: smaSeries(pts, 200),
+                e21: emaSeries(pts, 21), e5: emaSeries(pts, 5) };
+    const events = [];
+    for (const [tier, label, pick] of CROSS_DEFS) {
+      const [fast, slow] = pick(pts, S);
+      const bySlow = new Map(slow.map(p => [p[0], p[1]]));
+      const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
+      if (pair.length < lookback + 2) continue;
+      const tail = pair.slice(-(lookback + 1));
+      for (let i = 1; i < tail.length; i++) {
+        const prev = tail[i - 1][1], now = tail[i][1];
+        if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
+        let whip = false;
+        for (let k = i + 1; k < tail.length; k++) {
+          if ((tail[k][1] < 0) !== (now < 0)) { whip = true; break; }
+        }
+        events.push({ tier, label, bullish: now > 0, daysAgo: tail.length - 1 - i, whip });
+      }
+    }
+    return events;
+  }
+
+  let SERIES = {}, MACRO = null, EVENTS = {}, WATCH = [];
+  const status = $("#status");
+
+  async function boot() {
+    const syms = [...new Set(KEYS.flatMap(k =>
+      SUBJECTS[k].complex.map(c => c[0])
+        .concat(SUBJECTS[k].ratios.flatMap(r => [r[0], r[1]]))
+        .concat([SUBJECTS[k].lead])).concat(["SPY"]))];
+    const [series, macro] = await Promise.all([
+      fetchSeries(syms).catch(() => ({})),
+      fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    SERIES = series; MACRO = macro;
+    try {
+      const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
+      EVENTS = r.ok ? (await r.json()).symbols || {} : {};
+    } catch { EVENTS = {}; }
+    try {
+      const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
+      WATCH = r.ok ? await r.json() : [];
+    } catch { WATCH = []; }
+    if (!Object.keys(SERIES).length) {
+      status.textContent = "Could not reach the price feed. Reload in a moment.";
+      return false;
+    }
+    status.hidden = true;
+    $("#stamp").textContent = "Live prices fetched " +
+      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+      (MACRO ? " · macro data " + MACRO.generated_at.slice(0, 10) : "") +
+      " · " + KEYS.length + " subjects available";
+    return true;
+  }
+
+  /* macro helper: 3-month change of an official series */
+  function macroMove(key, days = 63) {
+    const s = MACRO && MACRO.series && MACRO.series[key];
+    const pts = s && s.points;
+    if (!pts || pts.length < 2) return null;
+    const last = pts[pts.length - 1][1];
+    const base = pts[Math.max(0, pts.length - 1 - days)][1];
+    return { label: s.label, unit: s.unit, last, delta: last - base,
+      pctChange: base ? (last / base - 1) * 100 : null,
+      source: s.source, url: s.source_url };
+  }
+
+  function renderSubject(key) {
+    const S = SUBJECTS[key];
+    const box = $("#content");
+    box.textContent = "";
+    box.hidden = false;
+
+    // ---- head ----
+    const head = h("div", "subjhead");
+    head.appendChild(h("h3", null, S.name));
+    head.appendChild(h("p", "thesis", S.thesis));
+    const lead = stats(SERIES[S.lead]);
+    if (lead) {
+      const q = h("div", "quote");
+      const item = (l, v, c) => {
+        const d = h("div", "qitem");
+        d.appendChild(h("div", "ql", l));
+        d.appendChild(h("div", "qv " + (c || ""), v));
+        return d;
+      };
+      q.appendChild(item("Last", fmt(lead.last, 2)));
+      q.appendChild(item("Today", pct(lead.d1), cls(lead.d1)));
+      q.appendChild(item("1 month", pct(lead.m1), cls(lead.m1)));
+      q.appendChild(item("YTD", pct(lead.ytd), cls(lead.ytd)));
+      q.appendChild(item("vs 200-day", pct(lead.maGap), cls(lead.maGap)));
+      head.appendChild(q);
+    }
+    box.appendChild(head);
+
+    // ---- the complex ----
+    box.appendChild(h("h2", null, "The complex"));
+    box.appendChild(h("p", "lede", "Every instrument that expresses this subject, from the " +
+      "underlying to the levered equity leg. The lead instrument is the first row."));
+    const tw = h("div", "tablewrap");
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [lab, c] of [["Instrument", "left"], ["Last", ""], ["Today", ""], ["1W", ""],
+                            ["1M", ""], ["3M", ""], ["YTD", ""], ["vs 200-day", ""]]) {
+      const th = h("th", c); th.textContent = lab; hr.appendChild(th);
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    for (const [sym, name] of S.complex) {
+      const st = stats(SERIES[sym]);
+      const tr = h("tr", sym === S.lead ? "lead" : null);
+      const td0 = h("td", "left");
+      const a = h("a", "iname", name);
+      a.href = YQ(sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      td0.appendChild(a);
+      td0.appendChild(h("span", "isym", sym));
+      tr.appendChild(td0);
+      if (!st) {
+        const td = h("td"); td.colSpan = 7; td.textContent = "no data";
+        tr.appendChild(td); tb.appendChild(tr); continue;
+      }
+      tr.appendChild(h("td", null, fmt(st.last, 2)));
+      for (const k of ["d1", "w1", "m1", "m3", "ytd", "maGap"]) {
+        tr.appendChild(h("td", cls(st[k]), pct(st[k])));
+      }
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb); tw.appendChild(tbl); box.appendChild(tw);
+
+    // ---- drivers ----
+    box.appendChild(h("h2", null, "What drives it"));
+    box.appendChild(h("p", "lede", "Each driver carries the sign the relationship is supposed " +
+      "to have. Over the last three months the page checks whether it actually held — a driver " +
+      "that has stopped working is usually the more useful observation."));
+    const dcards = h("div", "cards");
+    /* Two windows, not one. A quarter is long enough that a relationship can
+       read as intact while it is actively coming apart — gold can be down over
+       three months and up hard over one. Checking both is what catches that. */
+    const WINS = [[63, "3m"], [21, "1m"]];
+    let held = 0, tested = 0, breaking = 0;
+    for (const d of S.drivers) {
+      const legs2 = WINS.map(([n, lab]) => {
+        const mv = macroMove(d.macro, n);
+        const sm = back(SERIES[S.lead], n);
+        if (!mv || sm == null) return null;
+        const sameSign = (mv.delta >= 0) === (sm >= 0);
+        return { lab, n, mv, sm, ok: d.expect === 1 ? sameSign : !sameSign };
+      });
+      const [q, m] = legs2;
+      if (!q) continue;
+      tested++;
+      if (q.ok) held++;
+      const nowOk = m ? m.ok : q.ok;
+      if (q.ok && m && !m.ok) breaking++;
+      const state = q.ok && nowOk ? "ok" : (!q.ok && !nowOk) ? "diverge" : "shift";
+      const card = h("div", "card " + state);
+      const top = h("div");
+      top.appendChild(h("span", "cname", d.name));
+      card.appendChild(top);
+      card.appendChild(h("div", "cexp", d.expect === 1 ? "expected to move with it"
+                                                        : "expected to move against it"));
+      const legs = h("div", "legs");
+      const mk = (label, val, up) => {
+        const l = h("div", "leg " + (up ? "up" : "down"));
+        l.appendChild(h("span", "ll", label));
+        l.appendChild(h("span", "lv", val));
+        return l;
+      };
+      const unit = (q.mv.unit === "pp" || q.mv.unit === "%") ? "pp" : "";
+      for (const leg of legs2.filter(Boolean)) {
+        legs.appendChild(mk(leg.mv.label + " · " + leg.lab,
+          (leg.mv.delta > 0 ? "+" : "") + fmt(leg.mv.delta, 2) + unit, leg.mv.delta >= 0));
+        legs.appendChild(mk(S.name + " · " + leg.lab, pct(leg.sm), leg.sm >= 0));
+      }
+      card.appendChild(legs);
+      const v = h("p", "verdict");
+      let head2, tail2;
+      if (q.ok && nowOk) { head2 = "Behaving. "; tail2 = "The relationship held over both windows."; }
+      else if (q.ok && !nowOk) { head2 = "Breaking. "; tail2 = "It held over three months but has not over the last one — the relationship is coming apart now."; }
+      else if (!q.ok && nowOk) { head2 = "Reasserting. "; tail2 = "It failed over three months but is holding again over the last one."; }
+      else { head2 = "Diverging. "; tail2 = "It has not held over either window — something else is setting the price."; }
+      v.appendChild(h("b", null, head2));
+      v.appendChild(document.createTextNode(tail2));
+      card.appendChild(v);
+      card.appendChild(h("p", "why", d.why));
+      dcards.appendChild(card);
+    }
+    box.appendChild(dcards);
+    if (tested) {
+      const p = h("p", "lede");
+      p.style.marginTop = "10px";
+      p.textContent = held + " of " + tested + " drivers held over three months" +
+        (breaking ? ", but " + breaking + " of those " +
+          (breaking === 1 ? "has" : "have") + " stopped holding over the last month — that is where the story is changing."
+         : held === tested ? " and all are still holding over the last month — the standard framework is describing this market."
+         : ". Where it breaks is where the story is.");
+      box.appendChild(p);
+    }
+
+    // ---- internal relative strength ----
+    box.appendChild(h("h2", null, "Inside the complex"));
+    box.appendChild(h("p", "lede", "Relative strength between the parts, over three months. " +
+      "These say who is leading the move, which is usually more informative than the move."));
+    const rbox = h("div", "ratios");
+    let anyRatio = false;
+    for (const [a, b, question, upTxt, downTxt] of S.ratios) {
+      const ch = ratioChange(SERIES[a], SERIES[b], 63);
+      if (ch == null) continue;
+      anyRatio = true;
+      const row = h("div", "rrow");
+      row.appendChild(h("span", "rp", a + " / " + b));
+      row.appendChild(h("span", "rv " + cls(ch), pct(ch)));
+      row.appendChild(h("span", "rt", question + " — " + (ch >= 0 ? upTxt : downTxt)));
+      rbox.appendChild(row);
+    }
+    if (!anyRatio) rbox.appendChild(h("div", "rrow", "No overlapping history for these pairs."));
+    box.appendChild(rbox);
+
+    // ---- signals ----
+    box.appendChild(h("h2", null, "Signals"));
+    box.appendChild(h("p", "lede", "Moving-average crosses in the last ten sessions across the " +
+      "complex, in the same fast-to-slow order used on the other pages."));
+    const found = [];
+    for (const [sym, name] of S.complex) {
+      for (const ev of crossEvents(SERIES[sym])) found.push({ sym, name, ...ev });
+    }
+    const sw = h("div", "sigwrap");
+    for (const bullish of [true, false]) {
+      const col = h("div", "sigcol");
+      col.appendChild(h("div", "th", bullish ? "▲ Bullish" : "▼ Bearish"));
+      const mine = found.filter(f => f.bullish === bullish)
+        .sort((x, y) => x.daysAgo - y.daysAgo || y.tier - x.tier);
+      if (!mine.length) col.appendChild(h("p", "none", "none"));
+      for (const f of mine) {
+        const it = h("div", "sigitem");
+        it.appendChild(h("b", null, f.name));
+        it.appendChild(h("span", null, f.sym + " · " + f.label + " · " +
+          (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago") + (f.whip ? " · whipsawed" : "")));
+        col.appendChild(it);
+      }
+      sw.appendChild(col);
+    }
+    box.appendChild(sw);
+
+    // ---- watchlist names riding on it ----
+    const related = WATCH.filter(p => {
+      const sec = (EVENTS[p.sym] || {}).sector;
+      return sec && S.sectors.includes(sec);
+    });
+    box.appendChild(h("h2", null, "On your watchlist"));
+    if (!S.sectors.length) {
+      box.appendChild(h("p", "lede", "This subject is a macro factor rather than a sector, so " +
+        "it has no direct watchlist names — it acts on all of them at once."));
+    } else if (!related.length) {
+      box.appendChild(h("p", "lede", "No watchlist names currently sit in " +
+        S.sectors.join(" or ") + "."));
+    } else {
+      box.appendChild(h("p", "lede", related.length + " watchlist " +
+        (related.length === 1 ? "name sits" : "names sit") + " in " + S.sectors.join(" or ") +
+        ", so they carry this subject's beta whatever the chart says."));
+      const chips = h("div", "chips");
+      for (const p of related.sort((a, b) => a.sym.localeCompare(b.sym))) {
+        const a = h("a", "chip");
+        a.href = "watch.html#d-" + p.sym;
+        a.appendChild(h("b", null, p.sym));
+        a.appendChild(document.createTextNode(" " + (p.note || "")));
+        chips.appendChild(a);
+      }
+      box.appendChild(chips);
+    }
+
+    // ---- context series + deep links ----
+    const ctx = (S.context || []).map(k => [k, macroMove(k, 63)]).filter(x => x[1]);
+    if (ctx.length) {
+      box.appendChild(h("h2", null, "Official series worth watching"));
+      const chips = h("div", "chips");
+      for (const [, mv] of ctx) {
+        const a = h("a", "chip");
+        a.href = mv.url || "macro.html"; a.target = "_blank"; a.rel = "noopener noreferrer";
+        a.appendChild(h("b", null, mv.label));
+        a.appendChild(document.createTextNode(" " + fmt(mv.last, 2) +
+          " (" + (mv.delta > 0 ? "+" : "") + fmt(mv.delta, 2) + " over 3m) ↗"));
+        chips.appendChild(a);
+      }
+      box.appendChild(chips);
+    }
+    box.appendChild(h("h2", null, "Read it elsewhere"));
+    const lchips = h("div", "chips");
+    for (const [label, href] of S.links) {
+      const a = h("a", "chip", label + " →");
+      a.href = href;
+      lchips.appendChild(a);
+    }
+    box.appendChild(lchips);
+  }
+
+  /* ---------------- combobox: search, keyboard, linkable ---------------- */
+  const input = $("#q"), opts = $("#opts");
+  let active = -1, current = null;
+  function matches(q) {
+    const s = q.trim().toLowerCase();
+    if (!s) return KEYS;
+    return KEYS.filter(k => {
+      const S = SUBJECTS[k];
+      return S.name.toLowerCase().includes(s) || k.includes(s) ||
+        S.terms.some(t => t.includes(s)) ||
+        S.complex.some(c => c[0].toLowerCase().includes(s) || c[1].toLowerCase().includes(s));
+    });
+  }
+  function openList(list) {
+    opts.textContent = "";
+    if (!list.length) {
+      const li = h("li", "none", "Nothing matches — three subjects are available so far: " +
+        KEYS.map(k => SUBJECTS[k].name).join(", ") + ".");
+      opts.appendChild(li);
+    }
+    list.forEach((k, i) => {
+      const S = SUBJECTS[k];
+      const li = h("li", i === active ? "active" : null);
+      li.setAttribute("role", "option");
+      li.appendChild(document.createTextNode(S.name));
+      li.appendChild(h("span", "sub", S.blurb + " · " +
+        S.complex.slice(0, 4).map(c => c[0]).join(", ")));
+      li.addEventListener("mousedown", e => { e.preventDefault(); choose(k); });
+      opts.appendChild(li);
+    });
+    opts.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  }
+  function closeList() {
+    opts.hidden = true; active = -1;
+    input.setAttribute("aria-expanded", "false");
+  }
+  function choose(k) {
+    current = k;
+    input.value = SUBJECTS[k].name;
+    closeList();
+    history.replaceState(null, "", "#" + k);
+    renderSubject(k);
+  }
+  input.addEventListener("focus", () => openList(matches(input.value === (current && SUBJECTS[current].name) ? "" : input.value)));
+  input.addEventListener("input", () => { active = -1; openList(matches(input.value)); });
+  input.addEventListener("keydown", e => {
+    const list = matches(input.value);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (opts.hidden) return openList(list);
+      active = e.key === "ArrowDown" ? Math.min(active + 1, list.length - 1) : Math.max(active - 1, 0);
+      openList(list);
+    } else if (e.key === "Enter") {
+      if (!opts.hidden && list.length) { e.preventDefault(); choose(list[Math.max(0, active)]); }
+    } else if (e.key === "Escape") { closeList(); input.blur(); }
+  });
+  document.addEventListener("click", e => { if (!$("#picker").contains(e.target)) closeList(); });
+
+  if (await boot()) {
+    const fromHash = location.hash.replace("#", "");
+    choose(KEYS.includes(fromHash) ? fromHash : "gold");
+  }
+
+  const tt = h("button", null, "↑");
+  tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";
+  document.body.appendChild(tt);
+  addEventListener("scroll", () => tt.classList.toggle("show", scrollY > 600), { passive: true });
+  tt.addEventListener("click", () => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: rm ? "auto" : "smooth" });
+  });
+})();
+</script>
+</body>
+</html>
