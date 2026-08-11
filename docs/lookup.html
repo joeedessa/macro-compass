@@ -222,6 +222,11 @@
     : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
   const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
+  // 1st, 2nd, 3rd, 4th … 92nd — the teens are the exception that breaks naive rules
+  const ordinal = n => {
+    const t2 = n % 100, u = n % 10;
+    return n + (t2 >= 11 && t2 <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
+  };
 
   /* ------------------------------------------------------------------
      A subject is a dossier spec: what expresses it, what drives it, what
@@ -241,6 +246,7 @@
       lead: "GC=F",
       complex: [
         ["GC=F", "Gold (futures)"], ["GLD", "Gold ETF"],
+        ["^HUI", "HUI gold BUGS index"], ["^XAU", "XAU gold & silver index"],
         ["GDX", "Senior gold miners"], ["GDXJ", "Junior gold miners"],
         ["SI=F", "Silver"], ["SIL", "Silver miners"], ["SILJ", "Junior silver miners"],
       ],
@@ -257,6 +263,8 @@
       ratios: [
         ["GDX", "GC=F", "Miners vs the metal", "Miners leading — the move is being priced as durable",
           "Miners lagging — the metal is being treated as a hedge, not a trend"],
+        ["^HUI", "GC=F", "HUI vs the metal", "The unhedged miner index is leading bullion",
+          "The unhedged miner index is lagging bullion"],
         ["GDXJ", "GDX", "Juniors vs seniors", "Risk appetite inside the complex rising",
           "Juniors being derisked first"],
         ["GC=F", "SI=F", "Gold vs silver", "Gold leading — defensive character",
@@ -265,7 +273,11 @@
           "Equity risk preferred to gold"],
       ],
       sectors: ["Non-Energy Minerals"],
-      context: ["res_cn_gold", "res_jp_gold"],
+      cot: { comm: "cot_gold_comm", large: "cot_gold_large",
+             note: "Commercials in gold are largely miners hedging output, so their net sits " +
+               "structurally short — around −45% of open interest on average. The signal is the " +
+               "move against that baseline, not the minus sign." },
+      context: ["res_cn_gold", "res_jp_gold", "cot_silver_comm"],
       links: [["Markets — cross-asset", "markets.html#s-cross"],
               ["Macro & flows — central bank gold", "macro.html"],
               ["Themes — where miners rank", "themes.html"]],
@@ -341,6 +353,9 @@
           "China lagging — demand doubt"],
       ],
       sectors: ["Non-Energy Minerals", "Producer Manufacturing"],
+      cot: { comm: "cot_copper_comm", large: "cot_copper_large",
+             note: "Copper commercials are producers and fabricators hedging, so like gold their " +
+               "net runs short. Read the level against its own range." },
       context: ["cmd_aluminum", "cmd_nickel"],
       links: [["Markets — cross-asset", "markets.html#s-cross"],
               ["Themes — grid and infrastructure", "themes.html"],
@@ -682,6 +697,62 @@
       sw.appendChild(col);
     }
     box.appendChild(sw);
+
+    /* ---- futures positioning ----
+       COT is weekly and reported with a lag, so it is context rather than a
+       trigger. Percentile against the last five years says whether a level is
+       actually unusual — the raw percentage means little on its own when the
+       cohort is structurally one-sided. */
+    if (S.cot && MACRO && MACRO.series) {
+      const pos = h("div", "cards");
+      let built = 0;
+      for (const [key, label, reading] of [
+        [S.cot.comm, "Commercial hedgers", "Producers and merchants — they sell into strength, so a deeply negative net is them hedging more output."],
+        [S.cot.large, "Large speculators", "Managed money — they follow trend, so an extreme net is a crowded position rather than a forecast."],
+      ]) {
+        const s = MACRO.series[key];
+        if (!s || !s.points || s.points.length < 10) continue;
+        built++;
+        const pts = s.points;
+        const last = pts[pts.length - 1][1];
+        const when = pts[pts.length - 1][0];
+        const vals = pts.map(p => p[1]);
+        const below = vals.filter(v => v < last).length;
+        const pctile = Math.round(below / vals.length * 100);
+        const wk = pts.length > 4 ? last - pts[pts.length - 5][1] : null;
+        const card = h("div", "card" + (pctile >= 85 || pctile <= 15 ? " shift" : ""));
+        card.appendChild(h("span", "cname", label));
+        card.appendChild(h("div", "cexp", "week of " + when + " · CFTC, weekly and lagged"));
+        const legs = h("div", "legs");
+        const mk = (l, v, up) => {
+          const d = h("div", "leg " + (up ? "up" : "down"));
+          d.appendChild(h("span", "ll", l));
+          d.appendChild(h("span", "lv", v));
+          return d;
+        };
+        legs.appendChild(mk("Net position", (last > 0 ? "+" : "") + fmt(last, 1) + "% of OI", last >= 0));
+        legs.appendChild(mk("4-week change", wk == null ? "–"
+          : (wk > 0 ? "+" : "") + fmt(wk, 1) + "pp", (wk || 0) >= 0));
+        legs.appendChild(mk("5-year percentile", ordinal(pctile), pctile >= 50));
+        card.appendChild(legs);
+        const v = h("p", "verdict");
+        v.appendChild(h("b", null, pctile >= 85 ? "Crowded long. "
+          : pctile <= 15 ? "Crowded short. " : "Mid-range. "));
+        v.appendChild(document.createTextNode(pctile >= 85
+          ? "Near the top of its five-year range — positioning is stretched on this side."
+          : pctile <= 15
+            ? "Near the bottom of its five-year range — positioning is stretched on the other side."
+            : "Nothing extreme against the last five years."));
+        card.appendChild(v);
+        card.appendChild(h("p", "why", reading));
+        pos.appendChild(card);
+      }
+      if (built) {
+        box.appendChild(h("h2", null, "Futures positioning"));
+        box.appendChild(h("p", "lede", S.cot.note));
+        box.appendChild(pos);
+      }
+    }
 
     // ---- watchlist names riding on it ----
     const related = WATCH.filter(p => {

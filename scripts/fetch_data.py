@@ -133,40 +133,62 @@ def fetch_auctions(term, field="bidToCoverRatio", years=6):
     return points
 
 
-def fetch_cot(measure, years=5):
-    """CFTC Commitments of Traders for the E-mini S&P 500, weekly (official
-    Socrata API, no key). `measure`:
-      commercial_net  — commercial hedgers' net position as % of open interest
-                        (the conventional "smart money" read)
-      small_net       — non-reportable (small speculator) net as % of OI
-                        (the conventional "dumb money" read)
+# CFTC contract names, verified against the live Socrata catalogue. The
+# ampersand in the S&P name must stay percent-encoded or the filter silently
+# matches nothing.
+COT_CONTRACTS = {
+    "spx": "E-MINI S%26P 500 - CHICAGO MERCANTILE EXCHANGE",
+    "gold": "GOLD - COMMODITY EXCHANGE INC.",
+    "silver": "SILVER - COMMODITY EXCHANGE INC.",
+    "copper": "COPPER- #1 - COMMODITY EXCHANGE INC.",
+}
+
+
+def fetch_cot(measure, contract="spx", years=5):
+    """CFTC Commitments of Traders, weekly (official Socrata API, no key).
+
+    `measure` selects which cohort's net position is returned, as a percentage
+    of open interest:
+      commercial_net  — commercial hedgers (producers and merchants). In the
+                        metals these run structurally short because miners
+                        hedge output, so read the level against its own history
+                        rather than against zero.
+      large_net       — non-commercial (managed money and other large specs)
+      small_net       — non-reportable, the conventional "dumb money" read
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=365 * years)).strftime("%Y-%m-%d")
+    name = COT_CONTRACTS[contract]
     url = (
         "https://publicreporting.cftc.gov/resource/6dca-aqww.json"
         "?$select=report_date_as_yyyy_mm_dd,comm_positions_long_all,"
         "comm_positions_short_all,nonrept_positions_long_all,"
-        "nonrept_positions_short_all,open_interest_all"
-        "&$where=market_and_exchange_names='E-MINI S%26P 500 - CHICAGO MERCANTILE EXCHANGE'"
+        "nonrept_positions_short_all,noncomm_positions_long_all,"
+        "noncomm_positions_short_all,open_interest_all"
+        f"&$where=market_and_exchange_names='{name}'"
         f" AND report_date_as_yyyy_mm_dd>'{cutoff}'"
         "&$order=report_date_as_yyyy_mm_dd&$limit=400"
-    ).replace(" ", "%20").replace("'", "%27")
+    # "COPPER- #1" contains a hash, which a URL reads as a fragment delimiter
+    # and silently truncates the whole filter — encode it.
+    ).replace(" ", "%20").replace("'", "%27").replace("#", "%23")
     rows = json.loads(http_get(url))
+    LEGS = {
+        "commercial_net": ("comm_positions_long_all", "comm_positions_short_all"),
+        "large_net": ("noncomm_positions_long_all", "noncomm_positions_short_all"),
+        "small_net": ("nonrept_positions_long_all", "nonrept_positions_short_all"),
+    }
+    lng, sht = LEGS[measure]
     points = []
     for r in rows:
         try:
             oi = float(r["open_interest_all"])
             if oi <= 0:
                 continue
-            if measure == "commercial_net":
-                net = float(r["comm_positions_long_all"]) - float(r["comm_positions_short_all"])
-            else:
-                net = float(r["nonrept_positions_long_all"]) - float(r["nonrept_positions_short_all"])
+            net = float(r[lng]) - float(r[sht])
             points.append((r["report_date_as_yyyy_mm_dd"][:10], round(net / oi * 100, 2)))
         except (KeyError, TypeError, ValueError):
             continue
     if not points:
-        raise RuntimeError(f"CFTC COT {measure}: no data parsed")
+        raise RuntimeError(f"CFTC COT {contract}/{measure}: no data parsed")
     return points
 
 
@@ -246,6 +268,23 @@ SERIES = [
      "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
     ("cot_small", "Dumb money: small speculators net (S&P e-mini)", "% of OI", "weekly", "sentiment",
      lambda: fetch_cot("small_net"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    # Metals positioning. Commercials in the metals are miners hedging output,
+    # so their net is structurally short — the signal is the move, not the sign.
+    ("cot_gold_comm", "Gold: commercial hedgers net", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("commercial_net", "gold"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    ("cot_gold_large", "Gold: large speculators net", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("large_net", "gold"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    ("cot_silver_comm", "Silver: commercial hedgers net", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("commercial_net", "silver"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    ("cot_copper_comm", "Copper: commercial hedgers net", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("commercial_net", "copper"),
+     "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
+    ("cot_copper_large", "Copper: large speculators net", "% of OI", "weekly", "sentiment",
+     lambda: fetch_cot("large_net", "copper"),
      "CFTC", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"),
     # --- Official demand for Treasuries ---
     ("cb_foreign_custody", "Foreign official Treasuries at the Fed", "$m", "weekly", "official",
