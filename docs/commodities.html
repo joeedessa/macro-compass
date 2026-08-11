@@ -188,6 +188,14 @@
       leave the relative story.</p>
     <div class="ratios" id="ratios"></div>
 
+    <h2>The equity leg</h2>
+    <p class="lede">Miners and producers are a levered claim on the commodity, carrying operating
+      costs, reserves and management on top of the price. Each is set against the commodity it
+      tracks over a year: leading it says the market is pricing the move as durable, lagging it
+      says the commodity is being held as a hedge rather than a trend. These names moved here from
+      Themes, where they sat beside secular narratives they have little to do with.</p>
+    <div id="equity"></div>
+
     <h2>Positioning</h2>
     <p class="lede">CFTC Commitments of Traders, weekly and reported with a lag. Commercials are
       producers and merchants hedging physical exposure, so in most commodities they sit
@@ -289,6 +297,23 @@
     ]],
   ];
   const ALL = COMPLEXES.flatMap(([, list]) => list);
+  /* The equity leg. A miner is a levered, operationally geared claim on the
+     commodity: when it leads the metal the market is pricing the move as
+     durable, when it lags the metal is being treated as a hedge. Paired with
+     its underlying so the comparison is the point, not the level. */
+  const EQUITY = [
+    ["GDX", "Senior gold miners", "GC=F", "Gold"],
+    ["GDXJ", "Junior gold miners", "GC=F", "Gold"],
+    ["SIL", "Silver miners", "SI=F", "Silver"],
+    ["SILJ", "Junior silver miners", "SI=F", "Silver"],
+    ["COPX", "Copper miners", "HG=F", "Copper"],
+    ["XME", "Metals & mining", "DBB", "Base metals"],
+    ["REMX", "Rare earth & strategic metals", null, null],
+    ["URA", "Uranium miners", null, null],
+    ["URNM", "Uranium miners (URNM)", null, null],
+    ["MOO", "Agribusiness", "DBA", "Agriculture basket"],
+    ["OIH", "Oil services", "CL=F", "WTI crude"],
+  ];
   /* Rolling fund against the front month: the gap over a year is roll plus fee.
      Gold is included deliberately as a control — a physically backed fund has
      no roll, so its gap should be about the expense ratio and nothing more. */
@@ -417,7 +442,10 @@
   let WIN = "m1", SERIES = {}, MACRO = null, ROWS = [];
 
   const status = $("#status");
-  const syms = [...new Set(ALL.map(c => c[0]).concat(CARRY.flatMap(c => [c[0], c[1]])))];
+  const syms = [...new Set(ALL.map(c => c[0])
+    .concat(CARRY.flatMap(c => [c[0], c[1]]))
+    .concat(EQUITY.flatMap(e => [e[0], e[2]].filter(Boolean)))
+    .concat(["DBB"]))];
   const [series, macro] = await Promise.all([
     fetchSeries(syms).catch(() => ({})),
     fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
@@ -667,6 +695,48 @@
     }
   }
 
+  function renderEquity() {
+    const box = $("#equity");
+    box.textContent = "";
+    const tw = h("div", "tablewrap");
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [lab, c] of [["Equity", "left"], ["Last", ""], ["1M", ""], ["YTD", ""], ["1Y", ""],
+                            ["Tracks", "left"], ["Commodity 1Y", ""], ["Gap over 1Y", ""],
+                            ["Read", "left"]]) {
+      const th = h("th", (c || "") + " nosort"); th.textContent = lab; hr.appendChild(th);
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    for (const [sym, name, under, uname] of EQUITY) {
+      const p = SERIES[sym];
+      if (!p) continue;
+      const m = stats(p);
+      const u = under && SERIES[under] ? stats(SERIES[under]) : null;
+      const gap = (m && u && m.y1 != null && u.y1 != null) ? m.y1 - u.y1 : null;
+      const tr = h("tr");
+      const td0 = h("td", "left");
+      const a = h("a", "cname", name);
+      a.href = YQ(sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      td0.appendChild(a);
+      td0.appendChild(h("span", "cunit", sym));
+      tr.appendChild(td0);
+      tr.appendChild(h("td", null, fmt(m.last, 2)));
+      for (const k of ["m1", "ytd", "y1"]) tr.appendChild(h("td", cls(m[k]), pct(m[k])));
+      tr.appendChild(h("td", "left", uname || "—"));
+      tr.appendChild(h("td", u ? cls(u.y1) : null, u ? pct(u.y1) : "–"));
+      tr.appendChild(h("td", gap == null ? null : cls(gap),
+        gap == null ? "–" : (gap > 0 ? "+" : "") + fmt(gap, 1) + "pp"));
+      tr.appendChild(h("td", "left", gap == null
+        ? "No single underlying to measure against."
+        : gap > 5 ? "Leading the commodity — the move is being priced as durable."
+        : gap < -5 ? "Lagging the commodity — treated as a hedge rather than a trend."
+        : "Tracking the commodity closely."));
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb); tw.appendChild(tbl); box.appendChild(tw);
+  }
+
   document.querySelectorAll("#win .rangebtn").forEach(b => b.addEventListener("click", () => {
     WIN = b.dataset.w;
     document.querySelectorAll("#win .rangebtn").forEach(x =>
@@ -674,7 +744,7 @@
     renderRanks(); renderComplexes();
   }));
 
-  renderRanks(); renderComplexes(); renderRatios(); renderCOT(); renderCarry();
+  renderRanks(); renderComplexes(); renderRatios(); renderEquity(); renderCOT(); renderCarry();
 
   const tt = h("button", null, "↑");
   tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";

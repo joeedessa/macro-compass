@@ -145,9 +145,13 @@
 
   <div id="content" hidden>
     <h2>Leaders and laggards</h2>
-    <p class="lede">Performance relative to SPY over the selected window — the sentiment read at
-      theme level. 1w catches the turn, 1m the forming trend, 3m the established one; a theme
-      leading at 1m but absent at 3m is a rotation just getting started.</p>
+    <p class="lede">Performance relative to SPY over the selected window, ranked <b>within each
+      band</b> rather than across them — a sector beating a theme is not a meaningful comparison,
+      since the two are held for different reasons over different horizons. Secular themes are
+      stories that cut across industries; sectors are slices of the index that rotate with the
+      cycle. Gold and copper miners, uranium, agribusiness and soft commodities moved to
+      <a href="commodities.html">Commodities</a>, where they sit beside the metal they track;
+      country exposure lives on <a href="countries.html">Countries</a>.</p>
     <div class="switch" id="relwin" role="group" aria-label="Relative window">
       <span class="slabel">Window</span>
       <button class="rangebtn" data-win="w1" aria-pressed="false" type="button">1W</button>
@@ -198,41 +202,49 @@
     u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   ];
-  const THEMES = [
-    ["BOTZ", "Robotics & automation"],
-    ["AIQ", "Artificial intelligence"],
-    ["ARKX", "Space"],
-    ["CIBR", "Cybersecurity"],
-    ["SMH", "Semiconductors"],
-    ["XBI", "Biotech"],
-    ["XLV", "Healthcare"],
-    ["IHI", "Medical devices"],
-    ["XLI", "Industrials"],
-    ["ITA", "Defense & aerospace"],
-    ["BOAT", "Shipping"],
-    ["JETS", "Airlines"],
-    ["XLE", "Energy"],
-    ["OIH", "Oil services"],
-    ["NLR", "Nuclear"],
-    ["URA", "Uranium"],
-    ["TAN", "Solar"],
-    ["ICLN", "Clean energy"],
-    ["PAVE", "Infrastructure"],
-    ["GRID", "Grid & electrification"],
-    ["XLB", "Materials"],
-    ["LIT", "Lithium & battery"],
-    ["COPX", "Copper miners"],
-    ["GDX", "Gold miners"],
-    ["MOO", "Agribusiness"],
-    ["DBA", "Soft commodities"],
-    ["PHO", "Water"],
-    ["ITB", "Homebuilders"],
-    ["KBE", "Banks"],
-    ["XRT", "Retail"],
-    ["CQQQ", "China tech"],
-    ["KWEB", "China internet"],
+  /* Two bands, because they are two different questions and ranking them in one
+     list quietly pretends otherwise. A secular theme is a story that cuts across
+     industries and should compound for years; a sector is a slice of the index
+     that rotates with the cycle. The commodity-equity names that used to sit
+     here (gold and copper miners, uranium, agribusiness, soft commodities) now
+     live on Commodities with the metal they track, and country exposure lives
+     on Countries. */
+  const BANDS = [
+    ["Secular themes", "A story that cuts across industries — owned for years, not quarters", [
+      ["BOTZ", "Robotics & automation"],
+      ["AIQ", "Artificial intelligence"],
+      ["ARKX", "Space"],
+      ["CIBR", "Cybersecurity"],
+      ["ITA", "Defense & aerospace"],
+      ["NLR", "Nuclear"],
+      ["TAN", "Solar"],
+      ["ICLN", "Clean energy"],
+      ["GRID", "Grid & electrification"],
+      ["PAVE", "Infrastructure"],
+      ["LIT", "Lithium & battery"],
+      ["PHO", "Water"],
+      ["IHI", "Medical devices"],
+      ["BOAT", "Shipping"],
+    ]],
+    ["Sectors & industries", "A slice of the index that rotates with the cycle", [
+      ["SMH", "Semiconductors"],
+      ["XLK", "Technology"],
+      ["XBI", "Biotech"],
+      ["XLV", "Healthcare"],
+      ["XLI", "Industrials"],
+      ["XLE", "Energy"],
+      ["OIH", "Oil services"],
+      ["XLB", "Materials"],
+      ["KBE", "Banks"],
+      ["ITB", "Homebuilders"],
+      ["XRT", "Retail"],
+      ["JETS", "Airlines"],
+    ]],
   ];
-  const $ = s => document.querySelector(s);
+  const THEMES = BANDS.flatMap(([, , list]) => list);
+  const BAND_OF = {};
+  for (const [name, , list] of BANDS) for (const [sym] of list) BAND_OF[sym] = name;
+    const $ = s => document.querySelector(s);
   const fmt = (v, d) => v == null || !isFinite(v) ? "–"
     : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
@@ -361,7 +373,8 @@
   const rows = THEMES.filter(t => series[t[0]]).map(([sym, name]) => {
     const m = metrics(series[sym]);
     const rel = k => m[k] == null || spyM[k] == null ? null : m[k] - spyM[k];
-    return { sym, name, ...m, rel: { w1: rel("w1"), m1: rel("m1"), m3: rel("m3") } };
+    return { sym, name, band: BAND_OF[sym], ...m,
+             rel: { w1: rel("w1"), m1: rel("m1"), m3: rel("m3") } };
   });
   const WINLABEL = { w1: "1w", m1: "1m", m3: "3m" };
   let relWin = "m1";                                  // default: catch forming trends
@@ -371,15 +384,14 @@
   function renderStamp() {
     $("#stamp").textContent = "Live prices fetched " +
       new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
-      " · " + rows.length + " themes · benchmark SPY " + pct(spyM[relWin]) +
-      " over " + WINLABEL[relWin];
+      " · " + rows.filter(r => r.band === BANDS[0][0]).length + " secular themes and " +
+      rows.filter(r => r.band === BANDS[1][0]).length + " sectors · benchmark SPY " +
+      pct(spyM[relWin]) + " over " + WINLABEL[relWin];
   }
 
   function renderLead() {
     const lead = $("#lead");
     lead.textContent = "";
-    const ranked = rows.filter(r => r.rel[relWin] != null)
-      .sort((a, b) => b.rel[relWin] - a.rel[relWin]);
     const mkLead = (title, list, cls) => {
       const box = document.createElement("div");
       box.className = "leadbox " + cls;
@@ -398,19 +410,37 @@
       lead.appendChild(box);
     };
     const lab = WINLABEL[relWin];
-    mkLead("Money rotating in — " + lab + " leaders vs SPY", ranked.slice(0, 4), "up");
-    mkLead("Money rotating out — " + lab + " laggards vs SPY", ranked.slice(-4).reverse(), "down");
+    /* Rank inside each band. A sector beating a theme is not a meaningful
+       comparison — they are held for different reasons over different horizons. */
+    for (const [bandName] of BANDS) {
+      const ranked = rows.filter(r => r.band === bandName && r.rel[relWin] != null)
+        .sort((a, b) => b.rel[relWin] - a.rel[relWin]);
+      if (!ranked.length) continue;
+      mkLead(bandName + " — leading over " + lab, ranked.slice(0, 4), "in");
+      mkLead(bandName + " — lagging over " + lab, ranked.slice(-4).reverse(), "out");
+    }
   }
 
-  // table with sortable columns; "rel" always means the selected window
   let sortKey = "rel";
   const sortVal = r => sortKey === "rel" ? r.rel[relWin] : r[sortKey];
+
   function renderTable() {
     $("#relhead").textContent = "vs SPY " + WINLABEL[relWin];
     const tb = $("#tbl tbody");
     tb.textContent = "";
-    const data = [...rows].sort((a, b) => (sortVal(b) ?? -1e9) - (sortVal(a) ?? -1e9));
+    const data = [];
+    for (const [bandName] of BANDS) {
+      const inBand = rows.filter(r => r.band === bandName)
+        .sort((a, b) => (sortVal(b) ?? -1e9) - (sortVal(a) ?? -1e9));
+      if (inBand.length) data.push({ head: bandName }, ...inBand);
+    }
     for (const r of data) {
+      if (r.head) {
+        const hr = document.createElement("tr"); hr.className = "bandrow";
+        const td = document.createElement("td"); td.colSpan = 9; td.className = "left";
+        td.textContent = r.head;
+        hr.appendChild(td); tb.appendChild(hr); continue;
+      }
       const tr = document.createElement("tr");
       const name = document.createElement("td"); name.className = "left";
       const a = document.createElement("a"); a.className = "iname";
