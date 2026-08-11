@@ -78,6 +78,28 @@
   .hcard svg { width:100%; height:30px; display:block; margin-top:3px; }
   .up { color:var(--up); } .down { color:var(--down); }
 
+  /* regional blocks */
+  .region { margin-bottom:16px; }
+  .rhead { display:flex; align-items:baseline; gap:11px; flex-wrap:wrap; margin-bottom:7px; }
+  .rtitle { font-size:14.5px; font-weight:650; display:flex; align-items:center; gap:7px; }
+  .rtitle .dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); }
+  .rtitle .dot.on { background:var(--up); }
+  .rstate { font-size:11.5px; color:var(--text-muted); }
+  .ravg { font-size:12.5px; font-weight:640; margin-left:auto;
+    font-variant-numeric:tabular-nums; }
+  .rgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(152px,1fr)); gap:8px; }
+  .rcard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 10px; }
+  .rname { font-size:11px; color:var(--text-secondary); white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; }
+  .rline { display:flex; align-items:baseline; gap:7px; }
+  .rlast { font-size:14.5px; font-weight:670; font-variant-numeric:tabular-nums; }
+  .rchg { font-size:12px; font-weight:640; font-variant-numeric:tabular-nums; margin-left:auto; }
+  .rcard svg { width:100%; height:24px; display:block; margin-top:2px; }
+  .handoff { font-size:13px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:11px; padding:9px 13px; margin-top:2px; }
+  .handoff b { color:var(--text-primary); font-weight:650; }
+
   /* verdict banner */
   .verdict { border:1px solid var(--border); border-radius:12px; padding:11px 15px;
     font-size:14px; background:var(--surface-1); }
@@ -172,9 +194,15 @@
       each card says which.</p>
     <div class="sessions" id="sessions"></div>
 
-    <h2>The tape</h2>
-    <p class="lede">The instruments that set the tone, with today's path drawn from five-minute
-      bars against the previous close. Flat lines mean the market has not opened yet.</p>
+    <h2>Around the world</h2>
+    <p class="lede">Every region's own indices, quoted in their own currency and measured against
+      their own exchange's previous close — so Asia reads as Asia saw it. Blocks run in session
+      order, which is the order the day actually happens in.</p>
+    <div id="regions"></div>
+
+    <h2>Cross-asset</h2>
+    <p class="lede">The instruments that set the tone across asset classes, with today's path drawn
+      from five-minute bars against the previous close. Flat lines mean the market has not opened yet.</p>
     <div class="heads" id="heads"></div>
 
     <h2>Read of the session</h2>
@@ -233,6 +261,28 @@
     ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
     ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"], ["CL=F", "WTI crude"],
     ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
+  ];
+  /* The tape reads as a relay: Asia sets the tone, Europe picks it up, the US
+     closes the loop. Each block is that region's own indices in their own
+     currency — never converted, so what you see is what a local saw. */
+  const REGIONS = [
+    { name: "Asia-Pacific", clock: "^N225", members: [
+      ["^N225", "Japan · Nikkei 225"], ["^HSI", "Hong Kong · Hang Seng"],
+      ["000300.SS", "China · CSI 300"], ["^KS11", "Korea · KOSPI"],
+      ["^TWII", "Taiwan · TAIEX"], ["^NSEI", "India · Nifty 50"],
+      ["^AXJO", "Australia · ASX 200"], ["^STI", "Singapore · STI"],
+    ] },
+    { name: "Europe", clock: "^GDAXI", members: [
+      ["^STOXX50E", "Euro area · Euro Stoxx 50"], ["^GDAXI", "Germany · DAX"],
+      ["^FCHI", "France · CAC 40"], ["^FTSE", "UK · FTSE 100"],
+      ["FTSEMIB.MI", "Italy · FTSE MIB"], ["^IBEX", "Spain · IBEX 35"],
+      ["^SSMI", "Switzerland · SMI"], ["^AEX", "Netherlands · AEX"],
+    ] },
+    { name: "Americas", clock: "SPY", members: [
+      ["^GSPC", "US · S&P 500"], ["^IXIC", "US · Nasdaq Composite"],
+      ["^RUT", "US · Russell 2000"], ["^GSPTSE", "Canada · TSX"],
+      ["^BVSP", "Brazil · Bovespa"], ["^MXX", "Mexico · IPC"],
+    ] },
   ];
   /* Cash equity sessions worth a clock, each represented by a local index. */
   const SESSIONS = [
@@ -336,14 +386,18 @@
     status.textContent = "Fetching live prices…";
     $("#content").hidden = true;
     const syms = [...new Set(TAPE.map(t => t[0]).concat(HEADLINE.map(x => x[0]),
-      SESSIONS.map(s => s[1])))];
+      SESSIONS.map(s => s[1]), REGIONS.flatMap(r => r.members.map(m => m[0]))))];
     // 6 months of daily bars: previous close plus a 60-day volatility baseline.
     DAILY = await fetchSpark(syms, "6mo", "1d");
     if (!Object.keys(DAILY).length) {
       status.textContent = "Could not reach the price feed. Reload in a moment.";
       return;
     }
-    INTRA = await fetchSpark(HEADLINE.map(x => x[0]), "1d", "5m");
+    // Regional indices need the intraday pass as well: their session change is
+    // the last five-minute bar against the exchange's own previous close.
+    const intraSyms = [...new Set(HEADLINE.map(x => x[0])
+      .concat(REGIONS.flatMap(r => r.members.map(m => m[0]))))];
+    INTRA = await fetchSpark(intraSyms, "1d", "5m");
     status.hidden = true;
     $("#content").hidden = false;
     render();
@@ -366,6 +420,19 @@
     const mean = rets.reduce((a, b) => a + b, 0) / (rets.length || 1);
     const sd = Math.sqrt(rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length || 1)) * 100;
     return { last, prev, chg, sigma: sd ? chg / sd : null, state: sessionState(d.meta) };
+  }
+
+  /* Session change for a regional index. The intraday feed carries the
+     exchange's own previousClose, which is the correct reference even when the
+     market is shut — the daily feed is the fallback. */
+  function sessionMove(sym) {
+    const it = INTRA[sym];
+    if (it && it.pts.length && it.meta.previousClose) {
+      const last = it.pts[it.pts.length - 1][1];
+      return { last, chg: (last / it.meta.previousClose - 1) * 100, live: true };
+    }
+    const d = dayOf(sym);
+    return d ? { last: d.last, chg: d.chg, live: false } : null;
   }
 
   function sparkPath(sym, chg) {
@@ -428,6 +495,77 @@
           : "closed " + dur(nowSec() - st.end) + " ago"));
       }
       sbox.appendChild(card);
+    }
+
+    // ---------- regional tape ----------
+    const rbox = $("#regions");
+    rbox.textContent = "";
+    const regionSummary = [];
+    for (const R of REGIONS) {
+      const cd = DAILY[R.clock];
+      const st = cd && sessionState(cd.meta);
+      const rows = R.members.map(([sym, name]) => {
+        const mv = sessionMove(sym);
+        return mv ? { sym, name, ...mv } : null;
+      }).filter(Boolean);
+      if (!rows.length) continue;
+      const avg = rows.reduce((a, b) => a + b.chg, 0) / rows.length;
+      const upN = rows.filter(r => r.chg > 0).length;
+      regionSummary.push({ name: R.name, avg, upN, total: rows.length, open: !!(st && st.open) });
+      const sec = h("section", "region");
+      const head = h("div", "rhead");
+      const title = h("div", "rtitle");
+      title.appendChild(h("span", "dot" + (st && st.open ? " on" : "")));
+      title.appendChild(document.createTextNode(R.name));
+      head.appendChild(title);
+      head.appendChild(h("span", "rstate", !st ? ""
+        : st.open ? "trading now" : "session closed"));
+      const av = h("span", "ravg " + (avg >= 0 ? "up" : "down"));
+      av.textContent = pct(avg) + " average · " + upN + " of " + rows.length + " higher";
+      head.appendChild(av);
+      sec.appendChild(head);
+      const grid = h("div", "rgrid");
+      for (const r of rows.sort((a, b) => b.chg - a.chg)) {
+        const card = h("div", "rcard");
+        card.appendChild(h("div", "rname", r.name));
+        const line = h("div", "rline");
+        line.appendChild(h("span", "rlast", fmt(r.last, 2)));
+        line.appendChild(h("span", "rchg " + (r.chg >= 0 ? "up" : "down"), pct(r.chg)));
+        card.appendChild(line);
+        card.appendChild(sparkPath(r.sym, r.chg));
+        grid.appendChild(card);
+      }
+      sec.appendChild(grid);
+      rbox.appendChild(sec);
+    }
+    // the relay, in one line
+    if (regionSummary.length) {
+      const p = h("p", "handoff");
+      p.appendChild(h("b", null, "The relay: "));
+      p.appendChild(document.createTextNode(regionSummary.map(r =>
+        r.name + " " + pct(r.avg) + " (" + (r.open ? "trading" : "closed") + ")").join(", ") + ". "));
+      /* Say which regions agree and which do not, by name. Averaging the open
+         regions together would let a rising Europe cancel a falling US and
+         report "following" when the handover had in fact broken. */
+      const closed = regionSummary.filter(r => !r.open);
+      const open = regionSummary.filter(r => r.open);
+      if (closed.length && open.length) {
+        const lead = closed.reduce((a, b) => a + b.avg, 0) / closed.length;
+        const dir = lead >= 0 ? "higher" : "lower";
+        const withIt = open.filter(r => (r.avg >= 0) === (lead >= 0));
+        const against = open.filter(r => (r.avg >= 0) !== (lead >= 0));
+        const names = a => a.map(r => r.name).join(" and ");
+        p.appendChild(document.createTextNode(
+          !against.length
+            ? "Everything still trading is following the overnight lead " + dir + "."
+            : !withIt.length
+              ? "Every open market has turned against the overnight lead — the handover broke."
+              : names(withIt) + " is following the overnight lead " + dir + ", but " +
+                names(against) + " has turned against it."));
+      } else if (!open.length) {
+        p.appendChild(document.createTextNode("Every cash session is shut — these are completed sessions."));
+      }
+      rbox.appendChild(p);
     }
 
     // ---------- headline strip ----------
