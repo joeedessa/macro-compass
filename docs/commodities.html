@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commodities — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+    --mixed-bg:rgba(237,161,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+      --mixed-bg:rgba(237,161,0,0.16);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1300px; margin:0 auto; padding:26px 22px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:17px; margin:34px 0 4px; letter-spacing:-0.01em; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; max-width:86ch; margin-bottom:12px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  #status { color:var(--text-muted); font-size:13.5px; margin-top:20px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+
+  .switch { display:flex; gap:5px; align-items:center; margin:8px 0 14px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+
+  /* ranked bars — the fastest read on the page */
+  .ranks { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  @media (max-width:900px) { .ranks { grid-template-columns:1fr; } }
+  .rankcol h3 { font-size:12.5px; font-weight:650; color:var(--text-secondary); margin-bottom:6px; }
+  .rankrow { display:grid; grid-template-columns:112px 1fr 62px; align-items:center; gap:9px;
+    padding:3px 0; font-size:13px; }
+  .rankrow .rl { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rankrow .rb { height:15px; background:var(--surface-2); border-radius:4px; position:relative;
+    overflow:hidden; }
+  .rankrow .rb i { position:absolute; top:0; bottom:0; display:block; border-radius:4px; }
+  .rankrow .rb i.pos { left:50%; background:var(--up); }
+  .rankrow .rb i.neg { right:50%; background:var(--down); }
+  .rankrow .rb::after { content:""; position:absolute; left:50%; top:0; bottom:0; width:1px;
+    background:var(--baseline); }
+  .rankrow .rv { text-align:right; font-variant-numeric:tabular-nums; font-weight:640; }
+
+  /* complex tables */
+  .cplx { margin-bottom:18px; }
+  .cplxhead { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  .cplxhead h3 { font-size:14.5px; margin:0; }
+  .cplxhead .csum { font-size:12px; color:var(--text-muted); margin-left:auto;
+    font-variant-numeric:tabular-nums; }
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th { font-size:10.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:8px 10px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  th.left { text-align:left; } th.nosort { cursor:default; }
+  th.active { color:var(--text-primary); }
+  th.active::after { content:" ▾"; } th.active.asc::after { content:" ▴"; }
+  td { padding:6px 10px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.left { text-align:left; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  tbody tr:hover td { background:var(--surface-2); }
+  .cname { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .cname:hover { text-decoration:underline; }
+  .cunit { color:var(--text-muted); font-size:10.5px; display:block; }
+  td.spark { width:74px; padding:2px 10px; }
+  td.spark svg { width:70px; height:20px; display:block; }
+
+  /* ratios */
+  .ratios { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .rrow { display:flex; align-items:baseline; gap:12px; padding:9px 14px;
+    border-bottom:1px solid var(--grid); font-size:13px; flex-wrap:wrap; }
+  .rrow:last-child { border-bottom:none; }
+  .rrow .rp { font-weight:650; min-width:132px; }
+  .rrow .rc { font-weight:650; font-variant-numeric:tabular-nums; min-width:62px; }
+  .rrow .rt { color:var(--text-secondary); flex:1; min-width:230px; }
+
+  /* positioning */
+  .pill { display:inline-block; font-size:10.5px; font-weight:650; border-radius:999px;
+    padding:1px 8px; }
+  .pill.hot { background:var(--off-bg); color:var(--down); }
+  .pill.cold { background:var(--on-bg); color:var(--up); }
+  .pill.mid { color:var(--text-muted); border:1px solid var(--border); }
+
+  /* carry cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:11px; }
+  .card { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; }
+  .card h4 { font-size:13.5px; margin:0 0 2px; }
+  .card .big { font-size:20px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .card .cs { font-size:11.5px; color:var(--text-muted); }
+  .card .cv { font-size:12.5px; margin-top:5px; }
+  .card.contango { border-color:var(--down); }
+  .card.backward { border-color:var(--up); }
+
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
+  footer a { color:var(--text-secondary); }
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
+    font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
+    justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
+  #totop.show { display:flex; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Commodities</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="tape.html">Today</a>
+    <a href="markets.html">Markets</a>
+    <a href="commodities.html" class="here">Commodities</a>
+    <a href="countries.html">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+    <a href="lookup.html">Lookup</a>
+  </nav>
+
+  <p id="status">Fetching live prices…</p>
+
+  <div id="content" hidden>
+    <h2>Leaders and laggards</h2>
+    <p class="lede">Every contract ranked over the selected window. Bars run either side of zero so
+      the split between what is working and what is not is visible before you read a single number.</p>
+    <div class="switch" id="win" role="group" aria-label="Window">
+      <span class="slabel">Window</span>
+      <button class="rangebtn" data-w="d1" type="button" aria-pressed="false">1D</button>
+      <button class="rangebtn" data-w="w1" type="button" aria-pressed="false">1W</button>
+      <button class="rangebtn" data-w="m1" type="button" aria-pressed="true">1M</button>
+      <button class="rangebtn" data-w="m3" type="button" aria-pressed="false">3M</button>
+      <button class="rangebtn" data-w="ytd" type="button" aria-pressed="false">YTD</button>
+      <button class="rangebtn" data-w="y1" type="button" aria-pressed="false">1Y</button>
+    </div>
+    <div class="ranks" id="ranks"></div>
+
+    <h2>The complexes</h2>
+    <p class="lede">Grouped the way the market trades them, each in its own quoted unit — never
+      converted. <b>Seasonal</b> is the average return in the current calendar month across the last
+      ten years, with the share of those years that were positive: a long-run tendency, not a
+      forecast. Click any column header to sort within a complex.</p>
+    <div id="complexes"></div>
+
+    <h2>Ratios that carry information</h2>
+    <p class="lede">Cross-commodity ratios strip out the common move — the dollar, the cycle — and
+      leave the relative story.</p>
+    <div class="ratios" id="ratios"></div>
+
+    <h2>Positioning</h2>
+    <p class="lede">CFTC Commitments of Traders, weekly and reported with a lag. Commercials are
+      producers and merchants hedging physical exposure, so in most commodities they sit
+      structurally short and the raw sign says little — the percentile against five years is the
+      signal. Large speculators are managed money, who follow trend, so their extremes mark
+      crowding rather than insight.</p>
+    <div class="tablewrap" id="cot"></div>
+
+    <h2>Carry — what the curve costs you</h2>
+    <p class="lede">A futures index cannot hold the physical, so it rolls, and the shape of the
+      curve becomes a cost or a credit. Comparing a rolling ETF against the front-month price over
+      a year isolates that drag. Gold is the control: its ETF holds bullion, so the gap should be
+      little more than the fee.</p>
+    <div class="cards" id="carry"></div>
+  </div>
+
+  <footer>
+    <p>Front-month futures and ETF prices from Yahoo Finance, fetched live on each load and delayed
+      rather than real-time. Every contract is shown in its own quoted unit — cents per bushel stay
+      cents per bushel. Seasonality is a ten-year average and says nothing about this year. Carry is
+      inferred from the gap between a rolling fund and the front-month price, so it includes fund
+      fees as well as roll. Positioning is CFTC, published Friday for the prior Tuesday.
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
+  const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  /* Ratio levels span five orders of magnitude here — gold/silver is ~68 while
+     copper/gold is ~0.0015. A fixed two decimals prints the latter as 0.00. */
+  const fmtLevel = v => v == null || !isFinite(v) ? "–"
+    : Math.abs(v) >= 100 ? fmt(v, 0)
+    : Math.abs(v) >= 10 ? fmt(v, 2)
+    : Math.abs(v) >= 1 ? fmt(v, 3)
+    : Number(v.toPrecision(3)).toString();
+
+  /* [symbol, name, quoted unit, COT key or null]. Units are stated because a
+     commodity page that prints 4,445 and 662 without saying one is dollars an
+     ounce and the other cents a pound is unreadable. */
+  const COMPLEXES = [
+    ["Energy", [
+      ["CL=F", "WTI crude", "$/bbl", "wti"],
+      ["BZ=F", "Brent crude", "$/bbl", null],
+      ["NG=F", "Natural gas", "$/MMBtu", "natgas"],
+      ["RB=F", "RBOB gasoline", "$/gal", null],
+      ["HO=F", "Heating oil", "$/gal", null],
+    ]],
+    ["Precious metals", [
+      ["GC=F", "Gold", "$/oz", "gold"],
+      ["SI=F", "Silver", "$/oz", "silver"],
+      ["PL=F", "Platinum", "$/oz", "platinum"],
+      ["PA=F", "Palladium", "$/oz", null],
+    ]],
+    ["Industrial metals", [
+      ["HG=F", "Copper", "$/lb", "copper"],
+      ["ALI=F", "Aluminium", "$/tonne", null],
+    ]],
+    ["Grains and oilseeds", [
+      ["ZC=F", "Corn", "¢/bu", "corn"],
+      ["ZW=F", "Wheat", "¢/bu", "wheat"],
+      ["ZS=F", "Soybeans", "¢/bu", "soybeans"],
+      ["ZL=F", "Soybean oil", "¢/lb", null],
+      ["ZM=F", "Soybean meal", "$/ton", null],
+    ]],
+    ["Softs", [
+      ["SB=F", "Sugar", "¢/lb", "sugar"],
+      ["KC=F", "Coffee", "¢/lb", "coffee"],
+      ["CC=F", "Cocoa", "$/tonne", "cocoa"],
+      ["CT=F", "Cotton", "¢/lb", "cotton"],
+      ["OJ=F", "Orange juice", "¢/lb", null],
+    ]],
+    ["Livestock", [
+      ["LE=F", "Live cattle", "¢/lb", null],
+      ["HE=F", "Lean hogs", "¢/lb", null],
+    ]],
+    ["Broad baskets", [
+      ["BCI", "Broad commodities (BCI)", "index", null],
+      ["DBC", "DB commodity index (DBC)", "index", null],
+      ["GSG", "GSCI (GSG)", "index", null],
+      ["DBA", "Agriculture (DBA)", "index", null],
+    ]],
+  ];
+  const ALL = COMPLEXES.flatMap(([, list]) => list);
+  /* Rolling fund against the front month: the gap over a year is roll plus fee.
+     Gold is included deliberately as a control — a physically backed fund has
+     no roll, so its gap should be about the expense ratio and nothing more. */
+  const CARRY = [
+    ["USO", "CL=F", "WTI crude", "United States Oil Fund"],
+    ["UNG", "NG=F", "Natural gas", "United States Natural Gas Fund"],
+    ["GLD", "GC=F", "Gold (control)", "SPDR Gold Shares, physically backed"],
+  ];
+  const RATIOS = [
+    ["GC=F", "SI=F", "Gold / silver", "Gold leading — the defensive metal is preferred",
+      "Silver leading — the industrial and higher-beta metal is preferred"],
+    ["HG=F", "GC=F", "Copper / gold", "Growth expectations over fear",
+      "Fear over growth expectations"],
+    ["GC=F", "CL=F", "Gold / WTI", "Gold buying more oil — energy is cheap against the monetary metal",
+      "Oil outrunning gold — the real economy is bidding harder than the haven"],
+    ["CL=F", "NG=F", "Crude / natural gas", "Oil outrunning gas — global demand over domestic supply",
+      "Gas outrunning oil — a domestic supply or weather story"],
+    ["ZS=F", "ZC=F", "Soybeans / corn", "Beans favoured — acreage should shift toward soy",
+      "Corn favoured — acreage should shift toward corn"],
+    ["PL=F", "GC=F", "Platinum / gold", "Platinum closing its historic discount",
+      "Platinum's discount to gold widening"],
+  ];
+
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  /* Ten years of daily closes: enough for a ten-year seasonal average. */
+  async function fetchSeries(symbols) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=10y&interval=1d")).spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) {
+        if (closes[i] != null)
+          pts.push([new Date(stamps[i] * 1000).toISOString().slice(0, 10), closes[i]]);
+      }
+      if (pts.length) out[row.symbol] = pts;
+    }
+    return out;
+  }
+
+  const back = (pts, n) => pts.length > n ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
+  function stats(pts) {
+    if (!pts || pts.length < 5) return null;
+    const last = pts[pts.length - 1][1];
+    const win = pts.slice(-200).map(p => p[1]);
+    const ma = win.length >= 150 ? win.reduce((a, b) => a + b, 0) / win.length : null;
+    const yr = new Date().getFullYear();
+    let ytdBase = null;
+    for (const [d, v] of pts) { if (d < yr + "-01-01") ytdBase = v; else break; }
+    return { last, d1: back(pts, 1), w1: back(pts, 5), m1: back(pts, 21), m3: back(pts, 63),
+      y1: back(pts, 252), ytd: ytdBase ? (last / ytdBase - 1) * 100 : null,
+      maGap: ma == null ? null : (last / ma - 1) * 100 };
+  }
+  /* Average return in the current calendar month across whole past years, and
+     how often it was positive. Only complete months of past years count — the
+     month in progress would otherwise contaminate its own average. */
+  function seasonal(pts) {
+    if (!pts || pts.length < 500) return null;
+    const month = new Date().getMonth() + 1;
+    const mm = String(month).padStart(2, "0");
+    const thisYear = new Date().getFullYear();
+    const byYear = {};
+    for (const [d, v] of pts) {
+      if (d.slice(5, 7) !== mm) continue;
+      const y = +d.slice(0, 4);
+      if (y >= thisYear) continue;
+      (byYear[y] = byYear[y] || []).push(v);
+    }
+    const rets = Object.values(byYear).filter(a => a.length > 5)
+      .map(a => (a[a.length - 1] / a[0] - 1) * 100);
+    if (rets.length < 5) return null;
+    const avg = rets.reduce((a, b) => a + b, 0) / rets.length;
+    const hit = Math.round(rets.filter(r => r > 0).length / rets.length * 100);
+    return { avg, hit, n: rets.length, month };
+  }
+  function sparkline(pts, up) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    const w = 70, ht = 20;
+    svg.setAttribute("viewBox", `0 0 ${w} ${ht}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    const v = pts.slice(-252).map(p => p[1]);
+    if (v.length < 2) return svg;
+    const lo = Math.min(...v), hi = Math.max(...v);
+    const x = i => (i / (v.length - 1)) * w;
+    const y = val => hi === lo ? ht / 2 : 1.5 + (1 - (val - lo) / (hi - lo)) * (ht - 3);
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute("d", v.map((val, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(val).toFixed(1)).join(""));
+    p.setAttribute("fill", "none");
+    p.setAttribute("stroke", css(up ? "--up" : "--down"));
+    p.setAttribute("stroke-width", "1.3");
+    svg.appendChild(p);
+    return svg;
+  }
+  function ratioChange(a, b, days) {
+    if (!a || !b) return null;
+    const mb = new Map(b.map(p => [p[0], p[1]]));
+    const j = a.filter(p => mb.has(p[0])).map(p => [p[0], p[1] / mb.get(p[0])]);
+    if (j.length < days + 1) return null;
+    return { chg: (j[j.length - 1][1] / j[j.length - 1 - days][1] - 1) * 100,
+             level: j[j.length - 1][1] };
+  }
+
+  const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+                  "August", "September", "October", "November", "December"];
+  const WINLAB = { d1: "1 day", w1: "1 week", m1: "1 month", m3: "3 months", ytd: "YTD", y1: "1 year" };
+  let WIN = "m1", SERIES = {}, MACRO = null, ROWS = [];
+
+  const status = $("#status");
+  const syms = [...new Set(ALL.map(c => c[0]).concat(CARRY.flatMap(c => [c[0], c[1]])))];
+  const [series, macro] = await Promise.all([
+    fetchSeries(syms).catch(() => ({})),
+    fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  SERIES = series; MACRO = macro;
+  if (!Object.keys(SERIES).length) {
+    status.textContent = "Could not reach the price feed. Reload in a moment.";
+    throw new Error("no data");
+  }
+  status.hidden = true;
+  $("#content").hidden = false;
+
+  ROWS = ALL.map(([sym, name, unit, cot]) => {
+    const pts = SERIES[sym];
+    const st = stats(pts);
+    return st ? { sym, name, unit, cot, pts, m: st, sea: seasonal(pts) } : null;
+  }).filter(Boolean);
+
+  const upToday = ROWS.filter(r => r.m.d1 > 0).length;
+  $("#stamp").textContent = "Live prices fetched " +
+    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
+    ROWS.length + " contracts · " + upToday + " higher today" +
+    (MACRO ? " · positioning to " + MACRO.generated_at.slice(0, 10) : "");
+
+  // ---------------- ranked bars ----------------
+  function renderRanks() {
+    const box = $("#ranks");
+    box.textContent = "";
+    const scored = ROWS.filter(r => r.m[WIN] != null && r.unit !== "index")
+      .sort((a, b) => b.m[WIN] - a.m[WIN]);
+    const max = Math.max(...scored.map(r => Math.abs(r.m[WIN])), 1);
+    const col = (title, list) => {
+      const d = h("div", "rankcol");
+      d.appendChild(h("h3", null, title));
+      for (const r of list) {
+        const row = h("div", "rankrow");
+        row.appendChild(h("span", "rl", r.name));
+        const bar = h("div", "rb");
+        const i = h("i", r.m[WIN] >= 0 ? "pos" : "neg");
+        i.style.width = (Math.abs(r.m[WIN]) / max * 50) + "%";
+        bar.appendChild(i);
+        row.appendChild(bar);
+        row.appendChild(h("span", "rv " + cls(r.m[WIN]), pct(r.m[WIN])));
+        d.appendChild(row);
+      }
+      box.appendChild(d);
+    };
+    col("Leading over " + WINLAB[WIN], scored.slice(0, 10));
+    col("Lagging over " + WINLAB[WIN], scored.slice(-10).reverse());
+  }
+
+  // ---------------- complex tables ----------------
+  const SORT = {};
+  const COLS = [["name", "Contract", "left"], ["last", "Last"], ["d1", "1D"], ["w1", "1W"],
+                ["m1", "1M"], ["ytd", "YTD"], ["y1", "1Y"], ["maGap", "vs 200-day"],
+                ["sea", "Seasonal"], ["spark", "1-year shape", "nosort"]];
+  function renderComplexes() {
+    const box = $("#complexes");
+    box.textContent = "";
+    for (const [cname, list] of COMPLEXES) {
+      const rows = list.map(([sym]) => ROWS.find(r => r.sym === sym)).filter(Boolean);
+      if (!rows.length) continue;
+      const sec = h("section", "cplx");
+      const head = h("div", "cplxhead");
+      head.appendChild(h("h3", null, cname));
+      const upN = rows.filter(r => r.m[WIN] > 0).length;
+      const avg = rows.reduce((a, b) => a + (b.m[WIN] ?? 0), 0) / rows.length;
+      const sum = h("span", "csum");
+      sum.textContent = upN + " of " + rows.length + " higher over " + WINLAB[WIN] +
+        " · average " + pct(avg);
+      head.appendChild(sum);
+      sec.appendChild(head);
+
+      const key = SORT[cname] || ["m1", false];
+      const sorted = rows.slice().sort((a, b) => {
+        const va = key[0] === "name" ? a.name : key[0] === "sea" ? (a.sea ? a.sea.avg : null)
+          : key[0] === "last" ? a.m.last : a.m[key[0]];
+        const vb = key[0] === "name" ? b.name : key[0] === "sea" ? (b.sea ? b.sea.avg : null)
+          : key[0] === "last" ? b.m.last : b.m[key[0]];
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+        return key[1] ? c : -c;
+      });
+      const tw = h("div", "tablewrap");
+      const tbl = h("table");
+      const thead = h("thead"), hr = h("tr");
+      for (const [k, label, c] of COLS) {
+        const th = h("th", (c || "") + (k === key[0] ? " active" + (key[1] ? " asc" : "") : ""));
+        th.textContent = label;
+        if (c !== "nosort") th.addEventListener("click", () => {
+          SORT[cname] = [k, key[0] === k ? !key[1] : k === "name"];
+          renderComplexes();
+        });
+        hr.appendChild(th);
+      }
+      thead.appendChild(hr); tbl.appendChild(thead);
+      const tb = h("tbody");
+      for (const r of sorted) {
+        const tr = h("tr");
+        const td0 = h("td", "left");
+        const a = h("a", "cname", r.name);
+        a.href = YQ(r.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+        td0.appendChild(a);
+        td0.appendChild(h("span", "cunit", r.sym + " · " + r.unit));
+        tr.appendChild(td0);
+        tr.appendChild(h("td", null, fmt(r.m.last, r.m.last >= 100 ? 1 : 2)));
+        for (const k of ["d1", "w1", "m1", "ytd", "y1", "maGap"]) {
+          tr.appendChild(h("td", cls(r.m[k]), pct(r.m[k])));
+        }
+        const sd = h("td");
+        if (r.sea) {
+          sd.className = cls(r.sea.avg);
+          sd.textContent = pct(r.sea.avg);
+          sd.appendChild(h("span", "cunit", r.sea.hit + "% of " + r.sea.n + " years up"));
+          sd.title = MONTHS[r.sea.month - 1] + " average over the last " + r.sea.n + " years";
+        } else { sd.textContent = "–"; }
+        tr.appendChild(sd);
+        const sp = h("td", "spark");
+        sp.appendChild(sparkline(r.pts, (r.m.y1 ?? 0) >= 0));
+        tr.appendChild(sp);
+        tb.appendChild(tr);
+      }
+      tbl.appendChild(tb); tw.appendChild(tbl); sec.appendChild(tw);
+      box.appendChild(sec);
+    }
+  }
+
+  // ---------------- ratios ----------------
+  function renderRatios() {
+    const box = $("#ratios");
+    box.textContent = "";
+    for (const [a, b, name, upTxt, downTxt] of RATIOS) {
+      const r = ratioChange(SERIES[a], SERIES[b], 63);
+      if (!r) continue;
+      const row = h("div", "rrow");
+      row.appendChild(h("span", "rp", name));
+      row.appendChild(h("span", "rc " + cls(r.chg), pct(r.chg)));
+      row.appendChild(h("span", "rt", "now " + fmtLevel(r.level) +
+        " · over 3 months " + (r.chg >= 0 ? upTxt : downTxt)));
+      box.appendChild(row);
+    }
+  }
+
+  // ---------------- positioning ----------------
+  function renderCOT() {
+    const box = $("#cot");
+    box.textContent = "";
+    if (!MACRO || !MACRO.series) {
+      box.appendChild(h("p", "lede", "Positioning needs the macro feed; it has not loaded."));
+      return;
+    }
+    const ordinal = n => {
+      const t = n % 100, u = n % 10;
+      return n + (t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
+    };
+    const read = key => {
+      const s = MACRO.series[key];
+      if (!s || !s.points || s.points.length < 20) return null;
+      const v = s.points.map(p => p[1]);
+      const last = v[v.length - 1];
+      const pctile = Math.round(v.filter(x => x < last).length / v.length * 100);
+      const chg4 = v.length > 4 ? last - v[v.length - 5] : null;
+      return { last, pctile, chg4, when: s.points[s.points.length - 1][0] };
+    };
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [lab, c] of [["Contract", "left"], ["Commercials", ""], ["5y percentile", ""],
+                            ["4-week", ""], ["Large specs", ""], ["5y percentile", ""],
+                            ["4-week", ""], ["Read", "left"]]) {
+      const th = h("th", (c || "") + " nosort"); th.textContent = lab; hr.appendChild(th);
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    let any = false;
+    for (const r of ROWS) {
+      if (!r.cot) continue;
+      const c = read("cot_" + r.cot + "_comm"), l = read("cot_" + r.cot + "_large");
+      if (!c && !l) continue;
+      any = true;
+      const tr = h("tr");
+      const td0 = h("td", "left");
+      td0.appendChild(h("span", "cname", r.name));
+      td0.appendChild(h("span", "cunit", c ? "week of " + c.when : ""));
+      tr.appendChild(td0);
+      const cell = (x, kind) => {
+        if (!x) { tr.appendChild(h("td", null, "–")); return; }
+        tr.appendChild(h("td", null, (x.last > 0 ? "+" : "") + fmt(x.last, 1) + "%"));
+      };
+      const pcell = x => {
+        const td = h("td");
+        if (!x) { td.textContent = "–"; tr.appendChild(td); return; }
+        const p = h("span", "pill " + (x.pctile >= 85 ? "hot" : x.pctile <= 15 ? "cold" : "mid"),
+          ordinal(x.pctile));
+        td.appendChild(p); tr.appendChild(td);
+      };
+      const dcell = x => tr.appendChild(h("td", x && x.chg4 != null ? cls(x.chg4) : null,
+        x && x.chg4 != null ? (x.chg4 > 0 ? "+" : "") + fmt(x.chg4, 1) + "pp" : "–"));
+      cell(c); pcell(c); dcell(c);
+      cell(l); pcell(l); dcell(l);
+      /* The read that matters: specs crowded on one side with commercials
+         taking the other extreme is the classic stretched setup. */
+      let verdict = "Nothing extreme.";
+      if (l && c) {
+        if (l.pctile >= 85 && c.pctile <= 15)
+          verdict = "Specs crowded long against commercials at their most short — stretched.";
+        else if (l.pctile <= 15 && c.pctile >= 85)
+          verdict = "Specs crowded short against commercials at their most long — stretched the other way.";
+        else if (l.pctile >= 85) verdict = "Managed money crowded long.";
+        else if (l.pctile <= 15) verdict = "Managed money crowded short.";
+        else if (c.pctile <= 15) verdict = "Producers hedging harder than usual.";
+        else if (c.pctile >= 85) verdict = "Producers unusually unhedged.";
+      }
+      tr.appendChild(h("td", "left", verdict));
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    if (!any) { box.appendChild(h("p", "lede", "No positioning data available.")); return; }
+    box.appendChild(tbl);
+  }
+
+  // ---------------- carry ----------------
+  function renderCarry() {
+    const box = $("#carry");
+    box.textContent = "";
+    for (const [etf, fut, name, note] of CARRY) {
+      const e = SERIES[etf], f = SERIES[fut];
+      if (!e || !f) continue;
+      const eR = back(e, 252), fR = back(f, 252);
+      if (eR == null || fR == null) continue;
+      const gap = eR - fR;
+      const card = h("div", "card " + (gap < -3 ? "contango" : gap > 3 ? "backward" : ""));
+      card.appendChild(h("h4", null, name));
+      card.appendChild(h("div", "big " + cls(gap), (gap > 0 ? "+" : "") + fmt(gap, 1) + "pp"));
+      card.appendChild(h("div", "cs", etf + " " + pct(eR) + " vs " + fut + " " + pct(fR) + " over one year"));
+      const v = h("p", "cv");
+      v.textContent = gap < -3
+        ? "Holding the fund cost you this much against the front month — a curve in contango, where each roll buys a more expensive contract."
+        : gap > 3
+          ? "Holding the fund paid you against the front month — backwardation, where each roll buys a cheaper contract."
+          : "Fund and front month tracked each other closely; no meaningful roll effect.";
+      card.appendChild(v);
+      card.appendChild(h("div", "cs", note));
+      box.appendChild(card);
+    }
+  }
+
+  document.querySelectorAll("#win .rangebtn").forEach(b => b.addEventListener("click", () => {
+    WIN = b.dataset.w;
+    document.querySelectorAll("#win .rangebtn").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    renderRanks(); renderComplexes();
+  }));
+
+  renderRanks(); renderComplexes(); renderRatios(); renderCOT(); renderCarry();
+
+  const tt = h("button", null, "↑");
+  tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";
+  document.body.appendChild(tt);
+  addEventListener("scroll", () => tt.classList.toggle("show", scrollY > 600), { passive: true });
+  tt.addEventListener("click", () => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    scrollTo({ top: 0, behavior: rm ? "auto" : "smooth" });
+  });
+})();
+</script>
+</body>
+</html>
