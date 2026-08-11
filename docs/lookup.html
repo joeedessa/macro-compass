@@ -362,6 +362,349 @@
               ["Themes — grid and infrastructure", "themes.html"],
               ["Countries — China and the miners' home markets", "countries.html"]],
     },
+    silver: {
+      name: "Silver",
+      terms: ["silver", "xag", "slv", "si=f", "poor man's gold", "precious"],
+      blurb: "Half monetary metal, half industrial input",
+      thesis: "Silver trades as gold's higher-beta cousin on the way up and as an industrial " +
+        "metal on the way down. Roughly half of demand is industrial — solar above all — which is " +
+        "why it can decouple from gold precisely when the growth story changes.",
+      lead: "SI=F",
+      complex: [
+        ["SI=F", "Silver (futures)"], ["SLV", "Silver ETF"], ["PSLV", "Sprott physical silver"],
+        ["SIL", "Silver miners"], ["SILJ", "Junior silver miners"],
+        ["GC=F", "Gold (reference)"], ["TAN", "Solar (industrial demand)"],
+      ],
+      drivers: [
+        { macro: "us_real_10y", expect: -1, name: "10-year real yield",
+          why: "The monetary half of silver answers to the same opportunity cost as gold." },
+        { macro: "mkt_dollar", expect: -1, name: "US dollar index",
+          why: "Priced in dollars, so a stronger dollar raises the price to every other buyer." },
+        { macro: "cmd_copper", expect: 1, name: "Copper",
+          why: "The industrial half. Copper is the cleanest read on whether the cycle is bidding metals at all." },
+        { macro: "us_breakeven_10y", expect: 1, name: "10-year breakeven inflation",
+          why: "Bought as an inflation hedge alongside gold, though less reliably." },
+      ],
+      ratios: [
+        ["SI=F", "GC=F", "Silver vs gold", "Silver leading — the risk-on, industrial phase",
+          "Gold leading — the defensive phase, and the classic late-cycle tell"],
+        ["SIL", "SI=F", "Miners vs the metal", "Miners leading — priced as durable",
+          "Miners lagging — the metal is being held as a hedge"],
+        ["SILJ", "SIL", "Juniors vs seniors", "Risk appetite inside the complex rising",
+          "Juniors being derisked first"],
+        ["TAN", "SPY", "Solar vs market", "Industrial silver demand being bid",
+          "Solar lagging — the industrial leg is not helping"],
+      ],
+      sectors: ["Non-Energy Minerals"],
+      cot: { comm: "cot_silver_comm", large: null,
+             note: "Silver commercials are miners and industrial users hedging, so the net runs short." },
+      context: ["cot_silver_comm", "cot_gold_comm"],
+      links: [["Commodities — precious complex", "commodities.html"],
+              ["Markets — cross-asset", "markets.html#s-cross"]],
+    },
+    oil: {
+      name: "Crude oil and energy",
+      terms: ["oil", "crude", "wti", "brent", "cl=f", "energy", "opec", "petroleum", "xle"],
+      blurb: "The barrel and the equities that pump it",
+      thesis: "Oil is the commodity with the shortest line to headline inflation and the longest " +
+        "list of political inputs. The equity leg rarely tracks the barrel one-for-one: producers " +
+        "carry costs and discipline, and services carry the capex cycle rather than the price.",
+      lead: "CL=F",
+      complex: [
+        ["CL=F", "WTI crude"], ["BZ=F", "Brent crude"], ["RB=F", "RBOB gasoline"],
+        ["HO=F", "Heating oil"], ["XLE", "Energy sector"], ["XOP", "Oil & gas producers"],
+        ["OIH", "Oil services"], ["NG=F", "Natural gas"],
+      ],
+      drivers: [
+        { macro: "mkt_dollar", expect: -1, name: "US dollar index",
+          why: "Oil is invoiced in dollars, so dollar strength is a headwind to the price everywhere else." },
+        { macro: "us_breakeven_10y", expect: 1, name: "10-year breakeven inflation",
+          why: "Energy is the largest single input to headline inflation, so the two feed each other." },
+        { macro: "cmd_copper", expect: 1, name: "Copper",
+          why: "Both are cyclical. Oil rising without copper is usually a supply story rather than a demand one." },
+        { macro: "cr_hy_oas", expect: -1, name: "High yield credit spread",
+          why: "Energy is a large share of the high yield index; tightening spreads and rising crude usually travel together." },
+      ],
+      ratios: [
+        ["XLE", "CL=F", "Energy equity vs the barrel", "Equities leading the barrel — discipline and cash returns being paid for",
+          "Equities lagging the barrel — the market doubts the price holds"],
+        ["OIH", "XLE", "Services vs producers", "The capex cycle is turning up",
+          "Producers preferred to the drillers — no capex cycle yet"],
+        ["CL=F", "NG=F", "Crude vs gas", "Global demand over domestic supply",
+          "Gas outrunning crude — a weather or supply story"],
+        ["CL=F", "GC=F", "Oil vs gold", "The real economy bidding harder than the haven",
+          "The haven preferred to the real economy"],
+      ],
+      sectors: ["Energy Minerals", "Industrial Services"],
+      cot: { comm: "cot_wti_comm", large: "cot_wti_large",
+             note: "WTI commercials are producers and refiners hedging physical barrels." },
+      context: ["mkt_wti", "us_breakeven_10y"],
+      links: [["Commodities — energy complex", "commodities.html"],
+              ["Themes — energy and oil services", "themes.html"]],
+    },
+    uranium: {
+      name: "Uranium and nuclear",
+      terms: ["uranium", "nuclear", "ura", "urnm", "nlr", "u3o8", "smr", "atomic"],
+      blurb: "The fuel, the miners and the reactors",
+      thesis: "Uranium has no liquid futures market, so the price is a reported term and spot " +
+        "assessment and the equities are the tradable expression. Demand is policy-driven and " +
+        "slow to change; supply is concentrated and slow to build. That mismatch is the thesis.",
+      lead: "URA",
+      complex: [
+        ["URA", "Uranium miners (URA)"], ["URNM", "Uranium miners (URNM)"],
+        ["CCJ", "Cameco"], ["NLR", "Nuclear energy"], ["GRID", "Grid & electrification"],
+        ["XLU", "Utilities"], ["PAVE", "Infrastructure"],
+      ],
+      drivers: [
+        { macro: "cmd_uranium", expect: 1, name: "Uranium price",
+          why: "The physical assessment. The equities should lead it into a tightening market and lag it when the move is done." },
+        { macro: "cmd_copper", expect: 1, name: "Copper",
+          why: "A proxy for the electrification build-out that underpins the demand case." },
+        { macro: "us_real_10y", expect: -1, name: "10-year real yield",
+          why: "These are long-duration, capital-hungry projects; the discount rate matters more than for a producing miner." },
+      ],
+      ratios: [
+        ["URA", "SPY", "Uranium miners vs market", "The complex is leading the market",
+          "The complex is lagging the market"],
+        ["URNM", "URA", "Pure-play vs broad uranium", "Pure miners leading — a price-driven move",
+          "Broad basket leading — the move is being carried by the larger, more diversified names"],
+        ["NLR", "URA", "Reactors vs miners", "The utility and reactor leg leading",
+          "The mining leg leading — this is a fuel-price move, not a build-out move"],
+        ["CCJ", "URA", "Cameco vs the basket", "The bellwether leading the group",
+          "The bellwether lagging the group"],
+      ],
+      sectors: ["Non-Energy Minerals", "Utilities"],
+      cot: null,
+      context: ["cmd_uranium"],
+      links: [["Themes — nuclear and grid", "themes.html"],
+              ["Commodities — the equity leg", "commodities.html"]],
+    },
+    ai: {
+      name: "AI and semiconductors",
+      terms: ["ai", "artificial intelligence", "semis", "semiconductors", "smh", "nvda", "nvidia",
+              "chips", "compute", "hyperscaler"],
+      blurb: "The compute build-out and the chips under it",
+      thesis: "The AI trade is a capital spending cycle wearing a technology label. Semis are the " +
+        "pick-and-shovel leg and the hyperscalers are the buyers, so the ratio between them tells " +
+        "you whether the market is paying for the spending or for the returns on it.",
+      lead: "SMH",
+      complex: [
+        ["SMH", "Semiconductors"], ["NVDA", "Nvidia"], ["AIQ", "AI & big data"],
+        ["BOTZ", "Robotics & automation"], ["MAGS", "Magnificent 7"], ["QQQ", "Nasdaq 100"],
+        ["XLK", "Technology sector"],
+      ],
+      drivers: [
+        { macro: "us_real_10y", expect: -1, name: "10-year real yield",
+          why: "Long-duration growth equity discounts at the real rate; rising real yields compress the multiple." },
+        { macro: "cr_hy_oas", expect: -1, name: "High yield credit spread",
+          why: "The build-out is increasingly debt-financed, so credit conditions gate the capex." },
+        { macro: "mkt_nasdaq", expect: 1, name: "Nasdaq Composite",
+          why: "A sanity check that semis are leading the index rather than simply riding it." },
+      ],
+      ratios: [
+        ["SMH", "SPY", "Semis vs market", "Semis leading — the classic risk-on tell",
+          "Semis lagging — the leadership has moved elsewhere"],
+        ["NVDA", "SMH", "Nvidia vs the group", "One name carrying the complex — narrow leadership",
+          "The group broadening beyond the bellwether"],
+        ["SMH", "MAGS", "Chips vs the buyers", "The market is paying for the spending",
+          "The market is paying for the returns on the spending, not the spending"],
+        ["AIQ", "QQQ", "AI basket vs Nasdaq", "The theme beating the index that contains it",
+          "The theme lagging its own index"],
+      ],
+      sectors: ["Electronic Technology"],
+      cot: null,
+      context: ["mkt_nasdaq"],
+      links: [["Themes — secular band", "themes.html"],
+              ["Markets — US equity internals", "markets.html#s-internals"]],
+    },
+    rates: {
+      name: "Rates and duration",
+      terms: ["rates", "bonds", "duration", "treasuries", "tlt", "yield", "curve", "10-year", "tnx"],
+      blurb: "The risk-free curve and everything priced off it",
+      thesis: "The long end is the discount rate for every other asset. The split between the " +
+        "real yield and the breakeven says whether a move in nominal yields is a growth story or " +
+        "an inflation one, and those two demand opposite responses everywhere else.",
+      lead: "^TNX",
+      complex: [
+        ["^TNX", "US 10-year yield"], ["^TYX", "US 30-year yield"], ["TLT", "20y+ Treasuries"],
+        ["IEF", "7-10y Treasuries"], ["STIP", "0-5y TIPS"], ["TIP", "Broad TIPS"],
+        ["LQD", "Investment grade"], ["HYG", "High yield"],
+      ],
+      drivers: [
+        { macro: "us_fed_funds", expect: 1, name: "Fed funds target",
+          why: "The anchor for the front end; the long end follows it only when the market believes policy will stay." },
+        { macro: "us_breakeven_10y", expect: 1, name: "10-year breakeven inflation",
+          why: "The inflation leg of the nominal yield." },
+        { macro: "us_real_10y", expect: 1, name: "10-year real yield",
+          why: "The growth-and-term-premium leg. Which of the two legs is moving is the whole question." },
+        { macro: "us_cpi_yoy", expect: 1, name: "CPI inflation",
+          why: "Realised inflation, against which the market's expectation is either vindicated or not." },
+      ],
+      ratios: [
+        ["TLT", "IEF", "Long vs intermediate duration", "The long end outperforming — the curve is flattening or rallying hard",
+          "The long end lagging — term premium is being rebuilt"],
+        ["STIP", "IEF", "Inflation-linked vs nominal", "Inflation protection being bid",
+          "Nominal preferred — the inflation trade is unwinding"],
+        ["HYG", "IEF", "Credit vs Treasuries", "Risk appetite in fixed income rising",
+          "A flight to quality inside fixed income"],
+        ["SPY", "TLT", "Equities vs duration", "Equities preferred to bonds",
+          "Duration preferred to equities"],
+      ],
+      sectors: ["Finance"],
+      cot: null,
+      context: ["us_yield_spread", "us_real_10y", "us_breakeven_10y"],
+      links: [["Macro & flows — auctions and official demand", "macro.html"],
+              ["Markets — cross-asset", "markets.html#s-cross"]],
+    },
+    credit: {
+      name: "Credit and risk appetite",
+      terms: ["credit", "spreads", "high yield", "junk", "hyg", "lqd", "risk appetite", "oas"],
+      blurb: "Where stress shows up before equity admits it",
+      thesis: "Credit is the market that has to be right about solvency, so it usually moves " +
+        "before equity does. Spreads widening while the index holds is the single most reliable " +
+        "warning the dashboard carries; the two agreeing is a tape you can lean on.",
+      lead: "HYG",
+      complex: [
+        ["HYG", "High yield"], ["LQD", "Investment grade"], ["IEF", "7-10y Treasuries"],
+        ["TLT", "20y+ Treasuries"], ["SPY", "S&P 500"], ["KBE", "Banks"], ["^VIX", "VIX"],
+      ],
+      drivers: [
+        { macro: "cr_hy_oas", expect: -1, name: "High yield OAS",
+          why: "The spread itself. Wider spreads mean lower prices, so the price leg should move against it." },
+        { macro: "cr_ig_oas", expect: -1, name: "Investment grade OAS",
+          why: "The quality end. Investment grade widening with high yield means it is a rates story, not a default story." },
+        { macro: "mkt_vix", expect: -1, name: "VIX",
+          why: "Equity volatility and credit stress are two views of the same risk appetite." },
+        { macro: "us_yield_spread", expect: 1, name: "10y minus 2y curve",
+          why: "A steepening curve usually accompanies a recovering cycle, which is what credit needs." },
+      ],
+      ratios: [
+        ["HYG", "IEF", "High yield vs Treasuries", "Credit risk being rewarded",
+          "Quality being favoured — credit is derisking"],
+        ["HYG", "LQD", "Junk vs quality", "The lowest-quality credit leading — full risk-on",
+          "Quality leading — selective, defensive credit"],
+        ["KBE", "SPY", "Banks vs market", "Banks leading — credit conditions seen as easing",
+          "Banks lagging — the market is pricing credit stress or margin pressure"],
+        ["SPY", "HYG", "Equity vs credit", "Equity running ahead of credit — the classic warning",
+          "Credit leading equity — a more durable base"],
+      ],
+      sectors: ["Finance"],
+      cot: null,
+      context: ["cr_hy_oas", "cr_ig_oas"],
+      links: [["Markets — cross-asset", "markets.html#s-cross"],
+              ["Macro & flows — credit history", "macro.html"]],
+    },
+    china: {
+      name: "China",
+      terms: ["china", "chinese", "mchi", "kweb", "hang seng", "hsi", "csi", "beijing", "prc"],
+      blurb: "The second economy and the marginal buyer of everything physical",
+      thesis: "China matters twice: as an equity market with its own policy cycle, and as the " +
+        "marginal buyer of industrial commodities. Those two can point in opposite directions, " +
+        "and the copper leg often tells you more about the economy than the index does.",
+      lead: "MCHI",
+      complex: [
+        ["MCHI", "China equity (MCHI)"], ["FXI", "Large-cap China (FXI)"],
+        ["KWEB", "China internet"], ["CQQQ", "China tech"], ["EWH", "Hong Kong"],
+        ["^HSI", "Hang Seng"], ["HG=F", "Copper (demand read)"],
+      ],
+      drivers: [
+        { macro: "cmd_copper", expect: 1, name: "Copper",
+          why: "The cleanest market read on Chinese construction and grid demand." },
+        { macro: "mkt_dollar", expect: -1, name: "US dollar index",
+          why: "A strong dollar tightens conditions across emerging markets and pressures the currency link." },
+        { macro: "res_china", expect: 1, name: "China FX reserves",
+          why: "Reserves falling can signal capital leaving or defence of the currency; neither helps the equity market." },
+      ],
+      ratios: [
+        ["MCHI", "SPY", "China vs US", "China leading — the rotation is happening",
+          "China lagging — capital still prefers the US"],
+        ["KWEB", "MCHI", "Internet vs the broad market", "The regulated platforms leading — policy risk being priced out",
+          "Platforms lagging — policy risk still being priced"],
+        ["MCHI", "EEM", "China vs emerging markets", "China leading its own asset class",
+          "The rest of EM leading without China"],
+        ["HG=F", "GC=F", "Copper vs gold", "Growth expectations over fear — supportive for China",
+          "Fear over growth — the demand story is not being believed"],
+      ],
+      sectors: [],
+      cot: null,
+      context: ["res_china", "cmd_copper"],
+      links: [["Countries — China in context", "countries.html"],
+              ["Commodities — copper", "commodities.html"]],
+    },
+    japan: {
+      name: "Japan and the yen",
+      terms: ["japan", "yen", "jpy", "nikkei", "ewj", "boj", "carry trade", "n225"],
+      blurb: "An equity market and a funding currency, joined at the hip",
+      thesis: "The Nikkei and the yen are two sides of one trade: a weaker yen flatters exporter " +
+        "earnings and lifts the index in local terms, while doing nothing for a dollar investor. " +
+        "The gap between the local index and the dollar ETF is the currency, made visible.",
+      lead: "^N225",
+      complex: [
+        ["^N225", "Nikkei 225 (yen)"], ["EWJ", "Japan ETF (dollars)"],
+        ["DXJ", "Japan hedged (dollars)"], ["JPY=X", "USD/JPY"],
+        ["^GSPC", "S&P 500 (reference)"], ["TLT", "US duration (carry leg)"],
+      ],
+      drivers: [
+        { macro: "usd_jpy", expect: 1, name: "USD/JPY",
+          why: "A higher USD/JPY is a weaker yen, which lifts exporter earnings and the index in local terms." },
+        { macro: "us_treasury_10y", expect: 1, name: "US 10-year yield",
+          why: "The rate differential drives the yen, and the yen drives the index — a two-step transmission." },
+        { macro: "mkt_dollar", expect: 1, name: "US dollar index",
+          why: "Broad dollar strength usually means yen weakness, which the Nikkei likes and a dollar investor does not." },
+      ],
+      ratios: [
+        ["EWJ", "^N225", "Dollar ETF vs local index", "The yen is helping a dollar investor",
+          "The yen is costing a dollar investor — local gains are being eaten by the currency"],
+        ["DXJ", "EWJ", "Hedged vs unhedged", "Hedging is paying — the yen is falling",
+          "Unhedged is paying — the yen is rising"],
+        ["^N225", "^GSPC", "Nikkei vs S&P", "Japan leading the US in local terms",
+          "Japan lagging the US in local terms"],
+      ],
+      sectors: [],
+      cot: null,
+      context: ["usd_jpy", "us_treasury_10y"],
+      links: [["Countries — Japan, dollars vs local", "countries.html"],
+              ["Today — the Asian session", "tape.html"]],
+    },
+    bitcoin: {
+      name: "Bitcoin and crypto",
+      terms: ["bitcoin", "btc", "crypto", "ether", "ethereum", "eth", "digital gold", "ibit"],
+      blurb: "The highest-beta expression of liquidity",
+      thesis: "Bitcoin is marketed as digital gold and trades as the longest-duration risk asset " +
+        "on the board. It answers to liquidity and real yields far more than to the haven story, " +
+        "which is why it usually correlates with the Nasdaq rather than with bullion.",
+      lead: "BTC-USD",
+      complex: [
+        ["BTC-USD", "Bitcoin"], ["ETH-USD", "Ether"], ["IBIT", "Spot bitcoin ETF"],
+        ["COIN", "Coinbase"], ["MSTR", "Strategy (MicroStrategy)"],
+        ["QQQ", "Nasdaq 100 (reference)"], ["GC=F", "Gold (the comparison it invites)"],
+      ],
+      drivers: [
+        { macro: "us_real_10y", expect: -1, name: "10-year real yield",
+          why: "The longest-duration asset on the board discounts hardest against the real rate." },
+        { macro: "cr_hy_oas", expect: -1, name: "High yield credit spread",
+          why: "A clean read on liquidity and risk appetite, which is what actually bids crypto." },
+        { macro: "mkt_vix", expect: -1, name: "VIX",
+          why: "Rising equity volatility drains the speculative bid first." },
+        { macro: "mkt_dollar", expect: -1, name: "US dollar index",
+          why: "Dollar liquidity is the tide; a strong dollar is a tightening of it." },
+      ],
+      ratios: [
+        ["BTC-USD", "QQQ", "Bitcoin vs Nasdaq", "Crypto outrunning tech — speculative appetite building",
+          "Crypto lagging tech — the speculative bid is draining"],
+        ["BTC-USD", "GC=F", "Bitcoin vs gold", "The digital-gold story winning",
+          "Actual gold winning — the haven bid is going to the older asset"],
+        ["ETH-USD", "BTC-USD", "Ether vs bitcoin", "Risk appetite moving out the curve",
+          "Consolidating into the largest asset"],
+        ["MSTR", "BTC-USD", "The levered proxy vs the asset", "The equity proxy running ahead of its own holdings",
+          "The premium in the equity proxy compressing"],
+      ],
+      sectors: [],
+      cot: null,
+      context: ["mkt_vix"],
+      links: [["Markets — cross-asset", "markets.html#s-cross"],
+              ["Today — the tape", "tape.html"]],
+    },
   };
   const KEYS = Object.keys(SUBJECTS);
 
@@ -510,15 +853,30 @@
     return true;
   }
 
-  /* macro helper: 3-month change of an official series */
-  function macroMove(key, days = 63) {
+  /* Change in an official series over a CALENDAR window.
+
+     Stepping back by array index is wrong the moment a series is not daily:
+     these run from daily through weekly and monthly to annual, so 63 points
+     back is three months on the real yield and five and a quarter YEARS on
+     uranium. Walk the dates instead, and refuse to report a change when the
+     window does not actually contain an earlier observation. */
+  function macroMove(key, calDays) {
     const s = MACRO && MACRO.series && MACRO.series[key];
     const pts = s && s.points;
     if (!pts || pts.length < 2) return null;
-    const last = pts[pts.length - 1][1];
-    const base = pts[Math.max(0, pts.length - 1 - days)][1];
-    return { label: s.label, unit: s.unit, last, delta: last - base,
-      pctChange: base ? (last / base - 1) * 100 : null,
+    // Annual series are stamped with a bare year; normalise to a comparable date.
+    const asDate = d => (String(d).length === 4 ? d + "-12-31" : String(d));
+    const lastRow = pts[pts.length - 1];
+    const cutoff = new Date(new Date(asDate(lastRow[0])).getTime() - calDays * 864e5)
+      .toISOString().slice(0, 10);
+    let base = null;
+    for (const p of pts) { if (asDate(p[0]) <= cutoff) base = p; else break; }
+    if (!base || base === lastRow) return null;      // window too short for this frequency
+    const last = lastRow[1];
+    return { label: s.label, unit: s.unit, freq: s.freq, last,
+      delta: last - base[1],
+      pctChange: base[1] ? (last / base[1] - 1) * 100 : null,
+      from: asDate(base[0]), to: asDate(lastRow[0]),
       source: s.source, url: s.source_url };
   }
 
@@ -593,23 +951,25 @@
     /* Two windows, not one. A quarter is long enough that a relationship can
        read as intact while it is actively coming apart — gold can be down over
        three months and up hard over one. Checking both is what catches that. */
-    const WINS = [[63, "3m"], [21, "1m"]];
+    const WINS = [[63, "3m", 91], [21, "1m", 30]];
     let held = 0, tested = 0, breaking = 0;
     for (const d of S.drivers) {
-      const legs2 = WINS.map(([n, lab]) => {
-        const mv = macroMove(d.macro, n);
+      const legs2 = WINS.map(([n, lab, cal]) => {
+        const mv = macroMove(d.macro, cal);
         const sm = back(SERIES[S.lead], n);
         if (!mv || sm == null) return null;
+        // A flat driver carries no sign, so it cannot confirm or contradict.
+        const flat = mv.delta === 0 || Math.abs(mv.delta) < 1e-9;
         const sameSign = (mv.delta >= 0) === (sm >= 0);
-        return { lab, n, mv, sm, ok: d.expect === 1 ? sameSign : !sameSign };
+        return { lab, n, mv, sm, flat, ok: flat ? null : (d.expect === 1 ? sameSign : !sameSign) };
       });
       const [q, m] = legs2;
-      if (!q) continue;
-      tested++;
-      if (q.ok) held++;
-      const nowOk = m ? m.ok : q.ok;
-      if (q.ok && m && !m.ok) breaking++;
-      const state = q.ok && nowOk ? "ok" : (!q.ok && !nowOk) ? "diverge" : "shift";
+      if (!q) continue;               // no 3-month reading at all: skip the driver
+      if (q.ok !== null) { tested++; if (q.ok) held++; }
+      const nowOk = m && m.ok !== null ? m.ok : q.ok;
+      if (q.ok && m && m.ok === false) breaking++;
+      const state = q.ok === null ? "" : q.ok && nowOk ? "ok"
+        : (!q.ok && !nowOk) ? "diverge" : "shift";
       const card = h("div", "card " + state);
       const top = h("div");
       top.appendChild(h("span", "cname", d.name));
@@ -623,16 +983,25 @@
         l.appendChild(h("span", "lv", val));
         return l;
       };
-      const unit = (q.mv.unit === "pp" || q.mv.unit === "%") ? "pp" : "";
+      /* A change in a percentage is percentage points; a change in anything
+         else keeps that thing's unit, or the number is unreadable — copper
+         moved "+1,023" of what? */
+      const unit = (q.mv.unit === "pp" || String(q.mv.unit || "").startsWith("%")) ? "pp"
+        : (q.mv.unit && q.mv.unit !== "index") ? " " + q.mv.unit : "";
       for (const leg of legs2.filter(Boolean)) {
-        legs.appendChild(mk(leg.mv.label + " · " + leg.lab,
+        legs.appendChild(mk(leg.mv.label + " · " + leg.lab +
+          (leg.mv.freq && leg.mv.freq !== "daily" ? " (" + leg.mv.freq + ")" : ""),
           (leg.mv.delta > 0 ? "+" : "") + fmt(leg.mv.delta, 2) + unit, leg.mv.delta >= 0));
         legs.appendChild(mk(S.name + " · " + leg.lab, pct(leg.sm), leg.sm >= 0));
       }
       card.appendChild(legs);
       const v = h("p", "verdict");
       let head2, tail2;
-      if (q.ok && nowOk) { head2 = "Behaving. "; tail2 = "The relationship held over both windows."; }
+      if (q.ok === null) {
+        head2 = "Flat. ";
+        tail2 = "The driver has not moved over this window, so it neither confirms nor contradicts.";
+      }
+      else if (q.ok && nowOk) { head2 = "Behaving. "; tail2 = "The relationship held over both windows."; }
       else if (q.ok && !nowOk) { head2 = "Breaking. "; tail2 = "It held over three months but has not over the last one — the relationship is coming apart now."; }
       else if (!q.ok && nowOk) { head2 = "Reasserting. "; tail2 = "It failed over three months but is holding again over the last one."; }
       else { head2 = "Diverging. "; tail2 = "It has not held over either window — something else is setting the price."; }
@@ -711,6 +1080,7 @@
         [S.cot.comm, "Commercial hedgers", "Producers and merchants — they sell into strength, so a deeply negative net is them hedging more output."],
         [S.cot.large, "Large speculators", "Managed money — they follow trend, so an extreme net is a crowded position rather than a forecast."],
       ]) {
+        if (!key) continue;
         const s = MACRO.series[key];
         if (!s || !s.points || s.points.length < 10) continue;
         built++;
@@ -783,7 +1153,7 @@
     }
 
     // ---- context series + deep links ----
-    const ctx = (S.context || []).map(k => [k, macroMove(k, 63)]).filter(x => x[1]);
+    const ctx = (S.context || []).map(k => [k, macroMove(k, 91)]).filter(x => x[1]);
     if (ctx.length) {
       box.appendChild(h("h2", null, "Official series worth watching"));
       const chips = h("div", "chips");
@@ -791,8 +1161,8 @@
         const a = h("a", "chip");
         a.href = mv.url || "macro.html"; a.target = "_blank"; a.rel = "noopener noreferrer";
         a.appendChild(h("b", null, mv.label));
-        a.appendChild(document.createTextNode(" " + fmt(mv.last, 2) +
-          " (" + (mv.delta > 0 ? "+" : "") + fmt(mv.delta, 2) + " over 3m) ↗"));
+        a.appendChild(document.createTextNode(" " + fmt(mv.last, 2) + " (" +
+          (mv.delta > 0 ? "+" : "") + fmt(mv.delta, 2) + " since " + mv.from + ") ↗"));
         chips.appendChild(a);
       }
       box.appendChild(chips);
@@ -823,7 +1193,7 @@
   function openList(list) {
     opts.textContent = "";
     if (!list.length) {
-      const li = h("li", "none", "Nothing matches — three subjects are available so far: " +
+      const li = h("li", "none", "Nothing matches. Available: " +
         KEYS.map(k => SUBJECTS[k].name).join(", ") + ".");
       opts.appendChild(li);
     }
