@@ -63,7 +63,9 @@
   .leadrow { display:flex; justify-content:space-between; gap:10px; font-size:13.5px;
     padding:2.5px 0; }
   .leadrow b { font-weight:600; }
-  .leadrow .v { font-variant-numeric:tabular-nums; }
+  .leadrow .v { font-variant-numeric:tabular-nums; text-align:right; }
+  .leadrow .v .vacwi { display:block; }
+  .leadrow .v .vus { display:block; font-size:11.5px; color:var(--text-muted); }
 
   /* signal scan: six-column bull→bear, fast→slow layout */
   .sigcols { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:6px; }
@@ -225,10 +227,12 @@
 
   <div id="content" hidden>
     <h2>Leaders and laggards</h2>
-    <p class="lede">Country equity performance relative to the all-country world index (ACWI) over
-      the selected window. Every country is measured through its US-listed ETF, so all of these are
-      returns to a dollar investor — the currency move is part of the number, which is what makes
-      them comparable across countries.</p>
+    <p class="lede">Country equity performance over the selected window, against two yardsticks:
+      the all-country world index (ACWI) and the US. They answer different questions — whether a
+      country beat the world, and whether it beat the alternative most portfolios actually hold —
+      and since ACWI is roughly two-thirds US, they only part company when the US is the outlier.
+      Every country is measured through its US-listed ETF, so all of these are returns to a dollar
+      investor; the currency move is part of the number, which is what makes them comparable.</p>
     <div class="switch" id="relwin" role="group" aria-label="Relative window">
       <span class="slabel">Window</span>
       <button class="rangebtn" data-win="w1" type="button" aria-pressed="false">1W</button>
@@ -513,9 +517,17 @@
     .filter(r => r.m || r.idx);
   const PRICED = ROWS.filter(r => r.m);
 
+  /* Two yardsticks, because they answer different questions. ACWI asks whether
+     a country beat the world; SPY asks whether it beat the alternative most
+     portfolios actually hold. ACWI is roughly two-thirds US, so the two only
+     part company when the US is the outlier — which is exactly when it matters. */
+  const US_BASE = "SPY";
   const baseM = PRICED.find(r => r.etf === BASE)?.m;
-  const rel = (r, win) => (r.m && baseM && r.m[win] != null && baseM[win] != null)
-    ? r.m[win] - baseM[win] : null;
+  const usM = PRICED.find(r => r.etf === US_BASE)?.m;
+  const relTo = (r, win, base) => (r.m && base && r.m[win] != null && base[win] != null)
+    ? r.m[win] - base[win] : null;
+  const rel = (r, win) => relTo(r, win, baseM);
+  const relUS = (r, win) => relTo(r, win, usM);
 
   $("#stamp").textContent = "Live prices fetched " +
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
@@ -537,13 +549,45 @@
       for (const r of list) {
         const row = h("div", "leadrow");
         row.appendChild(h("b", null, r.name));
-        row.appendChild(h("span", "v", pct(rel(r, relWin)) + " vs ACWI"));
+        const v = h("span", "v");
+        v.appendChild(h("span", "vacwi", pct(rel(r, relWin)) + " vs ACWI"));
+        const u = relUS(r, relWin);
+        // The US row against itself is zero by construction — say so rather
+        // than printing a meaningless +0.0%.
+        v.appendChild(h("span", "vus", r.etf === US_BASE ? "the US itself"
+          : pct(u) + " vs US"));
+        row.appendChild(v);
         d.appendChild(row);
       }
       box.appendChild(d);
     };
     mk("Leading the world index — " + WINLAB[relWin], scored.slice(0, 6), "in");
     mk("Lagging the world index — " + WINLAB[relWin], scored.slice(-6).reverse(), "out");
+    /* Where the two yardsticks disagree: a country can beat the world index and
+       still lose to the US, and that gap is the whole US-exceptionalism story. */
+    const split = PRICED.filter(r => r.region !== "Benchmark" && r.etf !== US_BASE &&
+      rel(r, relWin) != null && relUS(r, relWin) != null &&
+      (rel(r, relWin) >= 0) !== (relUS(r, relWin) >= 0));
+    const note = h("p", "lede");
+    note.style.margin = "10px 0 0";
+    if (!split.length) {
+      note.textContent = "Over " + WINLAB[relWin] + " the two yardsticks agree on every country — " +
+        "beating the world index and beating the US amount to the same thing right now.";
+    } else {
+      const beatWorldNotUS = split.filter(r => rel(r, relWin) >= 0);
+      note.textContent = split.length + " " + (split.length === 1 ? "country lands" : "countries land") +
+        " on opposite sides of the two yardsticks over " + WINLAB[relWin] + ": " +
+        (beatWorldNotUS.length
+          ? beatWorldNotUS.slice(0, 6).map(r => r.name).join(", ") +
+            (beatWorldNotUS.length > 6 ? " and others" : "") + " beat the world index but lost to the US"
+          : "") +
+        (beatWorldNotUS.length && beatWorldNotUS.length < split.length ? "; " : "") +
+        (beatWorldNotUS.length < split.length
+          ? split.filter(r => rel(r, relWin) < 0).slice(0, 6).map(r => r.name).join(", ") +
+            " beat the US but lost to the world index"
+          : "") + ".";
+    }
+    box.parentNode.insertBefore(note, box.nextSibling);
   }
   document.querySelectorAll("#relwin .rangebtn").forEach(b => b.addEventListener("click", () => {
     relWin = b.dataset.win;
@@ -712,12 +756,13 @@
   const COLS = [
     ["name", "Country", "left"], ["region", "Continent", "left"], ["last", "Last"],
     ["w1", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"], ["y1", "1Y"],
-    ["rel", "vs ACWI"], ["maGap", "vs 200-day"],
+    ["rel", "vs ACWI"], ["relus", "vs US"], ["maGap", "vs 200-day"],
   ];
   const valOf = (r, k) => {
     if (k === "name") return r.name;
     if (k === "region") return r.region;
     if (k === "rel") return rel(r, relWin);
+    if (k === "relus") return relUS(r, relWin);
     if (k === "last") return r.m.last;
     return r.m[k];
   };
@@ -732,7 +777,8 @@
     const thead = h("thead"), hr = h("tr");
     for (const [key, label, cls] of COLS) {
       const th = h("th", (cls || "") + (key === sortKey ? " active" + (sortAsc ? " asc" : "") : ""));
-      const lab = h("span", "hlabel", label + (key === "rel" ? " (" + WINLAB[relWin] + ")" : ""));
+      const lab = h("span", "hlabel", label +
+        (key === "rel" || key === "relus" ? " (" + WINLAB[relWin] + ")" : ""));
       lab.addEventListener("click", () => {
         if (sortKey === key) sortAsc = !sortAsc;
         else { sortKey = key; sortAsc = key === "name" || key === "region"; }
@@ -769,6 +815,9 @@
       }
       const rv = rel(r, relWin);
       tr.appendChild(h("td", rv == null ? null : rv >= 0 ? "up" : "down", pct(rv)));
+      const ru = relUS(r, relWin);
+      tr.appendChild(h("td", r.etf === US_BASE ? null : ru == null ? null : ru >= 0 ? "up" : "down",
+        r.etf === US_BASE ? "–" : pct(ru)));
       const g = r.m.maGap;
       tr.appendChild(h("td", g == null ? null : g >= 0 ? "up" : "down", pct(g)));
       tb.appendChild(tr);
