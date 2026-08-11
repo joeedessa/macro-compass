@@ -373,6 +373,25 @@
     return out;
   }
 
+  /* A delisted instrument does not leave the feed: Yahoo keeps serving its old
+     history and pads a null bar at today's timestamp, so the last row looks
+     current until you check the last real close. The liquidated Portugal and
+     Egypt ETFs read as live here for months. Anything staler than this is
+     dropped rather than shown as a live quote. */
+  const STALE_DAYS = 14;
+  const DROPPED = [];
+  const freshOnly = map => {
+    const today = new Date().toISOString().slice(0, 10);
+    const out = {};
+    for (const sym in map) {
+      const pts = map[sym];
+      if (!pts || !pts.length) continue;
+      const age = Math.round((new Date(today) - new Date(pts[pts.length - 1][0])) / 864e5);
+      if (age > STALE_DAYS) { DROPPED.push(sym + " (to " + pts[pts.length - 1][0] + ")"); continue; }
+      out[sym] = pts;
+    }
+    return out;
+  };
   const back = (pts, n) => pts.length > n ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
   function stats(pts) {
     if (!pts || pts.length < 5) return null;
@@ -451,7 +470,7 @@
     fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
       .then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
-  SERIES = series; MACRO = macro;
+  SERIES = freshOnly(series); MACRO = macro;
   if (!Object.keys(SERIES).length) {
     status.textContent = "Could not reach the price feed. Reload in a moment.";
     throw new Error("no data");
@@ -469,7 +488,8 @@
   $("#stamp").textContent = "Live prices fetched " +
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
     ROWS.length + " contracts · " + upToday + " higher today" +
-    (MACRO ? " · positioning to " + MACRO.generated_at.slice(0, 10) : "");
+    (MACRO ? " · positioning to " + MACRO.generated_at.slice(0, 10) : "") +
+    (DROPPED.length ? " · no longer trading: " + DROPPED.join(", ") : "");
 
   // ---------------- ranked bars ----------------
   function renderRanks() {

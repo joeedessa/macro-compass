@@ -283,6 +283,25 @@
     }
     return out;
   }
+  /* A delisted instrument does not leave the feed: Yahoo keeps serving its old
+     history and pads a null bar at today's timestamp, so the last row looks
+     current until you check the last real close. The liquidated Portugal and
+     Egypt ETFs read as live here for months. Anything staler than this is
+     dropped rather than shown as a live quote. */
+  const STALE_DAYS = 14;
+  const DROPPED = [];
+  const freshOnly = map => {
+    const today = new Date().toISOString().slice(0, 10);
+    const out = {};
+    for (const sym in map) {
+      const pts = map[sym];
+      if (!pts || !pts.length) continue;
+      const age = Math.round((new Date(today) - new Date(pts[pts.length - 1][0])) / 864e5);
+      if (age > STALE_DAYS) { DROPPED.push(sym + " (to " + pts[pts.length - 1][0] + ")"); continue; }
+      out[sym] = pts;
+    }
+    return out;
+  };
   const sma = (pts, n) => {
     if (pts.length < n) return [];
     const out = []; let s = 0;
@@ -365,7 +384,7 @@
     return td;
   };
 
-  const series = await fetchSeries(THEMES.map(t => t[0]).concat(["SPY"]));
+  const series = freshOnly(await fetchSeries(THEMES.map(t => t[0]).concat(["SPY"])));
   const spyM = series.SPY ? metrics(series.SPY) : null;
   if (!spyM) { $("#status").textContent = "Live price feed unavailable right now — reload to retry."; return; }
 
@@ -386,7 +405,8 @@
       new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
       " · " + rows.filter(r => r.band === BANDS[0][0]).length + " secular themes and " +
       rows.filter(r => r.band === BANDS[1][0]).length + " sectors · benchmark SPY " +
-      pct(spyM[relWin]) + " over " + WINLABEL[relWin];
+      pct(spyM[relWin]) + " over " + WINLABEL[relWin] +
+      (DROPPED.length ? " · no longer trading: " + DROPPED.join(", ") : "");
   }
 
   function renderLead() {

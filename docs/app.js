@@ -875,28 +875,32 @@ const CROSS = [
       upUp: "Real yields rising and gold rising anyway \u2014 gold is being bid for a reason other than rates.",
       upDown: "Real yields rising and gold falling \u2014 the textbook headwind, working as expected.",
       downUp: "Real yields falling with gold rising \u2014 the textbook tailwind.",
-      downDown: "Real yields falling but gold soft \u2014 the tailwind is not being taken." } },
+      downDown: "Real yields falling but gold soft \u2014 the tailwind is not being taken." ,
+      flat: "Real yields have barely moved over three months, so they are not what is driving gold either way."} },
   { macro: "us_breakeven_10y", mkt: "CL=F", name: "Breakevens \u2192 oil",
     why: "Market-implied inflation and crude feed each other; energy is the largest single input to headline inflation expectations.",
     align: {
       upUp: "Breakevens and crude rising together \u2014 an inflation impulse with a real driver behind it.",
       upDown: "Breakevens rising without crude \u2014 inflation expectations building on something other than energy.",
       downUp: "Crude rising while breakevens ease \u2014 the market is reading it as supply, not inflation.",
-      downDown: "Both easing \u2014 the inflation impulse is draining." } },
+      downDown: "Both easing \u2014 the inflation impulse is draining." ,
+      flat: "Breakevens have barely moved over three months — the inflation leg is not what crude is responding to."} },
   { macro: "cr_hy_oas", mkt: "SPY", name: "Credit spreads \u2192 equity",
     why: "Credit usually cracks before equity does. Spreads widening while equity holds is the classic warning; the reverse is a healthy risk tape.",
     align: {
       upUp: "Spreads widening while equity rises \u2014 credit is not confirming the equity move.",
       upDown: "Spreads widening with equity falling \u2014 both markets derisking together.",
       downUp: "Spreads tightening with equity rising \u2014 risk appetite confirmed by both markets.",
-      downDown: "Spreads tightening but equity soft \u2014 credit says the tape is fine." } },
+      downDown: "Spreads tightening but equity soft \u2014 credit says the tape is fine." ,
+      flat: "Spreads have barely moved over three months; credit is neither confirming nor contradicting, it is simply quiet."} },
   { macro: "us_yield_spread", mkt: "XLF", name: "Curve \u2192 banks",
     why: "Banks borrow short and lend long, so a steepening 2s10s curve widens net interest margin. Financials leading a steepening is the market pricing that through.",
     align: {
       upUp: "Curve steepening with financials leading \u2014 margin expansion being priced.",
       upDown: "Curve steepening but financials lagging \u2014 the market doubts banks capture it.",
       downUp: "Curve flattening while financials lead \u2014 leadership is coming from somewhere other than margin.",
-      downDown: "Curve flattening with financials lagging \u2014 margin pressure being priced." } },
+      downDown: "Curve flattening with financials lagging \u2014 margin pressure being priced." ,
+      flat: "The curve has barely moved over three months, so bank performance is coming from something other than margin."} },
 ];
 
 function renderCross() {
@@ -904,28 +908,64 @@ function renderCross() {
   if (!box) return;
   box.textContent = "";
   const M = (MACRO && MACRO.series) || {};
-  const chg = (pts, days) => {
+  /* Change over a CALENDAR window, not N array positions.
+
+     Every driver here happens to be daily today, so index arithmetic gives the
+     right answer — but macro.json carries daily, weekly, monthly and annual
+     series side by side, and the moment someone adds cmd_copper or us_cpi_yoy
+     to CROSS, "63 back" silently becomes 63 months. The same bug shipped on
+     the Lookup page and read as a confident three-month number. Walk dates. */
+  const asDate = d => (String(d).length === 4 ? d + "-12-31" : String(d));
+  const macroChg = (pts, calDays) => {
     if (!pts || pts.length < 2) return null;
-    const last = pts[pts.length - 1][1];
-    const i = Math.max(0, pts.length - 1 - days);
-    const base = pts[i][1];
-    return { last, delta: last - base, pct: base ? (last / base - 1) * 100 : null };
+    const last = pts[pts.length - 1];
+    const cutoff = new Date(new Date(asDate(last[0])).getTime() - calDays * 864e5)
+      .toISOString().slice(0, 10);
+    let base = null;
+    for (const p of pts) { if (asDate(p[0]) <= cutoff) base = p; else break; }
+    if (!base || base === last) return null;
+    return { last: last[1], delta: last[1] - base[1], from: asDate(base[0]) };
   };
-  const DAYS = 63;                    // about a quarter of trading
+  const priceChg = (pts, sessions) => {
+    if (!pts || pts.length < 2) return null;
+    const i = Math.max(0, pts.length - 1 - sessions);
+    const base = pts[i][1];
+    return { last: pts[pts.length - 1][1], delta: pts[pts.length - 1][1] - base,
+             pct: base ? (pts[pts.length - 1][1] / base - 1) * 100 : null };
+  };
+  const DAYS = 63;                    // trading sessions for the price leg
+  const CAL = 91;                     // calendar days for the macro leg
+  /* How big is a normal quarterly move in this series? Used to decide whether
+     the current one means anything. The 2s10s curve moved +0.000pp over three
+     months while this card asserted "steepening — margin expansion being
+     priced": a direction invented from noise. Anything under a fifth of the
+     series' own median quarterly move is reported as unchanged instead. */
+  const typicalMove = pts => {
+    if (!pts || pts.length < 80) return null;
+    const d = [];
+    for (let i = 63; i < pts.length; i++) d.push(Math.abs(pts[i][1] - pts[i - 63][1]));
+    if (!d.length) return null;
+    d.sort((a, b) => a - b);
+    return d[Math.floor(d.length / 2)];
+  };
+  const MATERIAL = 0.2;
   let built = 0;
   for (const row of CROSS) {
     const ms = M[row.macro];
     const mpts = ms && (ms.points || ms.data);
     const mk = SERIES[row.mkt];
     if (!mpts || !mk) continue;
-    const a = chg(mpts, Math.min(DAYS, mpts.length - 1));
-    const b = chg(mk, Math.min(DAYS, mk.length - 1));
+    const a = macroChg(mpts, CAL);
+    const b = priceChg(mk, Math.min(DAYS, mk.length - 1));
     if (!a || !b) continue;
     /* Keyed by the sign pair (macro leg, market leg) rather than by position:
        the four rows describe their combinations in different natural orders,
-       and a positional lookup silently mismatched two of them. */
+       and a positional lookup silently mismatched two of them. A move too small
+       to mean anything gets its own wording rather than a borrowed direction. */
+    const typ = typicalMove(mpts);
+    const immaterial = typ != null && Math.abs(a.delta) < MATERIAL * typ;
     const key = (a.delta >= 0 ? "up" : "down") + (b.pct >= 0 ? "Up" : "Down");
-    const verdict = row.align[key] || "";
+    const verdict = immaterial ? (row.align.flat || "") : (row.align[key] || "");
     const card = h("div", "crosscard");
     const hd = h("div", "chead");
     hd.appendChild(h("span", "cname", row.name));
@@ -938,7 +978,7 @@ function renderCross() {
       d.appendChild(h("span", "cval", val));
       return d;
     };
-    legs.appendChild(leg(ms.label || row.macro,
+    legs.appendChild(leg((ms.label || row.macro) + (immaterial ? " · little changed" : ""),
       (a.delta > 0 ? "+" : "") + fmtNum(a.delta, 2) + (ms.unit === "pp" ? "pp" : "pp") +
       " → " + fmtNum(a.last, 2) + (ms.unit === "pp" ? "pp" : "%"), a.delta >= 0));
     legs.appendChild(leg(row.mkt, (b.pct > 0 ? "+" : "") + fmtNum(b.pct, 1) + "%", b.pct >= 0));
