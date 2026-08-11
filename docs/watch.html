@@ -285,7 +285,7 @@
     </label>
     <label>Negation<input id="f-neg" type="number" step="any" placeholder="invalidates"></label>
     <label>Target<input id="f-tgt" type="number" step="any" placeholder="thesis pays"></label>
-    <label>Breakthrough<input id="f-brk" type="number" step="any" placeholder="close beyond"></label>
+    <label>Breakthrough<input id="f-brk" type="number" step="any" placeholder="close above"></label>
     <label>Note<input id="f-note" placeholder="why this trade (optional)"></label>
     <button type="submit">Add</button>
   </form>
@@ -322,7 +322,8 @@
   <footer>
     <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
       evaluated against daily closes only — intraday touches do not count, by design, so signals
-      match end-of-day discipline. The shared setups live in the public repo (data/watchlist.json); personal edits and additions stay in this browser's localStorage. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+      match end-of-day discipline. A long confirms on a close above its trigger, a short on a
+      close below it. The shared setups live in the public repo (data/watchlist.json); personal edits and additions stay in this browser's localStorage. Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
   </footer>
 </div>
 
@@ -403,9 +404,9 @@
   }
 
   /* Replay on SETTLED closes only:
-       watch    --close beyond trigger (long >, short <)-->  breakout
-       any      --close beyond negation-->                   failed (outranks all)
-       breakout --close at/beyond target-->                  target (not terminal)
+       watch    --close above trigger (long) / below it (short)-->  breakout
+       any      --close through the negation the wrong way-->        failed (outranks all)
+       breakout --close at or past target-->                         target (not terminal)
      Entries with `confirmed` (imported from the source's breakout list) start
      in the breakout state on that date. */
   function replay(p, hist) {
@@ -982,7 +983,7 @@
   }
 
   /* Alerts: (1) new transitions sealed by the most recent settled close, and
-     (2) watch setups trading beyond their trigger intraday — awaiting a close. */
+     (2) watch setups trading through their trigger intraday — awaiting a close. */
   function renderAlerts(all) {
     const box = $("#alerts");
     box.textContent = "";
@@ -991,8 +992,9 @@
       const { p, st } = r;
       const lastSettledDate = r.prevDate;
       if (st.breakout && st.breakout.close != null && st.breakout.when === lastSettledDate)
-        items.push(["new", p.sym + " " + p.dir + " — BREAKOUT CONFIRMED by the " + st.breakout.when +
-          " close at " + fmt(st.breakout.close) + " (trigger " + fmt(p.breakthrough) + ")"]);
+        items.push(["new", p.sym + " " + p.dir + " — BREAKOUT CONFIRMED: closed " +
+          (p.dir === "long" ? "above" : "below") + " the trigger on " + st.breakout.when +
+          " at " + fmt(st.breakout.close) + " (trigger " + fmt(p.breakthrough) + ")"]);
       if (st.targetHit && st.targetHit.when === lastSettledDate)
         items.push(["new", p.sym + " " + p.dir + " — reached its target on the " + st.targetHit.when +
           " close (" + fmt(st.targetHit.close) + " vs target " + fmt(p.target) + ")"]);
@@ -1001,9 +1003,14 @@
           " close (" + fmt(st.failed.close) + " vs negation " + fmt(p.negation) + ")"]);
       if (st.state === "watch" && r.live != null && p.breakthrough != null &&
           r.liveDate !== r.prevDate &&
-          (p.dir === "long" ? r.live > p.breakthrough : r.live < p.breakthrough))
-        items.push(["warn", p.sym + " " + p.dir + " — trading beyond its trigger intraday (" +
-          fmt(r.live) + " vs " + fmt(p.breakthrough) + "); a close beyond confirms the breakout"]);
+          (p.dir === "long" ? r.live > p.breakthrough : r.live < p.breakthrough)) {
+        // Name the actual direction rather than a neutral word: a long triggers
+        // on a close above its level, a short on a close below it.
+        const side = p.dir === "long" ? "above" : "below";
+        items.push(["warn", p.sym + " " + p.dir + " — trading " + side +
+          " its trigger intraday (" + fmt(r.live) + " vs " + fmt(p.breakthrough) +
+          "); a close " + side + " confirms the breakout"]);
+      }
     }
     for (const [cls, msg] of items.slice(0, 12)) {
       const b = h("div", "albox " + cls);
@@ -1306,6 +1313,17 @@
     e.target.reset();
     refresh();
   });
+
+  /* The trigger means "close above" for a long and "close below" for a short,
+     so the placeholder follows the direction rather than staying vague. */
+  const dirSel = $("#f-dir"), brk = $("#f-brk"), neg = $("#f-neg");
+  const syncDirWords = () => {
+    const long = dirSel.value === "long";
+    brk.placeholder = long ? "close above" : "close below";
+    neg.placeholder = long ? "invalidates below" : "invalidates above";
+  };
+  dirSel.addEventListener("change", syncDirWords);
+  syncDirWords();
 
   $("#refresh").addEventListener("click", refresh);
   $("#exportbtn").addEventListener("click", () => {
