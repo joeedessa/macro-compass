@@ -205,8 +205,10 @@
 
     <h2>Where the book actually sits</h2>
     <p class="lede">Exposure by count, with the average move of each bucket today — so you can see
-      not just where you are concentrated but whether that concentration is working. Theme names
-      link through to the rest of the dashboard.</p>
+      not just where you are concentrated but whether that concentration is working. Theme and
+      sector count <b>companies</b>; exchange and currency count <b>listings</b>, because three
+      names are held in both Toronto and New York and are genuinely two holdings there but one
+      company here. Theme names link through to the rest of the dashboard.</p>
     <div class="expgrid" id="exposure"></div>
 
     <h2>Earnings</h2>
@@ -360,11 +362,22 @@
       "Agriculture & food": "commodities.html",
       "Chemicals & materials": "commodities.html",
     };
-    const group = (keyFn, title, note, linkFn) => {
+    /* Three companies are held in two currencies at once — Agnico Eagle, Coeur
+       and Ero Copper each have a Toronto and a New York line. Counting listings
+       is right for exchange and currency, where they genuinely are two
+       holdings, and wrong for theme and sector, where it counts one company
+       twice. `byCompany` dedupes on the company name for those. */
+    const group = (keyFn, title, note, linkFn, byCompany) => {
       const m = new Map();
+      const seen = new Set();
       for (const p of P) {
         const k = keyFn(p);
         if (!k) continue;
+        if (byCompany) {
+          const id = k + "|" + (p.name || p.tk);
+          if (seen.has(id)) continue;
+          seen.add(id);
+        }
         const g = m.get(k) || { n: 0, sum: 0, priced: 0 };
         g.n++;
         if (p.chg != null) { g.sum += p.chg; g.priced++; }
@@ -396,10 +409,10 @@
       panel.appendChild(body);
       box.appendChild(panel);
     };
-    group(p => p.theme, "By theme", "count · average move today", k => THEME_LINK[k]);
-    group(p => p.sector, "By sector", "count · average move today", () => "themes.html");
-    group(p => p.ex, "By exchange", "count · average move today", () => "countries.html");
-    group(p => p.ccy, "By currency", "count · average move today", () => "countries.html");
+    group(p => p.theme, "By theme", "companies · average move", k => THEME_LINK[k], true);
+    group(p => p.sector, "By sector", "companies · average move", () => "themes.html", true);
+    group(p => p.ex, "By exchange", "listings · average move", () => "countries.html", false);
+    group(p => p.ccy, "By currency", "listings · average move", () => "countries.html", false);
   })();
 
   // ---------- earnings ----------
@@ -434,7 +447,7 @@
       row.appendChild(when);
       return row;
     });
-    panel("Just reported", "actual vs expected, and how it traded", recent, r => {
+    panel("Just reported", "actual vs expected, and the reaction", recent, r => {
       const row = h("div", "erow");
       const a = h("a", null, r.tk);
       const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
@@ -449,12 +462,16 @@
         mid.appendChild(h("b", r.earn.rev_surprise >= 0 ? "beat" : "miss",
           (r.earn.rev_surprise > 0 ? "+" : "") + fmt(r.earn.rev_surprise) + "%"));
       }
-      /* The reaction matters more than the surprise: a beat the market sold is
-         a different fact from a beat it bought. 1-month performance is the
-         closest window the feed gives to "since the report". */
-      if (r.m1 != null) {
-        mid.appendChild(document.createTextNode(" · since then "));
-        mid.appendChild(h("b", cls(r.m1), pct(r.m1)));
+      /* The reaction matters more than the surprise — a beat the market sold is
+         a different fact from a beat it bought. Measured from the last close
+         before the release to the latest one, not from a fixed window: a
+         "1-month" figure on a result three days old is mostly pre-report drift,
+         and it had Barrick at +9.5% when the actual reaction was -8.1%. */
+      if (r.earn.reaction != null) {
+        const n = r.earn.reaction_sessions;
+        mid.appendChild(document.createTextNode(" · reaction "));
+        mid.appendChild(h("b", cls(r.earn.reaction), pct(r.earn.reaction)));
+        mid.appendChild(document.createTextNode(" over " + n + (n === 1 ? " session" : " sessions")));
       }
       row.appendChild(mid);
       row.appendChild(h("span", "ed", fmtD(r.earn.last)));

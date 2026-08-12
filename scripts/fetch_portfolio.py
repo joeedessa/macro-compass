@@ -201,6 +201,76 @@ def google_news(query, limit=3):
     return out
 
 
+
+# TradingView exchange -> Yahoo suffix, so a name can be re-fetched as a daily
+# series when a point-in-time calculation is needed. EURONEXT spans four
+# venues; the ones held here are Paris, so it maps there and any miss simply
+# yields no reaction rather than a wrong one.
+YAHOO_SUFFIX = {
+    "NASDAQ": "", "NYSE": "", "AMEX": "", "OTC": "", "BATS": "",
+    "TSX": ".TO", "TSXV": ".V", "CSE": ".CN", "ASX": ".AX", "LSE": ".L",
+    "TSE": ".T", "XETR": ".DE", "EURONEXT": ".PA", "OSL": ".OL",
+    "OMXSTO": ".ST", "OMXHEX": ".HE", "MIL": ".MI", "SZSE": ".SZ", "SSE": ".SS",
+}
+
+
+def yahoo_symbol(tv):
+    """Best-effort Yahoo symbol for a TradingView ticker."""
+    if not tv or ":" not in tv:
+        return None
+    ex, sym = tv.split(":", 1)
+    if ex == "HKEX":
+        return sym.zfill(4) + ".HK"          # Yahoo pads Hong Kong codes to four
+    if ex == "OMXSTO":
+        return sym.replace("_", "-") + ".ST"  # HEXA_B on the scanner is HEXA-B on Yahoo
+    if ex not in YAHOO_SUFFIX:
+        return None
+    if ex in ("NASDAQ", "NYSE", "AMEX", "OTC", "BATS"):
+        return sym.replace(".", "-")          # class shares: PBR.A -> PBR-A
+    return sym + YAHOO_SUFFIX[ex]
+
+
+def earnings_reaction(symbols_by_date):
+    """Move from the close before a result to the latest close.
+
+    The scanner only offers fixed windows — week, month, quarter — and a
+    "1-month" figure covering 29 days before a result cannot be called the
+    reaction to it. This walks daily closes and measures from the actual date.
+    A result released after the close is traded the next session, but the
+    publication slot is not always known, so the reference is the last close
+    strictly before the release date either way.
+    """
+    out = {}
+    syms = sorted(symbols_by_date)
+    for i in range(0, len(syms), 10):
+        chunk = syms[i:i + 10]
+        url = ("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+               ",".join(urllib.parse.quote(s) for s in chunk) + "&range=3mo&interval=1d")
+        r = subprocess.run(["curl", "-s", "--max-time", "40", "-H", "User-Agent: Mozilla/5.0", url],
+                           capture_output=True, text=True, timeout=60)
+        try:
+            data = json.loads(r.stdout)
+        except json.JSONDecodeError:
+            continue
+        for row in data.get("spark", {}).get("result", []):
+            resp = row["response"][0]
+            stamps = resp.get("timestamp") or []
+            closes = resp["indicators"]["quote"][0].get("close", [])
+            pts = [(datetime.fromtimestamp(s, tz=timezone.utc).strftime("%Y-%m-%d"), c)
+                   for s, c in zip(stamps, closes) if c is not None]
+            when = symbols_by_date.get(row["symbol"])
+            if not pts or not when:
+                continue
+            before = [c for d, c in pts if d < when]
+            after = [c for d, c in pts if d >= when]
+            if not before or not after:
+                continue
+            out[row["symbol"]] = {"pct": round((pts[-1][1] / before[-1] - 1) * 100, 1),
+                                  "from": when, "sessions": len(after)}
+        time.sleep(0.2)
+    return out
+
+
 def main():
     positions = json.loads(POSITIONS.read_text())
     tv_map = {p["tv"]: p for p in positions if p.get("tv")}
@@ -328,6 +398,23 @@ def main():
                 "ccy": p["ccy"], "ex": p["ex"], "sector": None, "industry": None,
                 "theme": "Other", "earn": {}, "div": {},
                 "nofeed": "no market data — delisted or a contingent value right"})
+
+    # ---- true post-earnings reaction, for anything that reported recently ----
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=21)).strftime("%Y-%m-%d")
+    want, back = {}, {}
+    for r in out["positions"]:
+        last = (r.get("earn") or {}).get("last")
+        if not last or last < cutoff:
+            continue
+        ys = yahoo_symbol(r.get("tv"))
+        if ys:
+            want[ys] = last
+            back[ys] = r
+    reactions = earnings_reaction(want) if want else {}
+    for ys, react in reactions.items():
+        back[ys]["earn"]["reaction"] = react["pct"]
+        back[ys]["earn"]["reaction_sessions"] = react["sessions"]
+    print(f"post-earnings reaction: {len(reactions)}/{len(want)} measured from daily closes")
 
     # ---- news, only where something actually happened ----
     def newsworthy(r):
