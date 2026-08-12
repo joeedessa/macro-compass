@@ -1,0 +1,3247 @@
+[
+{
+"tk": "ALU",
+"block": "AUD",
+"tv": "ASX:ALU",
+"name": "Alurion Resources Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "BKB",
+"block": "AUD",
+"tv": "ASX:BKB",
+"name": "Black Bear Minerals Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "BML",
+"block": "AUD",
+"tv": "ASX:BML",
+"name": "Boab Metals Ltd",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "BRE",
+"block": "AUD",
+"tv": "ASX:BRE",
+"name": "Brazilian Rare Earths Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "BSX",
+"block": "AUD",
+"tv": "ASX:BSX",
+"name": "Blackstone Minerals Ltd",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "CAY",
+"block": "AUD",
+"tv": "ASX:CAY",
+"name": "Canyon Resources Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "CTM",
+"block": "AUD",
+"tv": "ASX:CTM",
+"name": "Centaurus Metals Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "DPM",
+"block": "AUD",
+"tv": "ASX:DPM",
+"name": "DPM Metals Inc. Chess Depository Interests Repr 1 Sh",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "EMC",
+"block": "AUD",
+"tv": "ASX:EMC",
+"name": "Everest Metals Corporation Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "EQR",
+"block": "AUD",
+"tv": "ASX:EQR",
+"name": "EQ Resources Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "JAV",
+"block": "AUD",
+"tv": "ASX:JAV",
+"name": "Javelin Minerals Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "KRM",
+"block": "AUD",
+"tv": "ASX:KRM",
+"name": "Kingsrose Mining Ltd",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "LYC",
+"block": "AUD",
+"tv": "ASX:LYC",
+"name": "Lynas Rare Earths Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "MLX",
+"block": "AUD",
+"tv": "ASX:MLX",
+"name": "Metals X Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "MQG",
+"block": "AUD",
+"tv": "ASX:MQG",
+"name": "Macquarie Group, Ltd.",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "MRR",
+"block": "AUD",
+"tv": "ASX:MRR",
+"name": "MinRex Resources Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "NHC",
+"block": "AUD",
+"tv": "ASX:NHC",
+"name": "New Hope Corporation Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "OEL",
+"block": "AUD",
+"tv": "ASX:OEL",
+"name": "Otto Energy Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "PDI",
+"block": "AUD",
+"tv": "ASX:PDI",
+"name": "Predictive Discovery Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "S32",
+"block": "AUD",
+"tv": "ASX:S32",
+"name": "South32 Ltd.",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "SBM",
+"block": "AUD",
+"tv": "ASX:SBM",
+"name": "St. Barbara Ltd.",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "SPD",
+"block": "AUD",
+"tv": "ASX:SPD",
+"name": "Southern Palladium Ltd.",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "SRT",
+"block": "AUD",
+"tv": "ASX:SRT",
+"name": "Strata Investment Holdings PLC Registered Shs Chess Depository Interests Repr 1 Sh",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "TRE",
+"block": "AUD",
+"tv": "ASX:TRE",
+"name": "Toubani Resources Limited Registered Shs",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "TWE",
+"block": "AUD",
+"tv": "ASX:TWE",
+"name": "Treasury Wine Estates Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "WA1",
+"block": "AUD",
+"tv": "ASX:WA1",
+"name": "WA1 Resources Ltd",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "WHC",
+"block": "AUD",
+"tv": "ASX:WHC",
+"name": "Whitehaven Coal Limited",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "YAL",
+"block": "AUD",
+"tv": "ASX:YAL",
+"name": "Yancoal Australia Ltd.",
+"ccy": "AUD",
+"ex": "ASX"
+},
+{
+"tk": "ABRA",
+"block": "CAD",
+"tv": "TSX:ABRA",
+"name": "AbraSilver Resource Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ABXX",
+"block": "CAD",
+"tv": "TSX:ABXX",
+"name": "Abaxx Technologies Inc",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "AEM",
+"block": "CAD",
+"tv": "TSX:AEM",
+"name": "Agnico Eagle Mines Limited",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "AEM.CV",
+"block": "CAD",
+"tv": null,
+"name": "Agnico Eagle Mines Ltd-Cvr",
+"ccy": "CAD",
+"ex": "\u2014",
+"nofeed": true
+},
+{
+"tk": "AFM",
+"block": "CAD",
+"tv": "TSXV:AFM",
+"name": "Alphamin Resources Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "AKT",
+"block": "CAD",
+"tv": "TSX:AKT",
+"name": "Akita Drilling Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ALDE",
+"block": "CAD",
+"tv": "TSXV:ALDE",
+"name": "Aldebaran Resources Inc",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "ALS",
+"block": "CAD",
+"tv": "TSX:ALS",
+"name": "Altius Minerals Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "AMC",
+"block": "CAD",
+"tv": "TSX:AMC",
+"name": "Arizona Metals Corp",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ARG",
+"block": "CAD",
+"tv": "TSX:ARG",
+"name": "Amerigo Resources Ltd",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ARX",
+"block": "CAD",
+"tv": "TSX:ARX",
+"name": "ARC Resources Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ATH",
+"block": "CAD",
+"tv": "TSX:ATH",
+"name": "Athabasca Oil Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ATRL",
+"block": "CAD",
+"tv": "TSX:ATRL",
+"name": "Atkinsrealis Group Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "AYA",
+"block": "CAD",
+"tv": "TSX:AYA",
+"name": "Aya Gold & Silver Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "BAY",
+"block": "CAD",
+"tv": "TSXV:BAY",
+"name": "Aston Bay Holdings Ltd.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "BNE",
+"block": "CAD",
+"tv": "TSX:BNE",
+"name": "Bonterra Energy Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "BRVO",
+"block": "CAD",
+"tv": "TSXV:BRVO",
+"name": "Bravo Mining Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "BSR.CVR",
+"block": "CAD",
+"tv": null,
+"name": "Bluestone Resources Cvr",
+"ccy": "CAD",
+"ex": "\u2014",
+"nofeed": true
+},
+{
+"tk": "BTE",
+"block": "CAD",
+"tv": "TSX:BTE",
+"name": "Baytex Energy Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "BTO",
+"block": "CAD",
+"tv": "TSX:BTO",
+"name": "B2Gold Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "CDE",
+"block": "CAD",
+"tv": "TSX:CDE",
+"name": "Coeur Mining, Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "CG",
+"block": "CAD",
+"tv": "TSX:CG",
+"name": "Centerra Gold Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "CJ",
+"block": "CAD",
+"tv": "TSX:CJ",
+"name": "Cardinal Energy Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "CVB",
+"block": "CAD",
+"tv": "TSXV:CVB",
+"name": "Compass Gold Corporation",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "CVE",
+"block": "CAD",
+"tv": "TSX:CVE",
+"name": "Cenovus Energy Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "DBG",
+"block": "CAD",
+"tv": "TSXV:DBG",
+"name": "Doubleview Gold Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "DND",
+"block": "CAD",
+"tv": "TSX:DND",
+"name": "Dye & Durham Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ECR",
+"block": "CAD",
+"tv": "TSXV:ECR",
+"name": "Cartier Resources Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "ECU",
+"block": "CAD",
+"tv": "TSXV:ECU",
+"name": "Element 29 Resources, Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "EFX",
+"block": "CAD",
+"tv": "TSX:EFX",
+"name": "Enerflex Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ELE",
+"block": "CAD",
+"tv": "TSX:ELE",
+"name": "Elemental Royalty Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "EQX",
+"block": "CAD",
+"tv": "TSX:EQX",
+"name": "Equinox Gold Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ERO",
+"block": "CAD",
+"tv": "TSX:ERO",
+"name": "Ero Copper Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "FEC",
+"block": "CAD",
+"tv": "TSX:FEC",
+"name": "Frontera Energy Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "GENM",
+"block": "CAD",
+"tv": "TSX:GENM",
+"name": "Generation Mining Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "GLO",
+"block": "CAD",
+"tv": "TSX:GLO",
+"name": "Global Atomic Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "GMIN",
+"block": "CAD",
+"tv": "TSX:GMIN",
+"name": "G Mining Ventures Corp",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "HAN",
+"block": "CAD",
+"tv": "TSXV:HAN",
+"name": "Hannan Metals Ltd.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "HBM",
+"block": "CAD",
+"tv": "TSX:HBM",
+"name": "Hudbay Minerals Inc",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "HWX",
+"block": "CAD",
+"tv": "TSX:HWX",
+"name": "Headwater Exploration Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "III",
+"block": "CAD",
+"tv": "TSX:III",
+"name": "Imperial Metals Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "IPT",
+"block": "CAD",
+"tv": "TSXV:IPT",
+"name": "IMPACT Silver Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "IVN",
+"block": "CAD",
+"tv": "TSX:IVN",
+"name": "Ivanhoe Mines Ltd. Class A",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "KBX",
+"block": "CAD",
+"tv": "CSE:KBX",
+"name": "Kobrea Exploration Corp.",
+"ccy": "CAD",
+"ex": "CSE"
+},
+{
+"tk": "KCP",
+"block": "CAD",
+"tv": "TSXV:KCP",
+"name": "King Copper Discovery Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "KNT",
+"block": "CAD",
+"tv": "TSX:KNT",
+"name": "K92 Mining, Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "LGD",
+"block": "CAD",
+"tv": "TSX:LGD",
+"name": "Liberty Gold Corp",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "LMS",
+"block": "CAD",
+"tv": "TSXV:LMS",
+"name": "Latin Metals Inc",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "LUG",
+"block": "CAD",
+"tv": "TSX:LUG",
+"name": "Lundin Gold Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "LUN",
+"block": "CAD",
+"tv": "TSX:LUN",
+"name": "Lundin Mining Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "LUNR",
+"block": "CAD",
+"tv": "TSX:LUNR",
+"name": "LunR Royalties Corp",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "LXE",
+"block": "CAD",
+"tv": "TSXV:LXE",
+"name": "Latin Explore Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MAI",
+"block": "CAD",
+"tv": "TSX:MAI",
+"name": "Mining Americas Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "MARI",
+"block": "CAD",
+"tv": "TSX:MARI",
+"name": "Marimaca Copper Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "MAU",
+"block": "CAD",
+"tv": "TSX:MAU",
+"name": "Montage Gold Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "MENE",
+"block": "CAD",
+"tv": "TSXV:MENE",
+"name": "Mene, Inc. Class B",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MER",
+"block": "CAD",
+"tv": "TSX:MER",
+"name": "Meren Energy Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "MFG",
+"block": "CAD",
+"tv": "TSXV:MFG",
+"name": "Mayfair Gold Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MKO",
+"block": "CAD",
+"tv": "TSXV:MKO",
+"name": "Mako Mining Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MMA",
+"block": "CAD",
+"tv": "TSXV:MMA",
+"name": "Midnight Sun Mining Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MOON",
+"block": "CAD",
+"tv": "TSXV:MOON",
+"name": "Blue Moon Metals Inc",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "MUN",
+"block": "CAD",
+"tv": "TSXV:MUN",
+"name": "Mundoro Capital Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "NCX",
+"block": "CAD",
+"tv": "TSXV:NCX",
+"name": "NorthIsle Copper and Gold Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "NEXM",
+"block": "CAD",
+"tv": "TSXV:NEXM",
+"name": "Nexmetals Mining Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "NGEX",
+"block": "CAD",
+"tv": "TSX:NGEX",
+"name": "NGEx Minerals Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "NICU",
+"block": "CAD",
+"tv": "TSX:NICU",
+"name": "Magna Mining Inc",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "OCI",
+"block": "CAD",
+"tv": "TSXV:OCI",
+"name": "ORECAP Invest Corp",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "OGC",
+"block": "CAD",
+"tv": "TSX:OGC",
+"name": "OceanaGold Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "OGN",
+"block": "CAD",
+"tv": "TSXV:OGN",
+"name": "Orogen Royalties Incorporation",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "OMI",
+"block": "CAD",
+"tv": "TSXV:OMI",
+"name": "Orosur Mining Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "OR",
+"block": "CAD",
+"tv": "TSX:OR",
+"name": "OR Royalties Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "OVV",
+"block": "CAD",
+"tv": "TSX:OVV",
+"name": "Ovintiv Inc",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "PA",
+"block": "CAD",
+"tv": "TSXV:PA",
+"name": "Palamina Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "PAU",
+"block": "CAD",
+"tv": "CSE:PAU",
+"name": "Provenance Gold Corp.",
+"ccy": "CAD",
+"ex": "CSE"
+},
+{
+"tk": "PEY",
+"block": "CAD",
+"tv": "TSX:PEY",
+"name": "Peyto Exploration & Development Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "PNPN",
+"block": "CAD",
+"tv": "TSXV:PNPN",
+"name": "Power Metallic Mines Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "POU",
+"block": "CAD",
+"tv": "TSX:POU",
+"name": "Paramount Resources Ltd. Class A",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "PPP",
+"block": "CAD",
+"tv": "TSXV:PPP",
+"name": "Prospector Metals Corp",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "PSK",
+"block": "CAD",
+"tv": "TSX:PSK",
+"name": "PrairieSky Royalty Ltd",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "REG",
+"block": "CAD",
+"tv": "TSXV:REG",
+"name": "Regulus Resources Inc",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "RIO",
+"block": "CAD",
+"tv": "TSX:RIO",
+"name": "RIO2 Limited",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "ROK",
+"block": "CAD",
+"tv": "TSXV:ROK",
+"name": "ROK Resources, Inc. Class B",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "RPX",
+"block": "CAD",
+"tv": "TSXV:RPX",
+"name": "RPX Gold Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "RYR",
+"block": "CAD",
+"tv": "TSXV:RYR",
+"name": "Royal Road Minerals Limited",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "SHOP",
+"block": "CAD",
+"tv": "TSX:SHOP",
+"name": "Shopify, Inc. Class A",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "SKE",
+"block": "CAD",
+"tv": "TSX:SKE",
+"name": "Skeena Resources Limited",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "SME",
+"block": "CAD",
+"tv": "TSXV:SME",
+"name": "Sama Resources Inc.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "SRL",
+"block": "CAD",
+"tv": "TSXV:SRL",
+"name": "Salazar Resources Limited",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "SURG",
+"block": "CAD",
+"tv": "TSXV:SURG",
+"name": "Surge Copper Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "SWA",
+"block": "CAD",
+"tv": "TSXV:SWA",
+"name": "Sarama Resources Ltd.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "TAL",
+"block": "CAD",
+"tv": "TSX:TAL",
+"name": "PetroTal Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "TCW",
+"block": "CAD",
+"tv": "TSX:TCW",
+"name": "Trican Well Service Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "TFPM",
+"block": "CAD",
+"tv": "TSX:TFPM",
+"name": "Triple Flag Precious Metals Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "THX",
+"block": "CAD",
+"tv": "TSXV:THX",
+"name": "Thor Explorations Ltd.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "TLO",
+"block": "CAD",
+"tv": "TSX:TLO",
+"name": "Talon Metals Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "TNGD",
+"block": "CAD",
+"tv": "TSXV:TNGD",
+"name": "Tiernan Gold Corp",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "TOU",
+"block": "CAD",
+"tv": "TSX:TOU",
+"name": "Tourmaline Oil Corp.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "TVE",
+"block": "CAD",
+"tv": "TSX:TVE",
+"name": "Tamarack Valley Energy Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "U.UN",
+"block": "CAD",
+"tv": "TSX:U.UN",
+"name": "Sprott Physical Uranium Trust",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "WCP",
+"block": "CAD",
+"tv": "TSX:WCP",
+"name": "Whitecap Resources Inc.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "WDO",
+"block": "CAD",
+"tv": "TSX:WDO",
+"name": "Wesdome Gold Mines Ltd.",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "WRLG",
+"block": "CAD",
+"tv": "TSXV:WRLG",
+"name": "West Red Lake Gold Mines Ltd",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "WRN",
+"block": "CAD",
+"tv": "TSX:WRN",
+"name": "Western Copper and Gold Corporation",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "WSP",
+"block": "CAD",
+"tv": "TSX:WSP",
+"name": "WSP Global Inc",
+"ccy": "CAD",
+"ex": "TSX"
+},
+{
+"tk": "XGC",
+"block": "CAD",
+"tv": "TSXV:XGC",
+"name": "Xali Gold Corp.",
+"ccy": "CAD",
+"ex": "TSXV"
+},
+{
+"tk": "000089",
+"block": "CNH",
+"tv": "SZSE:000089",
+"name": "Shenzhen Airport Co., Ltd. Class A",
+"ccy": "CNY",
+"ex": "SZSE"
+},
+{
+"tk": "002594",
+"block": "CNH",
+"tv": "SZSE:002594",
+"name": "BYD Company Limited Class A",
+"ccy": "CNY",
+"ex": "SZSE"
+},
+{
+"tk": "601600",
+"block": "CNH",
+"tv": "SSE:601600",
+"name": "Aluminum Corporation of China Limited Class A",
+"ccy": "CNY",
+"ex": "SSE"
+},
+{
+"tk": "1615.T",
+"block": "ETF_JPY",
+"tv": "TSE:1615",
+"name": "NEXT FUNDS TOPIX Banks ETF",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "513A.T",
+"block": "ETF_JPY",
+"tv": "TSE:513A",
+"name": "Global X Japan Defense Tech ETF Units",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "BNO",
+"block": "ETF_USD",
+"tv": "AMEX:BNO",
+"name": "United States Brent Oil Fund LP",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "CANE",
+"block": "ETF_USD",
+"tv": "AMEX:CANE",
+"name": "Teucrium Sugar Fund",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "CGRO",
+"block": "ETF_USD",
+"tv": "AMEX:CGRO",
+"name": "CoreValues Alpha Greater China Growth ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "COPX",
+"block": "ETF_USD",
+"tv": "AMEX:COPX",
+"name": "Global X Copper Miners ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "COTNI",
+"block": "ETF_USD",
+"tv": "LSE:COTN",
+"name": "WisdomTree Cotton",
+"ccy": "USD",
+"ex": "LSE"
+},
+{
+"tk": "EIDO",
+"block": "ETF_USD",
+"tv": "AMEX:EIDO",
+"name": "iShares MSCI Indonesia ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "GDXJ",
+"block": "ETF_USD",
+"tv": "AMEX:GDXJ",
+"name": "VanEck Junior Gold Miners ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "HODL",
+"block": "ETF_USD",
+"tv": null,
+"yahoo": "HODL",
+"name": "Vaneck Bitcoin Etf",
+"ccy": "USD",
+"ex": "US ETF"
+},
+{
+"tk": "INDA",
+"block": "ETF_USD",
+"tv": null,
+"yahoo": "INDA",
+"name": "Ishares Msci India Etf",
+"ccy": "USD",
+"ex": "US ETF"
+},
+{
+"tk": "KSTR",
+"block": "ETF_USD",
+"tv": "AMEX:KSTR",
+"name": "KraneShares China Technology & Semiconductor STAR 50 Index ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "RAA",
+"block": "ETF_USD",
+"tv": "NASDAQ:RAA",
+"name": "SMI 3Fourteen REAL Asset Allocation ETF",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "RSX",
+"block": "ETF_USD",
+"tv": null,
+"name": "Vaneck Russia Etf",
+"ccy": "USD",
+"ex": "\u2014",
+"nofeed": true
+},
+{
+"tk": "TUA",
+"block": "ETF_USD",
+"tv": "AMEX:TUA",
+"name": "Simplify Short Term Treasury Futures Strategy ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "URNM",
+"block": "ETF_USD",
+"tv": "AMEX:URNM",
+"name": "Sprott Uranium Miners ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "WEAT",
+"block": "ETF_USD",
+"tv": "AMEX:WEAT",
+"name": "Teucrium Wheat Fund",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "XOP",
+"block": "ETF_USD",
+"tv": "AMEX:XOP",
+"name": "State Street SPDR S&P Oil & Gas Exploration & Production ETF",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "BCm",
+"block": "EUR",
+"tv": "MIL:BC",
+"name": "Brunello Cucinelli S.p.A.",
+"ccy": "EUR",
+"ex": "MIL"
+},
+{
+"tk": "BFIT",
+"block": "EUR",
+"tv": "EURONEXT:BFIT",
+"name": "Basic-Fit NV",
+"ccy": "EUR",
+"ex": "EURONEXT"
+},
+{
+"tk": "BMW",
+"block": "EUR",
+"tv": "XETR:BMW",
+"name": "Bayerische Motoren Werke AG",
+"ccy": "EUR",
+"ex": "XETR"
+},
+{
+"tk": "CA",
+"block": "EUR",
+"tv": "EURONEXT:CA",
+"name": "Carrefour SA",
+"ccy": "EUR",
+"ex": "EURONEXT"
+},
+{
+"tk": "CBK",
+"block": "EUR",
+"tv": "XETR:CBK",
+"name": "Commerzbank AG",
+"ccy": "EUR",
+"ex": "XETR"
+},
+{
+"tk": "ETL",
+"block": "EUR",
+"tv": "EURONEXT:ETL",
+"name": "Eutelsat Communications SA",
+"ccy": "EUR",
+"ex": "EURONEXT"
+},
+{
+"tk": "GXI",
+"block": "EUR",
+"tv": "XETR:GXI",
+"name": "Gerresheimer AG",
+"ccy": "EUR",
+"ex": "XETR"
+},
+{
+"tk": "HOT",
+"block": "EUR",
+"tv": "XETR:HOT",
+"name": "HOCHTIEF Aktiengesellschaft",
+"ccy": "EUR",
+"ex": "XETR"
+},
+{
+"tk": "MBG",
+"block": "EUR",
+"tv": "XETR:MBG",
+"name": "Mercedes-Benz Group AG",
+"ccy": "EUR",
+"ex": "XETR"
+},
+{
+"tk": "NESTE",
+"block": "EUR",
+"tv": "OMXHEX:NESTE",
+"name": "Neste Corporation",
+"ccy": "EUR",
+"ex": "OMXHEX"
+},
+{
+"tk": "SESG",
+"block": "EUR",
+"tv": "EURONEXT:SESG",
+"name": "SES SA FDR (Class A)",
+"ccy": "EUR",
+"ex": "EURONEXT"
+},
+{
+"tk": "SU",
+"block": "EUR",
+"tv": "EURONEXT:SU",
+"name": "Schneider Electric SE",
+"ccy": "EUR",
+"ex": "EURONEXT"
+},
+{
+"tk": "1SN",
+"block": "GBP",
+"tv": "LSE:1SN",
+"name": "First Tin Plc",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "ECORl",
+"block": "GBP",
+"tv": "LSE:ECOR",
+"name": "Ecora Royalties PLC",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "GLENl",
+"block": "GBP",
+"tv": "LSE:GLEN",
+"name": "Glencore plc",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "HBRl",
+"block": "GBP",
+"tv": "LSE:HBR",
+"name": "Harbour Energy Plc",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "ITHl",
+"block": "GBP",
+"tv": "LSE:ITH",
+"name": "Ithaca Energy PLC",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "SQZl",
+"block": "GBP",
+"tv": "LSE:SQZ",
+"name": "Serica Energy PLC",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "TUN",
+"block": "GBP",
+"tv": "LSE:TUN",
+"name": "Tungsten West Plc",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "YCAl",
+"block": "GBP",
+"tv": "LSE:YCA",
+"name": "Yellow Cake Plc",
+"ccy": "GBX",
+"ex": "LSE"
+},
+{
+"tk": "1686",
+"block": "HKD",
+"tv": "HKEX:1686",
+"name": "Sunevision Holdings Ltd.",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "1810",
+"block": "HKD",
+"tv": "HKEX:1810",
+"name": "Xiaomi Corporation Class B",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "1833",
+"block": "HKD",
+"tv": "HKEX:1833",
+"name": "Ping An Healthcare and Technology Company Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "1929",
+"block": "HKD",
+"tv": "HKEX:1929",
+"name": "Chow Tai Fook Jewellery Group Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "1970",
+"block": "HKD",
+"tv": "HKEX:1970",
+"name": "IMAX China Holding Inc",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "1972",
+"block": "HKD",
+"tv": "HKEX:1972",
+"name": "Swire Properties Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "2158",
+"block": "HKD",
+"tv": "HKEX:2158",
+"name": "Yidu Tech, Inc.",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "2319",
+"block": "HKD",
+"tv": "HKEX:2319",
+"name": "China Mengniu Dairy Company Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "2331",
+"block": "HKD",
+"tv": "HKEX:2331",
+"name": "Li Ning Company Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "241",
+"block": "HKD",
+"tv": "HKEX:241",
+"name": "Alibaba Health Information Technology Ltd.",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "268",
+"block": "HKD",
+"tv": "HKEX:268",
+"name": "Kingdee International Software Group Co., Ltd.",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "300",
+"block": "HKD",
+"tv": "HKEX:300",
+"name": "Midea Group Co. Ltd. Class H",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "3888",
+"block": "HKD",
+"tv": "HKEX:3888",
+"name": "Kingsoft Corporation Ltd",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "3998",
+"block": "HKD",
+"tv": "HKEX:3998",
+"name": "Bosideng International Holdings Limited",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "6690",
+"block": "HKD",
+"tv": "HKEX:6690",
+"name": "Haier Smart Home Co., Ltd. Class H",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "9660",
+"block": "HKD",
+"tv": "HKEX:9660",
+"name": "Horizon Robotics Class B",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "9888",
+"block": "HKD",
+"tv": "HKEX:9888",
+"name": "Baidu, Inc. Class A",
+"ccy": "HKD",
+"ex": "HKEX"
+},
+{
+"tk": "3107.T",
+"block": "JPY",
+"tv": "TSE:3107",
+"name": "Daiwabo Holdings Co., Ltd.",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "3186.T",
+"block": "JPY",
+"tv": "TSE:3186",
+"name": "Nextage Co., Ltd.",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "7189.T",
+"block": "JPY",
+"tv": "TSE:7189",
+"name": "Nishi-Nippon Financial Holdings, Inc.",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "7956.T",
+"block": "JPY",
+"tv": "TSE:7956",
+"name": "Pigeon Corporation",
+"ccy": "JPY",
+"ex": "TSE"
+},
+{
+"tk": "VAR",
+"block": "NOK",
+"tv": "OSL:VAR",
+"name": "Var Energi ASA",
+"ccy": "NOK",
+"ex": "OSL"
+},
+{
+"tk": "WAWI",
+"block": "NOK",
+"tv": "OSL:WAWI",
+"name": "Wallenius Wilhelmsen ASA",
+"ccy": "NOK",
+"ex": "OSL"
+},
+{
+"tk": "HEXA B",
+"block": "SEK",
+"tv": "OMXSTO:HEXA_B",
+"name": "Hexagon AB Class B",
+"ccy": "SEK",
+"ex": "OMXSTO"
+},
+{
+"tk": "AA",
+"block": "USD",
+"tv": "NYSE:AA",
+"name": "Alcoa Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ACLS",
+"block": "USD",
+"tv": "NASDAQ:ACLS",
+"name": "Axcelis Technologies, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "ADI",
+"block": "USD",
+"tv": "NASDAQ:ADI",
+"name": "Analog Devices, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "ADTX",
+"block": "USD",
+"tv": "OTC:ADTX",
+"name": "Aditxt, Inc.",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "AEM",
+"block": "USD",
+"tv": "NYSE:AEM",
+"name": "Agnico Eagle Mines Limited",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AEP",
+"block": "USD",
+"tv": "NASDAQ:AEP",
+"name": "American Electric Power Company, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AES",
+"block": "USD",
+"tv": "NYSE:AES",
+"name": "AES Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AEVA",
+"block": "USD",
+"tv": "NASDAQ:AEVA",
+"name": "Aeva Technologies, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AEXA",
+"block": "USD",
+"tv": "NYSE:AEXA",
+"name": "American Exceptionalism Acquisition Corp. Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AGX",
+"block": "USD",
+"tv": "NYSE:AGX",
+"name": "Argan, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AIP",
+"block": "USD",
+"tv": "NASDAQ:AIP",
+"name": "Arteris, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AIT",
+"block": "USD",
+"tv": "NYSE:AIT",
+"name": "Applied Industrial Technologies, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ALB",
+"block": "USD",
+"tv": "NYSE:ALB",
+"name": "Albemarle Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ALGM",
+"block": "USD",
+"tv": "NASDAQ:ALGM",
+"name": "Allegro MicroSystems, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AMAT",
+"block": "USD",
+"tv": "NASDAQ:AMAT",
+"name": "Applied Materials, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AMBA",
+"block": "USD",
+"tv": "NASDAQ:AMBA",
+"name": "Ambarella, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "AMBQ",
+"block": "USD",
+"tv": "NYSE:AMBQ",
+"name": "Ambiq Micro, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AME",
+"block": "USD",
+"tv": "NYSE:AME",
+"name": "AMETEK, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AMRC",
+"block": "USD",
+"tv": "NYSE:AMRC",
+"name": "Ameresco, Inc. Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ANET",
+"block": "USD",
+"tv": "NYSE:ANET",
+"name": "Arista Networks Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ANGPY",
+"block": "USD",
+"tv": "OTC:ANGPY",
+"name": "Valterra Platinum Limited Sponsored ADR",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "AR",
+"block": "USD",
+"tv": "NYSE:AR",
+"name": "Antero Resources Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AROC",
+"block": "USD",
+"tv": "NYSE:AROC",
+"name": "Archrock Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ATO",
+"block": "USD",
+"tv": "NYSE:ATO",
+"name": "Atmos Energy Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "AVB",
+"block": "USD",
+"tv": "NYSE:AVB",
+"name": "AvalonBay Communities, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "B",
+"block": "USD",
+"tv": "NYSE:B",
+"name": "Barrick Mining Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BABA",
+"block": "USD",
+"tv": "NYSE:BABA",
+"name": "Alibaba Group Holding Limited Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BAK",
+"block": "USD",
+"tv": "NYSE:BAK",
+"name": "Braskem S.A. Sponsored ADR Pfd Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BEAG",
+"block": "USD",
+"tv": "NASDAQ:BEAG",
+"name": "Bold Eagle Acquisition Corp. Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "BKR",
+"block": "USD",
+"tv": "NASDAQ:BKR",
+"name": "Baker Hughes Company Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "BMI",
+"block": "USD",
+"tv": "NYSE:BMI",
+"name": "Badger Meter, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BTG",
+"block": "USD",
+"tv": "AMEX:BTG",
+"name": "B2Gold Corp.",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "BTI",
+"block": "USD",
+"tv": "NYSE:BTI",
+"name": "British American Tobacco PLC Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BTU",
+"block": "USD",
+"tv": "NYSE:BTU",
+"name": "Peabody Energy Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "BVN",
+"block": "USD",
+"tv": "NYSE:BVN",
+"name": "Compania de Minas Buenaventura SAA Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CDE",
+"block": "USD",
+"tv": "NYSE:CDE",
+"name": "Coeur Mining, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CDZI",
+"block": "USD",
+"tv": "NASDAQ:CDZI",
+"name": "Cadiz Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "CE",
+"block": "USD",
+"tv": "NYSE:CE",
+"name": "Celanese Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CECO",
+"block": "USD",
+"tv": "NASDAQ:CECO",
+"name": "CECO Environmental Corp.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "CEPL",
+"block": "USD",
+"tv": "NASDAQ:CEPL",
+"name": "Capstone Energy+, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "CF",
+"block": "USD",
+"tv": "NYSE:CF",
+"name": "CF Industries Holdings, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CHRD",
+"block": "USD",
+"tv": "NASDAQ:CHRD",
+"name": "Chord Energy Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "CNQ",
+"block": "USD",
+"tv": "NYSE:CNQ",
+"name": "Canadian Natural Resources Limited",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CNR",
+"block": "USD",
+"tv": "NYSE:CNR",
+"name": "Core Natural Resources, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "COP",
+"block": "USD",
+"tv": "NYSE:COP",
+"name": "ConocoPhillips",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CRK",
+"block": "USD",
+"tv": "NYSE:CRK",
+"name": "Comstock Resources, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CSAN",
+"block": "USD",
+"tv": "NYSE:CSAN",
+"name": "Cosan S.A. Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "CWEN",
+"block": "USD",
+"tv": "NYSE:CWEN",
+"name": "Clearway Energy, Inc. Class C",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "D",
+"block": "USD",
+"tv": "NYSE:D",
+"name": "Dominion Energy Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DAAQ",
+"block": "USD",
+"tv": "NASDAQ:DAAQ",
+"name": "Digital Asset Acquisition Corp. Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "DEC",
+"block": "USD",
+"tv": "NYSE:DEC",
+"name": "Diversified Energy Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DHT",
+"block": "USD",
+"tv": "NYSE:DHT",
+"name": "DHT Holdings, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DK",
+"block": "USD",
+"tv": "NYSE:DK",
+"name": "Delek US Holdings Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DOW",
+"block": "USD",
+"tv": "NYSE:DOW",
+"name": "Dow, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DQ",
+"block": "USD",
+"tv": "NYSE:DQ",
+"name": "Daqo New Energy Corp Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DT",
+"block": "USD",
+"tv": "NYSE:DT",
+"name": "Dynatrace, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DTE",
+"block": "USD",
+"tv": "NYSE:DTE",
+"name": "DTE Energy Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "DVN",
+"block": "USD",
+"tv": "NYSE:DVN",
+"name": "Devon Energy Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EC",
+"block": "USD",
+"tv": "NYSE:EC",
+"name": "Ecopetrol SA Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ECG",
+"block": "USD",
+"tv": "NYSE:ECG",
+"name": "Everus Construction Group, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ECO",
+"block": "USD",
+"tv": "NYSE:ECO",
+"name": "Okeanis Eco Tankers Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EFX",
+"block": "USD",
+"tv": "NYSE:EFX",
+"name": "Equifax Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EGO",
+"block": "USD",
+"tv": "NYSE:EGO",
+"name": "Eldorado Gold Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EGY",
+"block": "USD",
+"tv": "NYSE:EGY",
+"name": "VAALCO Energy, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EMR",
+"block": "USD",
+"tv": "NYSE:EMR",
+"name": "Emerson Electric Co.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ENB",
+"block": "USD",
+"tv": "NYSE:ENB",
+"name": "Enbridge Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ENPH",
+"block": "USD",
+"tv": "NASDAQ:ENPH",
+"name": "Enphase Energy, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "EOG",
+"block": "USD",
+"tv": "NYSE:EOG",
+"name": "EOG Resources, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EQT",
+"block": "USD",
+"tv": "NYSE:EQT",
+"name": "EQT Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ERO",
+"block": "USD",
+"tv": "NYSE:ERO",
+"name": "Ero Copper Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ESOA",
+"block": "USD",
+"tv": "NASDAQ:ESOA",
+"name": "Energy Services of America Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "ETR",
+"block": "USD",
+"tv": "NYSE:ETR",
+"name": "Entergy Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "EVRG",
+"block": "USD",
+"tv": "NASDAQ:EVRG",
+"name": "Evergy, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "EXC",
+"block": "USD",
+"tv": "NASDAQ:EXC",
+"name": "Exelon Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "EXE",
+"block": "USD",
+"tv": "NASDAQ:EXE",
+"name": "Expand Energy Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "FANG",
+"block": "USD",
+"tv": "NASDAQ:FANG",
+"name": "Diamondback Energy, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "FAST",
+"block": "USD",
+"tv": "NASDAQ:FAST",
+"name": "Fastenal Company",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "FDS",
+"block": "USD",
+"tv": "NYSE:FDS",
+"name": "FactSet Research Systems Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FE",
+"block": "USD",
+"tv": "NYSE:FE",
+"name": "FirstEnergy Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FIG",
+"block": "USD",
+"tv": "NYSE:FIG",
+"name": "Figma, Inc. Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FISI",
+"block": "USD",
+"tv": "NASDAQ:FISI",
+"name": "Financial Institutions, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "FLNG",
+"block": "USD",
+"tv": "NYSE:FLNG",
+"name": "FLEX LNG Ltd",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FLR",
+"block": "USD",
+"tv": "NYSE:FLR",
+"name": "Fluor Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FNV",
+"block": "USD",
+"tv": "NYSE:FNV",
+"name": "Franco-Nevada Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "FRO",
+"block": "USD",
+"tv": "NYSE:FRO",
+"name": "Frontline Plc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "GLAS",
+"block": "USD",
+"tv": "NYSE:GLAS",
+"name": "Glass House Brands Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "GOLD",
+"block": "USD",
+"tv": "NYSE:GOLD",
+"name": "Gold.com, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "GROY",
+"block": "USD",
+"tv": "AMEX:GROY",
+"name": "Gold Royalty Corp.",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "GTLB",
+"block": "USD",
+"tv": "NASDAQ:GTLB",
+"name": "Gitlab, Inc. Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "H",
+"block": "USD",
+"tv": "NYSE:H",
+"name": "Hyatt Hotels Corporation Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "HAYW",
+"block": "USD",
+"tv": "NYSE:HAYW",
+"name": "Hayward Holdings, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "HCC",
+"block": "USD",
+"tv": "NYSE:HCC",
+"name": "Warrior Met Coal, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "HIMX",
+"block": "USD",
+"tv": "NASDAQ:HIMX",
+"name": "Himax Technologies, Inc. Sponsored ADR",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "HOOD",
+"block": "USD",
+"tv": "NASDAQ:HOOD",
+"name": "Robinhood Markets, Inc. Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "HYMC",
+"block": "USD",
+"tv": "NASDAQ:HYMC",
+"name": "Hycroft Mining Holding Corporation Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "IE",
+"block": "USD",
+"tv": "AMEX:IE",
+"name": "Ivanhoe Electric Inc.",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "IFF",
+"block": "USD",
+"tv": "NYSE:IFF",
+"name": "International Flavors & Fragrances Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "IGIC",
+"block": "USD",
+"tv": "NASDAQ:IGIC",
+"name": "International General Insurance Holdings Ltd.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "IMPUY",
+"block": "USD",
+"tv": "OTC:IMPUY",
+"name": "Impala Platinum Holdings Limited Sponsored ADR",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "INSW",
+"block": "USD",
+"tv": "NYSE:INSW",
+"name": "International Seaways, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "INTC",
+"block": "USD",
+"tv": "NASDAQ:INTC",
+"name": "Intel Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "IPIC",
+"block": "USD",
+"tv": "OTC:IPIC",
+"name": "iPic Entertainment, Inc. Class A",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "ISRG",
+"block": "USD",
+"tv": "NASDAQ:ISRG",
+"name": "Intuitive Surgical, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "JBL",
+"block": "USD",
+"tv": "NYSE:JBL",
+"name": "Jabil Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "JOBY",
+"block": "USD",
+"tv": "NYSE:JOBY",
+"name": "Joby Aviation, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "JOE",
+"block": "USD",
+"tv": "NYSE:JOE",
+"name": "St. Joe Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "KAP",
+"block": "USD",
+"tv": "OTC:NATKY",
+"name": "National Atomic Company Kazatomprom JSC Sponsored GDR RegS",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "KBR",
+"block": "USD",
+"tv": "NYSE:KBR",
+"name": "KBR, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "KGS",
+"block": "USD",
+"tv": "NYSE:KGS",
+"name": "Kodiak Gas Services, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "KMI",
+"block": "USD",
+"tv": "NYSE:KMI",
+"name": "Kinder Morgan Inc Class P",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "KN",
+"block": "USD",
+"tv": "NYSE:KN",
+"name": "Knowles Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "KRNY",
+"block": "USD",
+"tv": "NASDAQ:KRNY",
+"name": "Kearny Financial Corp.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "KXIAY",
+"block": "USD",
+"tv": "OTC:KXIAY",
+"name": "Kioxia Holdings Corporation Unsponsored ADR",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "LAZ",
+"block": "USD",
+"tv": "NYSE:LAZ",
+"name": "Lazard Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "LLYVA",
+"block": "USD",
+"tv": "NASDAQ:LLYVA",
+"name": "Liberty Live Holdings, Inc. Registered Series -A-",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "LNG",
+"block": "USD",
+"tv": "NYSE:LNG",
+"name": "Cheniere Energy, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "MAA",
+"block": "USD",
+"tv": "NYSE:MAA",
+"name": "Mid-America Apartment Communities, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "MCHP",
+"block": "USD",
+"tv": "NASDAQ:MCHP",
+"name": "Microchip Technology Incorporated",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "META",
+"block": "USD",
+"tv": "NASDAQ:META",
+"name": "Meta Platforms Inc Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "MG",
+"block": "USD",
+"tv": "NYSE:MG",
+"name": "Mistras Group, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "MKSI",
+"block": "USD",
+"tv": "NASDAQ:MKSI",
+"name": "MKS Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "MMM",
+"block": "USD",
+"tv": "NYSE:MMM",
+"name": "3M Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "MO",
+"block": "USD",
+"tv": "NYSE:MO",
+"name": "Altria Group, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "MXL",
+"block": "USD",
+"tv": "NASDAQ:MXL",
+"name": "MaxLinear, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "NAMM",
+"block": "USD",
+"tv": "NASDAQ:NAMM",
+"name": "Namib Minerals",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "NB",
+"block": "USD",
+"tv": "NASDAQ:NB",
+"name": "NioCorp Developments Ltd.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "NEM",
+"block": "USD",
+"tv": "NYSE:NEM",
+"name": "Newmont Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NET",
+"block": "USD",
+"tv": "NYSE:NET",
+"name": "Cloudflare Inc Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NEXA",
+"block": "USD",
+"tv": "NYSE:NEXA",
+"name": "Nexa Resources S.A.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NFG",
+"block": "USD",
+"tv": "NYSE:NFG",
+"name": "National Fuel Gas Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NGVC",
+"block": "USD",
+"tv": "NYSE:NGVC",
+"name": "Natural Grocers by Vitamin Cottage, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NOK",
+"block": "USD",
+"tv": "NYSE:NOK",
+"name": "Nokia Oyj Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NRG",
+"block": "USD",
+"tv": "NYSE:NRG",
+"name": "NRG Energy, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NTAP",
+"block": "USD",
+"tv": "NASDAQ:NTAP",
+"name": "NetApp, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "NVDA",
+"block": "USD",
+"tv": "NASDAQ:NVDA",
+"name": "NVIDIA Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "NVO",
+"block": "USD",
+"tv": "NYSE:NVO",
+"name": "Novo Nordisk A/S Sponsored ADR Class B",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "NXE",
+"block": "USD",
+"tv": "NYSE:NXE",
+"name": "NexGen Energy Ltd.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "O",
+"block": "USD",
+"tv": "NYSE:O",
+"name": "Realty Income Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "OKE",
+"block": "USD",
+"tv": "NYSE:OKE",
+"name": "ONEOK, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ON",
+"block": "USD",
+"tv": "NASDAQ:ON",
+"name": "ON Semiconductor Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "ORCL",
+"block": "USD",
+"tv": "NYSE:ORCL",
+"name": "Oracle Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "OUST",
+"block": "USD",
+"tv": "NASDAQ:OUST",
+"name": "Ouster, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "OXY",
+"block": "USD",
+"tv": "NYSE:OXY",
+"name": "Occidental Petroleum Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PAAS",
+"block": "USD",
+"tv": "NYSE:PAAS",
+"name": "Pan American Silver Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PACS",
+"block": "USD",
+"tv": "NYSE:PACS",
+"name": "PACS Group, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PBF",
+"block": "USD",
+"tv": "NYSE:PBF",
+"name": "PBF Energy, Inc. Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PBR A",
+"block": "USD",
+"tv": "NYSE:PBR.A",
+"name": "Petroleo Brasileiro SA Sponsored ADR Pfd",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PDD",
+"block": "USD",
+"tv": "NASDAQ:PDD",
+"name": "PDD Holdings Inc. Sponsored ADR Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "PFE",
+"block": "USD",
+"tv": "NYSE:PFE",
+"name": "Pfizer Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PRK",
+"block": "USD",
+"tv": "AMEX:PRK",
+"name": "Park National Corporation",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "PSIX",
+"block": "USD",
+"tv": "NASDAQ:PSIX",
+"name": "Power Solutions International, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "PUMP",
+"block": "USD",
+"tv": "NYSE:PUMP",
+"name": "ProPetro Holding Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "PWR",
+"block": "USD",
+"tv": "NYSE:PWR",
+"name": "Quanta Services, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "QCOM",
+"block": "USD",
+"tv": "NASDAQ:QCOM",
+"name": "QUALCOMM Incorporated",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "RBNE",
+"block": "USD",
+"tv": "NASDAQ:RBNE",
+"name": "Robin Energy Ltd.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "RELX",
+"block": "USD",
+"tv": "NYSE:RELX",
+"name": "RELX PLC Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "RIG",
+"block": "USD",
+"tv": "NYSE:RIG",
+"name": "Transocean Ltd.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "RIO",
+"block": "USD",
+"tv": "NYSE:RIO",
+"name": "Rio Tinto plc Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "RL",
+"block": "USD",
+"tv": "NYSE:RL",
+"name": "Ralph Lauren Corporation Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "ROK",
+"block": "USD",
+"tv": "NYSE:ROK",
+"name": "Rockwell Automation, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "RRC",
+"block": "USD",
+"tv": "NYSE:RRC",
+"name": "Range Resources Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "RTAC",
+"block": "USD",
+"tv": "NASDAQ:RTAC",
+"name": "Renatus Tactical Acquisition Corp I Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "RTACU",
+"block": "USD",
+"tv": "NASDAQ:RTACU",
+"name": "Renatus Tactical Acquisition Corp I Units Cons of 1 Shs A + 1/2 Red Wt",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "SA",
+"block": "USD",
+"tv": "NYSE:SA",
+"name": "Seabridge Gold Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SBSW",
+"block": "USD",
+"tv": "NYSE:SBSW",
+"name": "Sibanye Stillwater Limited Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SEGG",
+"block": "USD",
+"tv": "NASDAQ:SEGG",
+"name": "Sports Entertainment Gaming Global Corporation",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "SEI",
+"block": "USD",
+"tv": "NYSE:SEI",
+"name": "Solaris Energy Infrastructure, Inc. Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SII",
+"block": "USD",
+"tv": "NYSE:SII",
+"name": "Sprott Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SIMO",
+"block": "USD",
+"tv": "NASDAQ:SIMO",
+"name": "Silicon Motion Technology Corporation Sponsored ADR",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "SIRI",
+"block": "USD",
+"tv": "NASDAQ:SIRI",
+"name": "SiriusXM Holdings Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "SLB",
+"block": "USD",
+"tv": "NYSE:SLB",
+"name": "SLB Limited",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SLNG",
+"block": "USD",
+"tv": "NASDAQ:SLNG",
+"name": "Stabilis Solutions, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "SMMYY",
+"block": "USD",
+"tv": "OTC:SMMYY",
+"name": "Sumitomo Metal Mining Co Ltd Unsponsored ADR",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "SPPP",
+"block": "USD",
+"tv": "AMEX:SPPP",
+"name": "Sprott Physical Platinum and Palladium Trust Trust Units",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "ST",
+"block": "USD",
+"tv": "NYSE:ST",
+"name": "Sensata Technologies Holding PLC",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "STM",
+"block": "USD",
+"tv": "NYSE:STM",
+"name": "STMicroelectronics NV Sponsored ADR RegS",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "SU",
+"block": "USD",
+"tv": "NYSE:SU",
+"name": "Suncor Energy Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TDY",
+"block": "USD",
+"tv": "NYSE:TDY",
+"name": "Teledyne Technologies Incorporated",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TECK",
+"block": "USD",
+"tv": "NYSE:TECK",
+"name": "Teck Resources Limited Class B",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TIC",
+"block": "USD",
+"tv": "NYSE:TIC",
+"name": "TIC Solutions, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TKR",
+"block": "USD",
+"tv": "NYSE:TKR",
+"name": "Timken Company",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TPL",
+"block": "USD",
+"tv": "NYSE:TPL",
+"name": "Texas Pacific Land Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TRGP",
+"block": "USD",
+"tv": "NYSE:TRGP",
+"name": "Targa Resources Corp.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TRP",
+"block": "USD",
+"tv": "NYSE:TRP",
+"name": "TC Energy Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "TSLA",
+"block": "USD",
+"tv": "NASDAQ:TSLA",
+"name": "Tesla, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "TVA",
+"block": "USD",
+"tv": "NASDAQ:TVA",
+"name": "Texas Ventures Acquisition III Corp Class A",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "TXN",
+"block": "USD",
+"tv": "NASDAQ:TXN",
+"name": "Texas Instruments Incorporated",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "UAN",
+"block": "USD",
+"tv": "NYSE:UAN",
+"name": "CVR Partners, LP",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "UBER",
+"block": "USD",
+"tv": "NYSE:UBER",
+"name": "Uber Technologies, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "UNM",
+"block": "USD",
+"tv": "NYSE:UNM",
+"name": "Unum Group",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "USAS",
+"block": "USD",
+"tv": "AMEX:USAS",
+"name": "Americas Gold and Silver Corporation",
+"ccy": "USD",
+"ex": "AMEX"
+},
+{
+"tk": "VALE",
+"block": "USD",
+"tv": "NYSE:VALE",
+"name": "Vale S.A. Sponsored ADR",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "VET",
+"block": "USD",
+"tv": "NYSE:VET",
+"name": "Vermilion Energy Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "VIST",
+"block": "USD",
+"tv": "NYSE:VIST",
+"name": "Vista Energy SAB de CV Sponsored ADR Class A",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "VLGDF",
+"block": "USD",
+"tv": "OTC:VLGDF",
+"name": "Valor Gold Corp",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "VLY",
+"block": "USD",
+"tv": "NASDAQ:VLY",
+"name": "Valley National Bancorp",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "VNOM",
+"block": "USD",
+"tv": "NASDAQ:VNOM",
+"name": "Viper Energy, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "VPG",
+"block": "USD",
+"tv": "NYSE:VPG",
+"name": "Vishay Precision Group, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "VRSN",
+"block": "USD",
+"tv": "NASDAQ:VRSN",
+"name": "VeriSign, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "WBS",
+"block": "USD",
+"tv": "NYSE:WBS",
+"name": "Webster Financial Corporation",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "WCPRF",
+"block": "USD",
+"tv": "OTC:WCPRF",
+"name": "Whitecap Resources Inc.",
+"ccy": "USD",
+"ex": "OTC"
+},
+{
+"tk": "WMB",
+"block": "USD",
+"tv": "NYSE:WMB",
+"name": "Williams Companies, Inc.",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "WOLF",
+"block": "USD",
+"tv": "NYSE:WOLF",
+"name": "Wolfspeed Inc",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "WPM",
+"block": "USD",
+"tv": "NYSE:WPM",
+"name": "Wheaton Precious Metals Corp",
+"ccy": "USD",
+"ex": "NYSE"
+},
+{
+"tk": "WWD",
+"block": "USD",
+"tv": "NASDAQ:WWD",
+"name": "Woodward, Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "XEL",
+"block": "USD",
+"tv": "NASDAQ:XEL",
+"name": "Xcel Energy Inc.",
+"ccy": "USD",
+"ex": "NASDAQ"
+},
+{
+"tk": "YPF",
+"block": "USD",
+"tv": "NYSE:YPF",
+"name": "YPF SA Sponsored ADR Class D",
+"ccy": "USD",
+"ex": "NYSE"
+}
+]

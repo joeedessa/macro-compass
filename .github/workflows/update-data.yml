@@ -26,6 +26,9 @@ jobs:
       - name: Fetch watchlist earnings and dividend events
         run: python3 scripts/fetch_events.py || true    # Yahoo can rate-limit; keep last good file rather than fail the run
 
+      - name: Enrich portfolio positions
+        run: python3 scripts/fetch_portfolio.py || true  # 405 names in one scanner call; keep last good file on a bad run
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
