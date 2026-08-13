@@ -385,11 +385,21 @@
             }
             if (!pts.length) continue;
             const meta = resp.meta || {};
-            const regEnd = meta.currentTradingPeriod?.regular?.end || null;
+            const reg = meta.currentTradingPeriod?.regular || {};
+            const regStart = reg.start || null, regEnd = reg.end || null;
             const nowSec = Date.now() / 1000;
             const last = pts[pts.length - 1];
-            // Last point is live unless the regular session has ended.
-            const lastSettled = regEnd ? nowSec >= regEnd : last[2] < nowSec - 6 * 3600;
+            /* A bar is still forming only if it belongs to the session running
+               right now. The old test asked whether the current session had
+               ended, which is a different question: with the market shut, the
+               newest bar is usually a COMPLETED close from an earlier session,
+               and it was being discarded as live. That pushed the whole replay
+               one session behind — a breakout sealed by yesterday's close would
+               not have registered until the day after — and it affected 52 of
+               72 symbols at the time it was found. */
+            const lastSettled = (regStart && regEnd)
+              ? !(last[2] >= regStart && nowSec < regEnd)
+              : last[2] < nowSec - 6 * 3600;
             out[row.symbol] = {
               pts,
               settled: lastSettled ? pts : pts.slice(0, -1),
@@ -487,6 +497,9 @@
   function rowData(p, st) {
     const hist = HIST[p.sym];
     const prev = hist && hist.settled.length ? hist.settled[hist.settled.length - 1] : null;
+    // The session before the last settled one, so the table shows the last two
+    // completed closes rather than only the most recent.
+    const prev2 = hist && hist.settled.length > 1 ? hist.settled[hist.settled.length - 2] : null;
     const live = hist ? hist.live : null;
     const gap = (prev && p.breakthrough != null && st.state === "watch")
       ? pct1((p.dir === "long" ? p.breakthrough / prev[1] - 1 : 1 - p.breakthrough / prev[1]) * 100)
@@ -497,6 +510,10 @@
       liveDate: hist ? hist.liveDate : "",
       prevClose: prev ? prev[1] : null,
       prevDate: prev ? prev[0] : "",
+      prevClose2: prev2 ? prev2[1] : null,
+      prevDate2: prev2 ? prev2[0] : "",
+      // What the last completed session actually did, close over close.
+      prevChg: (prev && prev2 && prev2[1]) ? pct1((prev[1] / prev2[1] - 1) * 100) : null,
       currency: hist ? hist.currency : "",
       dayPct: dayPctOf(hist),
       // Signed distance to trigger: shorts read negative (price must fall).
@@ -527,22 +544,22 @@
      distance, payoff, calendar, then classification. Each key maps to one
      cell builder below, so reordering is a data change. */
   const COLS = {
-    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
                ["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Confirmed"],
                ["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],
+    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Reached"],
                ["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["negation","Negation"],["","Actions","nosort"]],
-    failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["breakthrough","Trigger"],
+    failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],["breakthrough","Trigger"],
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["","Actions","nosort"]],
@@ -574,6 +591,8 @@
     key === "upside" ? (state === "watch" ? "trigger → target" : "live → target") :
     key === "risk" ? "live → negation" :
     key === "gap" ? "last close → trigger" :
+    key === "prev" ? "settled, drives the rules" :
+    key === "prev2" ? "the session before" :
     key === "relm" ? "day % vs index" :
     key === "rels" ? "day % vs sector" : null;
   // Columns filterable via checkbox multi-select, and how to read their value.
@@ -595,6 +614,7 @@
     if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
     if (key === "live") return r.live;
     if (key === "prev") return r.prevClose;
+    if (key === "prev2") return r.prevClose2;
     if (key === "ccy") return r.currency || "";
     if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
     if (key === "upside") return r.upside;
@@ -771,7 +791,19 @@
       case "prev": {
         const td = h("td");
         td.textContent = fmt(r.prevClose);
+        /* The last settled session's own move, close over close — the number
+           the rules are actually evaluated against. */
+        if (r.prevChg != null) {
+          td.appendChild(h("span", "days " + (r.prevChg >= 0 ? "" : "d7"),
+            (r.prevChg > 0 ? "+" : "") + fmt(r.prevChg) + "% on the day"));
+        }
         if (r.prevDate) td.appendChild(h("span", "wname", fmtD(r.prevDate)));
+        return td;
+      }
+      case "prev2": {
+        const td = h("td");
+        td.textContent = fmt(r.prevClose2);
+        if (r.prevDate2) td.appendChild(h("span", "wname", fmtD(r.prevDate2)));
         return td;
       }
       case "breakthrough": return levelCell(p, "breakthrough", editing);
