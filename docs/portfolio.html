@@ -203,6 +203,13 @@
       <b>Largest absolute</b> is the raw percentage. A name appearing in both is worth opening.</p>
     <div class="movegrid" id="movers"></div>
 
+    <h2>At the edges</h2>
+    <p class="lede">Positions pressing a boundary. <b>At</b> means within 2% of the level, since an
+      exact tick is rare and the useful question is whether it is testing it. The all-time high is
+      as far back as the feed reaches, which for a recent listing is not very far — treat it as
+      "highest ever recorded here" rather than a guarantee. RSI is the 14-day.</p>
+    <div class="movegrid" id="extremes"></div>
+
     <h2>Where the book actually sits</h2>
     <p class="lede">Exposure by count, with the average move of each bucket today — so you can see
       not just where you are concentrated but whether that concentration is working. Theme and
@@ -266,8 +273,11 @@
   const fmtD = iso => !iso ? "–" : iso.slice(8, 10) + "-" + iso.slice(5, 7) + "-" + iso.slice(2, 4);
   const today = new Date().toISOString().slice(0, 10);
   const dayDiff = iso => iso ? Math.round((new Date(iso) - new Date(today)) / 864e5) : null;
-  const TVQ = tv => tv ? "https://www.tradingview.com/symbols/" + tv.replace(":", "-") + "/"
-                       : null;
+  /* Every ticker links to its Yahoo chart, which is where the rest of the
+     dashboard sends people. The Yahoo symbol is resolved upstream per listing,
+     so the Toronto and New York lines of a dual-listed name each open their
+     own chart rather than both landing on the US one. */
+  const CHART = p => p && p.y ? "https://finance.yahoo.com/chart/" + encodeURIComponent(p.y) : null;
 
   let D = null;
   try {
@@ -313,6 +323,10 @@
     mk("Reporting ≤14d", String(earnSoon), "earnings scheduled");
     mk("Ex-dividend ≤14d", String(exSoon), "going ex");
     mk("Dividends flagged", String(divRisk), "payout looks stretched", divRisk ? "warn" : "");
+    const atH = P.filter(p => p.at_hi52).length, atA = P.filter(p => p.at_ath).length;
+    const atL = P.filter(p => p.at_lo52).length;
+    mk("At 52-week highs", String(atH), atA + " of them all-time", atH ? "good" : "");
+    mk("At 52-week lows", String(atL), "within 2% of the low", atL ? "bad" : "");
   })();
 
   // ---------- movers ----------
@@ -326,7 +340,7 @@
       for (const r of list) {
         const row = h("div", "mrow");
         const a = h("a", null, r.tk);
-        const url = TVQ(r.tv);
+        const url = CHART(r);
         if (url) { a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer"; }
         row.appendChild(a);
         row.appendChild(h("span", "mn", r.name));
@@ -343,6 +357,67 @@
     panel("Against its own range", "× 14-day ATR", byAtr, null, r => fmt(r.atr_mult, 1) + "×");
     panel("Largest absolute", "today's move", byAbs, null,
           r => r.atr_mult != null ? fmt(r.atr_mult, 1) + "×" : "");
+  })();
+
+  // ---------- extremes ----------
+  (function extremes() {
+    const box = $("#extremes");
+    const panel = (title, sub, rows, render, empty) => {
+      const p = h("div", "panel");
+      const head = h("h3", null, title + " ");
+      head.appendChild(h("span", "sub", sub));
+      p.appendChild(head);
+      if (!rows.length) p.appendChild(h("div", "erow", empty));
+      for (const r of rows) p.appendChild(render(r));
+      box.appendChild(p);
+    };
+    const line = (r, right, extra) => {
+      const row = h("div", "erow");
+      const a = h("a", null, r.tk);
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      row.appendChild(a);
+      const mid = h("span", "en");
+      mid.appendChild(document.createTextNode(r.name + " · "));
+      mid.appendChild(h("b", null, extra));
+      row.appendChild(mid);
+      row.appendChild(h("span", "ed", right));
+      return row;
+    };
+    /* All-time highs first: a 52-week high inside a long downtrend is a
+       different animal from a price no buyer has ever paid more for. */
+    const ath = P.filter(p => p.at_ath).sort((a, b) => (b.ytd || 0) - (a.ytd || 0));
+    const hi = P.filter(p => p.at_hi52 && !p.at_ath).sort((a, b) => (b.ytd || 0) - (a.ytd || 0));
+    const lo = P.filter(p => p.at_lo52).sort((a, b) => (a.ytd || 0) - (b.ytd || 0));
+    const hot = P.filter(p => (p.rsi || 0) >= 70).sort((a, b) => b.rsi - a.rsi);
+    const cold = P.filter(p => p.rsi != null && p.rsi <= 30).sort((a, b) => a.rsi - b.rsi);
+    panel("At an all-time high", ath.length + " positions", ath.slice(0, 12),
+      r => line(r, "RSI " + fmt(r.rsi, 0), pct(r.ytd) + " YTD"),
+      "None at an all-time high.");
+    panel("At a 52-week high", hi.length + " more, below their all-time", hi.slice(0, 12),
+      r => line(r, fmt(r.from_ath, 0) + "% from ATH", pct(r.ytd) + " YTD"),
+      "None at a 52-week high.");
+    panel("At a 52-week low", lo.length + " positions", lo.slice(0, 12),
+      r => line(r, "RSI " + fmt(r.rsi, 0), pct(r.ytd) + " YTD"),
+      "None at a 52-week low.");
+    const rsiPanel = h("div", "panel");
+    const rh = h("h3", null, "RSI extremes ");
+    rh.appendChild(h("span", "sub", "14-day · " + hot.length + " over 70, " + cold.length + " under 30"));
+    rsiPanel.appendChild(rh);
+    for (const r of hot.slice(0, 7).concat(cold.slice(0, 5))) {
+      const row = h("div", "erow");
+      const a = h("a", null, r.tk);
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      row.appendChild(a);
+      const mid = h("span", "en");
+      mid.appendChild(document.createTextNode(r.name + " · "));
+      mid.appendChild(h("b", r.rsi >= 70 ? "miss" : "beat", "RSI " + fmt(r.rsi, 0)));
+      mid.appendChild(document.createTextNode(r.rsi >= 70 ? " overbought" : " oversold"));
+      row.appendChild(mid);
+      row.appendChild(h("span", "ed", pct(r.from_hi52) + " from 52w high"));
+      rsiPanel.appendChild(row);
+    }
+    if (!hot.length && !cold.length) rsiPanel.appendChild(h("div", "erow", "Nothing at an RSI extreme."));
+    box.appendChild(rsiPanel);
   })();
 
   // ---------- exposure ----------
@@ -434,7 +509,7 @@
     panel("Reporting next", "consensus EPS for the quarter", soon, r => {
       const row = h("div", "erow");
       const a = h("a", null, r.tk);
-      const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       row.appendChild(a);
       const mid = h("span", "en");
       mid.appendChild(document.createTextNode(r.name + " · "));
@@ -450,7 +525,7 @@
     panel("Just reported", "actual vs expected, and the reaction", recent, r => {
       const row = h("div", "erow");
       const a = h("a", null, r.tk);
-      const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       row.appendChild(a);
       const mid = h("span", "en");
       const s = r.earn.surprise;
@@ -498,7 +573,7 @@
     panel("Going ex-dividend", "next 45 days", ex, r => {
       const row = h("div", "erow");
       const a = h("a", null, r.tk);
-      const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       row.appendChild(a);
       const mid = h("span", "en");
       mid.appendChild(document.createTextNode(r.name + " · "));
@@ -514,7 +589,7 @@
     panel("Payout under strain", "arithmetic, not an announcement", risk, r => {
       const row = h("div", "erow");
       const a = h("a", null, r.tk);
-      const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       row.appendChild(a);
       const mid = h("span", "en");
       mid.appendChild(h("b", null, fmt(r.div.yield, 2) + "%"));
@@ -558,7 +633,7 @@
       const card = h("div", "ncard");
       const t = h("h4");
       const a = h("a", null, r.tk + " · " + r.name);
-      const u = TVQ(r.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(r); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       t.appendChild(a);
       card.appendChild(t);
       const why = [];
@@ -585,7 +660,8 @@
     ["tk", "Ticker", "left"], ["theme", "Theme", "left"], ["sector", "Sector", "left"],
     ["ex", "Exch", "left"], ["ccy", "Ccy", "left"], ["close", "Last"], ["chg", "Today"],
     ["atr_mult", "× ATR"], ["w1", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"],
-    ["y1", "1Y"], ["rsi", "RSI"], ["yield", "Yield"], ["exdiv", "Ex-div"], ["next", "Earnings"],
+    ["y1", "1Y"], ["rsi", "RSI"], ["from_hi52", "vs 52w hi"], ["from_ath", "vs ATH"],
+    ["yield", "Yield"], ["exdiv", "Ex-div"], ["next", "Earnings"],
   ];
   const valOf = (p, k) => {
     if (k === "yield") return p.div && p.div.yield != null ? p.div.yield : null;
@@ -657,7 +733,7 @@
       const tr = h("tr");
       const td0 = h("td", "left");
       const a = h("a", "pname", p.tk);
-      const u = TVQ(p.tv); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      const u = CHART(p); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
       td0.appendChild(a);
       td0.appendChild(h("span", "psub", p.name || ""));
       tr.appendChild(td0);
@@ -670,7 +746,12 @@
       tr.appendChild(h("td", (p.atr_mult || 0) >= 2 ? "up" : null,
         p.atr_mult != null ? fmt(p.atr_mult, 1) + "×" : (p.atr_stale ? "n/a" : "–")));
       for (const k of ["w1", "m1", "m3", "ytd", "y1"]) tr.appendChild(h("td", cls(p[k]), pct(p[k])));
-      tr.appendChild(h("td", null, p.rsi != null ? fmt(p.rsi, 0) : "–"));
+      tr.appendChild(h("td", p.rsi == null ? null : p.rsi >= 70 ? "down" : p.rsi <= 30 ? "up" : null,
+        p.rsi != null ? fmt(p.rsi, 0) : "–"));
+      tr.appendChild(h("td", p.at_hi52 ? "up" : null,
+        p.from_hi52 != null ? fmt(p.from_hi52, 1) + "%" : "–"));
+      tr.appendChild(h("td", p.at_ath ? "up" : null,
+        p.from_ath != null ? fmt(p.from_ath, 1) + "%" : "–"));
       tr.appendChild(h("td", null, p.div && p.div.yield ? fmt(p.div.yield, 2) + "%" : "–"));
       tr.appendChild(h("td", "dim", p.div && p.div.ex_next ? fmtD(p.div.ex_next) : "–"));
       tr.appendChild(h("td", "dim", p.earn && p.earn.next ? fmtD(p.earn.next) : "–"));

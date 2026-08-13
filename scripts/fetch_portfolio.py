@@ -43,7 +43,8 @@ COLUMNS = [
     # price and how unusual today's move is
     "close", "change", "change_abs", "ATR", "Volatility.D", "beta_1_year",
     "relative_volume_10d_calc", "price_52_week_high", "price_52_week_low",
-    "SMA50", "SMA200", "RSI",
+    "SMA50", "SMA200", "RSI",              # RSI is the 14-period; RSI7 is separate
+    "High.All", "Low.All",                 # all-time extremes, as far back as the feed goes
     # trailing performance
     "Perf.W", "Perf.1M", "Perf.3M", "Perf.YTD", "Perf.Y",
     # earnings: what was delivered against what was expected, and what is next
@@ -321,8 +322,28 @@ def main():
             "y1": rnd(d.get("Perf.Y")),
             "hi52": rnd(d.get("price_52_week_high"), 4),
             "lo52": rnd(d.get("price_52_week_low"), 4),
+            "ath": rnd(d.get("High.All"), 4), "atl": rnd(d.get("Low.All"), 4),
             "sma50": rnd(d.get("SMA50"), 4), "sma200": rnd(d.get("SMA200"), 4),
+            # Carried so the page can link straight to a Yahoo chart, which is
+            # where the rest of the dashboard sends people.
+            "y": yahoo_symbol(row["s"]),
         }
+        # Distance from the extremes. Expressed as how far BELOW each high the
+        # price sits and how far ABOVE each low, so zero always means "at it"
+        # and the sign never has to be interpreted.
+        close = d.get("close")
+        def gap(ref, above):
+            if not close or not ref:
+                return None
+            return round((close / ref - 1) * 100, 1) if above else round((close / ref - 1) * 100, 1)
+        rec["from_hi52"] = gap(d.get("price_52_week_high"), True)
+        rec["from_lo52"] = gap(d.get("price_52_week_low"), True)
+        rec["from_ath"] = gap(d.get("High.All"), True)
+        # "At" a high means within a whisker of it — an exact tick is rare and
+        # the useful question is whether it is pressing the level.
+        rec["at_hi52"] = bool(rec["from_hi52"] is not None and rec["from_hi52"] >= -2)
+        rec["at_lo52"] = bool(rec["from_lo52"] is not None and rec["from_lo52"] <= 2)
+        rec["at_ath"] = bool(rec["from_ath"] is not None and rec["from_ath"] >= -2)
         # ---- earnings ----
         slot = lambda c: PUB_SLOT.get(int(c) % 10) if c is not None else None
         eps, est = d.get("earnings_per_share_fq"), d.get("earnings_per_share_forecast_fq")
@@ -390,7 +411,7 @@ def main():
                 "chg": rnd(y.get("change")), "atr": rnd(y.get("atr"), 4),
                 "atr_mult": rnd(abs(y["change"] / 100 * y["close"]) / y["atr"], 2)
                             if y.get("atr") and y.get("change") is not None else None,
-                "m1": rnd(y.get("perf_1m")), "atr_proxy": True,
+                "m1": rnd(y.get("perf_1m")), "atr_proxy": True, "y": p["yahoo"],
                 "earn": {}, "div": {}, "partial": "price only — no scanner coverage"})
         elif p.get("nofeed"):
             out["positions"].append({

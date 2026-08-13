@@ -3,6 +3,14 @@ name: Deploy Pages
 on:
   push:
     branches: [main]
+  # A push made with the default GITHUB_TOKEN does not trigger other workflows —
+  # GitHub blocks that to stop loops. The hourly data job commits with exactly
+  # that token, so its commits landed on main and never deployed: the site sat
+  # on whatever the last human push produced. This fires the deploy when the
+  # data job finishes instead.
+  workflow_run:
+    workflows: ["Update data"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -22,6 +30,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main          # workflow_run does not carry a ref; take current main
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
