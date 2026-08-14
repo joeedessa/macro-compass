@@ -228,11 +228,11 @@
   <div id="content" hidden>
 
     <h2>How frothy, and on what evidence</h2>
-    <p class="lede">Six measurable conditions, each scored against its own history and each shown
-      with the raw number behind it. The composite is an average, not a model — it is here to be
-      argued with, which is why every input is visible and every mapping is stated. A high reading
-      says the conditions that have accompanied late-cycle equity markets are present now. It says
-      nothing about timing, and these conditions can persist for years.</p>
+    <p class="lede" id="gaugelede">Measurable conditions, each shown with the raw number behind
+      it and the mapping that turned it into a score. The composite is an average, not a model —
+      it is here to be argued with, which is why every input is visible. A high reading says the
+      conditions that have accompanied late-cycle equity markets are present now. It says nothing
+      about timing, and these conditions can persist for years.</p>
     <div class="gauge" id="gauge"></div>
     <p class="note" id="gaugenote"></p>
 
@@ -263,6 +263,23 @@
       that has already started discriminating.</p>
     <div class="tablewrap" id="ladder"></div>
     <p class="note" id="laddernote"></p>
+
+    <h3 class="sub">What long-dated paper costs</h3>
+    <p class="lede">Investment grade spreads cut by maturity. This one needs no history at all —
+      the shape across the buckets is a cross-section, readable today. It matters because the
+      hyperscalers have not been issuing at the front end: Meta's October deal ran out to forty
+      years, so the long buckets are nearer to what these companies actually pay than the index is.</p>
+    <div class="tablewrap" id="igcurve"></div>
+    <p class="note" id="igcurvenote"></p>
+
+    <h3 class="sub">What protection costs, across markets</h3>
+    <p class="lede">A credit spread and an equity volatility index are the same kind of thing —
+      what somebody charges to carry a risk. Reading them together is the point, but a ratio
+      between them would not survive its own units, and a ratio can only carry as much history as
+      its shorter leg. So each gauge is ranked against its own longest record and set side by
+      side, and the only difference taken is between the two that share a scale.</p>
+    <div class="tablewrap" id="protection"></div>
+    <p class="note" id="protectionnote"></p>
 
     <h3 class="sub">What the builders pay</h3>
     <p class="lede">The blended cost of debt each company is actually carrying, from interest
@@ -627,26 +644,51 @@
 
   const comps = [];
 
-  // -- credit compression ------------------------------------------------
+  /* -- credit compression -------------------------------------------------
+     Moody's alone, deliberately.
+     This component used to average a 40-year percentile with a 3-year one and
+     call the result a single reading. They are not the same measurement: the
+     window is not a setting on a percentile, it is the question being asked.
+     Tested on the one series long enough to show both, the same 1.66pp reads
+     as the 50th percentile of three years and the 17th of forty — a 33-point
+     swing from the window alone, because a short window containing no crisis
+     compresses the distribution and drags every calm reading toward the middle.
+     So nothing scored on this page now rests on the licensed three-year
+     series. High yield and CCC still matter enormously and are shown in full
+     in the ladder above, where their window is stated and they are read rather
+     than averaged. */
   const baa = AI.long_credit && AI.long_credit.baa10y;
-  const hy = AI.credit && AI.credit.hy;
-  if (baa || hy) {
-    const parts = [], detail = [];
-    if (baa && baa.pct_span != null) {
-      parts.push(100 - baa.pct_span);
-      detail.push("Baa spread " + fmt(baa.last, 2) + "pp, " + ord(baa.pct_span) +
-        " percentile of " + spanTxt(baa.span_years) + " years");
-    }
-    if (hy && hy.pct_span != null) {
-      parts.push(100 - hy.pct_span);
-      detail.push("high yield " + fmt(hy.last, 2) + "pp, " + ord(hy.pct_span) +
-        " percentile of the " + spanTxt(hy.span_years) + " years the licence serves");
-    }
+  if (baa && baa.pct_span != null) {
     comps.push({
       key: "credit", label: "Credit compression",
-      hint: "Tight spreads mean lenders are not demanding much to fund this",
-      score: mean(parts), detail: detail.join("; "),
-      map: "the inverse of each spread's own percentile",
+      hint: "What lenders charge to fund investment grade borrowers",
+      score: 100 - baa.pct_span,
+      detail: "Moody's Baa less the 10-year Treasury at " + fmt(baa.last, 2) + "pp, the " +
+        ord(baa.pct_span) + " percentile of " + spanTxt(baa.span_years) + " years and " +
+        baa.n.toLocaleString("en-US") + " daily observations",
+      map: "the inverse of its own percentile, over the whole series",
+    });
+  }
+
+  /* -- the price of protection --------------------------------------------
+     A different market from credit, on 36 years of history. VIX is used and
+     the Nasdaq premium deliberately is not: the two currently disagree — broad
+     volatility is cheap while tech-specific volatility is dear — and averaging
+     them would cancel exactly the divergence worth seeing. The premium is
+     shown in the protection table instead, where it can be read. */
+  const vixP = AI.protection && AI.protection.vix;
+  if (vixP && vixP.pct_span != null) {
+    comps.push({
+      key: "vol", label: "Complacency",
+      hint: "What options charge to insure the broad equity market",
+      score: 100 - vixP.pct_span,
+      detail: "VIX at " + fmt(vixP.last, 1) + ", the " + ord(vixP.pct_span) +
+        " percentile of " + spanTxt(vixP.span_years) + " years — but the Nasdaq premium over it " +
+        "sits at the " + (AI.protection.vxn_less_vix
+          ? ord(AI.protection.vxn_less_vix.pct_span) + " percentile, so the calm is in the index " +
+            "rather than in technology"
+          : "a very different place"),
+      map: "the inverse of the VIX percentile, over the whole series",
     });
   }
 
@@ -741,6 +783,17 @@
     : composite >= 45 ? "Warm"
     : composite >= 25 ? "Contained" : "Cold";
 
+  /* Counted rather than written into the markup: the last version said "six"
+     in prose and then grew a seventh component. */
+  const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight",
+                 "nine", "ten", "eleven", "twelve"];
+  const lede = $("#gaugelede");
+  if (lede) {
+    lede.textContent = (WORDS[scored.length] || scored.length) +
+      " measurable conditions" + lede.textContent.replace(/^Measurable conditions/, "");
+    lede.textContent = lede.textContent.charAt(0).toUpperCase() + lede.textContent.slice(1);
+  }
+
   const g = $("#gauge");
   const top = h("div", "gaugetop");
   top.appendChild(h("div", "gv", composite == null ? "–" : fmt(composite, 0)));
@@ -807,10 +860,16 @@
 
   $("#gaugenote").textContent =
     "Equal weighting is a choice, not a finding — a reader who thinks credit matters more than " +
-    "price extension should read the components rather than the composite. Two of the six are " +
-    "measured against fewer than five years of history because that is all the licence permits, " +
-    "and each says so. None of this is a timing signal: these conditions have persisted for " +
-    "years at a time before resolving, in both directions.";
+    "price extension should read the components rather than the composite. Every component here " +
+    "rests either on a percentile drawn from decades — margin debt since 1997, Moody's since " +
+    "1986, VIX since 1990 — or on an outright threshold that needs no history, such as capex " +
+    "against cash flow. Nothing scored is ranked against the three-year window the ICE BofA " +
+    "licence serves, because a short window that happens to contain no crisis drags every calm " +
+    "reading toward its middle: the same Moody's spread reads as the 50th percentile of three " +
+    "years and the 17th of forty. High yield and CCC are shown in full in the credit tables, " +
+    "where their window is stated and they can be read rather than averaged. None of this is a " +
+    "timing signal: these conditions have persisted for years at a time before resolving, in " +
+    "both directions.";
 
   /* =====================================================================
      2. The funding gap
@@ -1016,6 +1075,120 @@
       "the stressed end, so both extremes are bad news for different reasons and a red-green " +
       "scale would have to lie about one of them.");
     $("#laddernote").textContent = shape.join(" ");
+  }
+
+  /* ---- investment grade by maturity ---- */
+  const curve = AI.ig_curve || [];
+  if (curve.length) {
+    const t = h("table");
+    const th = h("thead"), r = h("tr");
+    for (const [lbl, left] of [["Maturity", 1], ["Spread", 0], ["3m", 0], ["1y", 0],
+                               ["Extra over the front bucket", 0]]) {
+      r.appendChild(h("th", (left ? "left " : "") + "nosort", lbl));
+    }
+    th.appendChild(r); t.appendChild(th);
+    const b = h("tbody");
+    const front = curve[0].last;
+    for (const c of curve) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      c0.appendChild(h("b", null, c.label));
+      c0.appendChild(h("span", "csub", c.series));
+      tr.appendChild(c0);
+      tr.appendChild(h("td", null, fmt(c.last, 2) + "pp"));
+      for (const k of ["chg_3m", "chg_1y"]) {
+        const v = c[k];
+        tr.appendChild(h("td", null, v == null ? "–" : v === 0 ? "unchanged"
+          : (v > 0 ? "+" : "") + fmt(v, 2) + (v > 0 ? " wider" : " tighter")));
+      }
+      tr.appendChild(h("td", null, c === curve[0] ? "–"
+        : "+" + fmt(c.last - front, 2) + "pp"));
+      b.appendChild(tr);
+    }
+    t.appendChild(b);
+    $("#igcurve").appendChild(t);
+    const back = curve[curve.length - 1];
+    $("#igcurvenote").textContent =
+      "Lending to a good corporate borrower for fifteen years or more costs " +
+      fmt(back.last - front, 2) + "pp more than lending for one to three — " +
+      fmt(back.last, 2) + "pp against " + fmt(front, 2) + "pp. That is the part of the curve the " +
+      "hyperscalers have been issuing into, and it is the number to watch: the levels here " +
+      "share the same three-year licence window as the ladder, but the shape does not need " +
+      "history, and a long end that starts repricing while the front stays anchored would be " +
+      "the market putting a price on the duration of this build specifically.";
+  }
+
+  /* ---- the price of protection, across markets ---- */
+  const prot = AI.protection || {};
+  const protRows = [];
+  for (const k of ["vix", "vxn", "vxn_less_vix"]) if (prot[k]) protRows.push(prot[k]);
+  for (const k of ["baa10y"]) if (AI.long_credit && AI.long_credit[k]) protRows.push(AI.long_credit[k]);
+  for (const k of ["hy", "ccc"]) if (AI.credit && AI.credit[k]) protRows.push(AI.credit[k]);
+  if (protRows.length) {
+    const t = h("table");
+    const th = h("thead"), r = h("tr");
+    for (const [lbl, left] of [["Gauge", 1], ["Level", 0], ["Percentile", 0],
+                               ["History behind it", 0], ["Reading", 1]]) {
+      r.appendChild(h("th", (left ? "left " : "") + "nosort", lbl));
+    }
+    th.appendChild(r); t.appendChild(th);
+    const b = h("tbody");
+    for (const s of protRows) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      c0.appendChild(h("b", null, s.short || s.label));
+      c0.appendChild(h("span", "csub", s.series));
+      tr.appendChild(c0);
+      // Credit rows carry percentage points and read as what lenders charge;
+      // volatility rows are index points and read as what options charge.
+      const isSpread = (s.series || "").startsWith("BAML") || s.series === "BAA10Y";
+      tr.appendChild(h("td", null, fmt(s.last, 2) + (isSpread ? "pp" : "")));
+      tr.appendChild(h("td", null, ord(s.pct_span)));
+      tr.appendChild(h("td", null, spanTxt(s.span_years) + " years · " +
+        s.n.toLocaleString("en-US") + " obs"));
+      /* Said in words, because "10th percentile" means cheap protection for a
+         volatility index and tight spreads for a credit series, and the reader
+         should not have to hold that mapping in their head per row. */
+      const p = s.pct_span;
+      tr.appendChild(h("td", "left",
+        p == null ? "–"
+        : p <= 20 ? (isSpread ? "lenders charging little" : "protection cheap")
+        : p <= 40 ? "on the low side"
+        : p >= 80 ? (isSpread ? "lenders charging dearly" : "protection dear")
+        : p >= 60 ? "on the high side"
+        : "middling"));
+      b.appendChild(tr);
+    }
+    t.appendChild(b);
+    $("#protection").appendChild(t);
+
+    /* The disagreement across markets, stated. This is the reason the table
+       exists — six gauges agreeing would be one sentence, and they do not. */
+    const vv = prot.vxn_less_vix, cc2 = AI.credit && AI.credit.ccc, hy2 = AI.credit && AI.credit.hy;
+    const bits = [];
+    if (prot.vix && vv) {
+      bits.push("Broad equity protection sits on the low side of its long record — VIX at the " +
+        ord(prot.vix.pct_span) +
+        " percentile of " + spanTxt(prot.vix.span_years) + " years — while the premium charged " +
+        "for Nasdaq risk over it sits at the " + ord(vv.pct_span) + " percentile of " +
+        spanTxt(vv.span_years) + " years, at " + fmt(vv.last, 2) + " points.");
+    }
+    if (cc2 && hy2) {
+      bits.push("Credit says the same thing in its own language: the high yield index at the " +
+        ord(hy2.pct_span) + " percentile of its window against CCC at the " + ord(cc2.pct_span) +
+        ".");
+    }
+    if (bits.length > 1) {
+      bits.push("Two unrelated markets, priced by different people, are both charging very " +
+        "little for risk in general and a great deal for the specific risk. That is a narrower " +
+        "kind of calm than a single headline number conveys, and it is the reason none of these " +
+        "are collapsed into a ratio here.");
+    }
+    bits.push("Windows differ by row and are printed rather than harmonised: VIX carries " +
+      "thirty-six years, Moody's forty, the ICE BofA rows three because that is what the " +
+      "licence serves. A ratio between any two of these would inherit the shorter history and " +
+      "throw away the longer.");
+    $("#protectionnote").textContent = bits.join(" ");
   }
 
   const cdRows = NAMES.filter(n => n.cost_debt != null)
@@ -1378,16 +1551,11 @@
       st.appendChild(t2);
     }
   }
-  const vxn = M["^VXN"], vix = M["^VIX"];
-  if (vxn && vix) {
-    const gap = vxn.last - vix.last;
-    const t = h("div", "tile");
-    t.appendChild(h("div", "tl", "Tech volatility premium"));
-    t.appendChild(h("div", "tv", fmt(gap, 1)));
-    t.appendChild(h("div", "ts", "VXN " + fmt(vxn.last, 1) + " less VIX " + fmt(vix.last, 1) +
-      " — what options charge for Nasdaq risk above the broad market"));
-    st.appendChild(t);
-  }
+  /* The Nasdaq volatility premium used to have a tile here, on live Yahoo
+     quotes. It now lives in the protection table with its own percentile,
+     which is the part that makes it mean anything — and carrying both would
+     print two slightly different numbers for one measure, since FRED settles a
+     day behind the live feed. One home, the more informative one. */
   if (tail3 != null && hyper3 != null) {
     const t = h("div", "tile" + (tail3 - hyper3 > 0 ? " bad" : " good"));
     t.appendChild(h("div", "tl", "Junk versus quality"));

@@ -221,6 +221,39 @@ LONG_CREDIT = [
     ("aaa10y", "AAA10Y", "Moody's Aaa less 10-year Treasury"),
 ]
 
+# The price of protection, across markets rather than within one.
+#
+# Credit spreads and equity volatility are both what somebody charges to carry
+# a risk, so reading them together is the point — but only if the comparison
+# survives its own units. A high yield spread over VIX would be percentage
+# points divided by annualised volatility points, which anchors to nothing, and
+# a ratio can only carry as much history as its shorter leg: VIX has 9,251
+# daily observations back to 1990 and the licensed high yield series has 787.
+# Dividing one by the other throws away thirty-three years to inherit three.
+#
+# So each gauge is ranked against its own longest history and set side by side,
+# and the only spread taken is VXN less VIX — same units, same start date,
+# which makes it the one construct here that is genuinely comparable.
+PROTECTION = [
+    ("vix", "VIXCLS", "S&P 500 implied volatility", "VIX"),
+    ("vxn", "VXNCLS", "Nasdaq 100 implied volatility", "VXN"),
+]
+
+# Investment grade spreads cut by maturity. Every bucket carries the same
+# three-year licence limit, but the shape across buckets is a cross-section and
+# needs no history at all — and the shape is what matters here, because the
+# hyperscalers have been issuing at the long end. Meta's October deal ran to
+# forty years, so the 15-year-plus bucket is nearer to what they actually pay
+# than the index is.
+IG_CURVE = [
+    ("m13", "BAMLC1A0C13Y", "1 to 3 years"),
+    ("m35", "BAMLC2A0C35Y", "3 to 5 years"),
+    ("m57", "BAMLC3A0C57Y", "5 to 7 years"),
+    ("m710", "BAMLC4A0C710Y", "7 to 10 years"),
+    ("m1015", "BAMLC7A0C1015Y", "10 to 15 years"),
+    ("m15p", "BAMLC8A0C15PY", "15 years and over"),
+]
+
 
 def http_get(url, retries=3, binary=False):
     last = None
@@ -484,6 +517,67 @@ def main():
         }
         print(f"  dispersion CCC-BB: {disp[-1][1]} = "
               f"{out['dispersion']['pct_span']}th pct of {dspan}y")
+
+    # ---- the price of protection -----------------------------------------
+    prot, prot_series = {}, {}
+    for key, sid, label, short in PROTECTION:
+        try:
+            pts = fred(sid)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ! {sid}: {e}", file=sys.stderr)
+            continue
+        prot_series[key] = pts
+        prot[key] = {
+            "label": label, "short": short, "series": sid,
+            "last": pts[-1][1], "date": pts[-1][0], "from": pts[0][0],
+            "span_years": span_years(pts), "n": len(pts),
+            "pct_span": pctile_all(pts),
+            "min_span": min(v for _, v in pts), "max_span": max(v for _, v in pts),
+            "chg_3m": round(pts[-1][1] - ago(pts, 91), 2) if ago(pts, 91) else None,
+        }
+        print(f"  protection {short}: {pts[-1][1]} = {prot[key]['pct_span']}th pct "
+              f"of {prot[key]['span_years']}y ({len(pts)} obs)")
+
+    # The one spread worth taking: both legs in volatility points, both
+    # starting the same day, so the difference means something and can be
+    # ranked over the whole common history rather than the shorter of two.
+    if "vxn" in prot_series and "vix" in prot_series:
+        vxn, vix = dict(prot_series["vxn"]), dict(prot_series["vix"])
+        shared = sorted(set(vxn) & set(vix))
+        sp = [(d, round(vxn[d] - vix[d], 2)) for d in shared]
+        prot["vxn_less_vix"] = {
+            "label": "Nasdaq volatility premium", "short": "VXN less VIX",
+            "series": "VXNCLS - VIXCLS",
+            "last": sp[-1][1], "date": sp[-1][0], "from": sp[0][0],
+            "span_years": span_years(sp), "n": len(sp),
+            "pct_span": pctile_all(sp),
+            "min_span": min(v for _, v in sp), "max_span": max(v for _, v in sp),
+            "chg_3m": round(sp[-1][1] - ago(sp, 91), 2) if ago(sp, 91) else None,
+        }
+        print(f"  protection VXN-VIX: {sp[-1][1]} = "
+              f"{prot['vxn_less_vix']['pct_span']}th pct of "
+              f"{prot['vxn_less_vix']['span_years']}y")
+    out["protection"] = prot
+
+    # ---- investment grade by maturity ------------------------------------
+    curve = []
+    for key, sid, label in IG_CURVE:
+        try:
+            pts = fred(sid)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ! {sid}: {e}", file=sys.stderr)
+            continue
+        curve.append({
+            "key": key, "label": label, "series": sid,
+            "last": pts[-1][1], "date": pts[-1][0],
+            "chg_3m": round(pts[-1][1] - ago(pts, 91), 2) if ago(pts, 91) else None,
+            "chg_1y": round(pts[-1][1] - ago(pts, 365), 2) if ago(pts, 365) else None,
+            "span_years": span_years(pts),
+        })
+    out["ig_curve"] = curve
+    if len(curve) >= 2:
+        print(f"  IG curve: {curve[0]['last']}pp at {curve[0]['label']} -> "
+              f"{curve[-1]['last']}pp at {curve[-1]['label']}")
 
     for key, sid in OTHER_FRED:
         try:
