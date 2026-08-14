@@ -163,6 +163,34 @@
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
+  /* ---- shared moving-average structure block (ma.js) ---- */
+  .mabreadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:8px;
+    margin-bottom:11px; }
+  .macard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 11px; }
+  .macard.on { background:var(--on-bg); border-color:var(--up); }
+  .macard.off { background:var(--off-bg); border-color:var(--down); }
+  .macard .mal { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .macard .mav { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .macard .mas { font-size:10.5px; color:var(--text-secondary); }
+  .malist { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .malist h4 { font-size:12.5px; font-weight:650; margin:0; padding:9px 13px;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .malist h4 .masub { font-weight:500; color:var(--text-muted); }
+  .marow { display:grid; grid-template-columns:150px 1fr auto; gap:10px; align-items:baseline;
+    padding:6px 13px; border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .marow:last-child { border-bottom:none; }
+  .marow a { color:var(--text-primary); font-weight:640; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marow a:hover { text-decoration:underline; }
+  .marow .mawhat { color:var(--text-secondary); }
+  .marow.good .mawhat { color:var(--up); }
+  .marow.bad .mawhat { color:var(--down); }
+  .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
+    font-size:11.5px; white-space:nowrap; }
+  .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
 </style>
 </head>
 <body>
@@ -209,6 +237,13 @@
       as far back as the feed reaches, which for a recent listing is not very far — treat it as
       "highest ever recorded here" rather than a guarantee. RSI is the 14-day.</p>
     <div class="movegrid" id="extremes"></div>
+
+    <h2>Structure</h2>
+    <p class="lede">Where the book sits against its 50 and 200 on the daily, weekly and monthly,
+      and which positions have just changed sides. Computed hourly rather than in the browser, so
+      405 names cost nothing to read. Closes only — a wick through a level that closed back above
+      it counts as held.</p>
+    <div id="structure"></div>
 
     <h2>Where the book actually sits</h2>
     <p class="lede">Exposure by count, with the average move of each bucket today — so you can see
@@ -418,6 +453,59 @@
     }
     if (!hot.length && !cold.length) rsiPanel.appendChild(h("div", "erow", "Nothing at an RSI extreme."));
     box.appendChild(rsiPanel);
+  })();
+
+  // ---------- structure ----------
+  (function structure() {
+    const box = $("#structure");
+    const withMa = P.filter(p => p.ma);
+    if (!withMa.length) { box.appendChild(h("p", "lede", "No structure data.")); return; }
+    const strip = h("div", "mabreadth");
+    for (const [tf, label] of [["d", "Daily"], ["w", "Weekly"], ["m", "Monthly"]]) {
+      for (const per of ["50", "200"]) {
+        const rows = withMa.filter(p => p.ma[tf] && p.ma[tf][per]);
+        if (!rows.length) continue;
+        const above = rows.filter(p => p.ma[tf][per].above).length;
+        const pctv = Math.round(above / rows.length * 100);
+        const card = h("div", "macard" + (pctv >= 60 ? " on" : pctv <= 40 ? " off" : ""));
+        card.appendChild(h("div", "mal", label + " " + per));
+        card.appendChild(h("div", "mav", pctv + "%"));
+        card.appendChild(h("div", "mas", above + " of " + rows.length + " above"));
+        strip.appendChild(card);
+      }
+    }
+    box.appendChild(strip);
+    /* Ranked monthly first: a monthly 50 changes hands a few times a cycle, a
+       daily 50 many times a year, and they should not queue equally. */
+    const RANK = { m: 0, w: 1, d: 2 }, LABEL = { m: "monthly", w: "weekly", d: "daily" };
+    const evs = [];
+    for (const p of withMa) {
+      for (const tf of Object.keys(p.ma)) {
+        for (const per of Object.keys(p.ma[tf])) {
+          const s = p.ma[tf][per];
+          if (s.state !== "reclaimed" && s.state !== "lost") continue;
+          if (s.ago == null || s.ago > (tf === "d" ? 2 : 1)) continue;
+          evs.push({ p, tf, per, s });
+        }
+      }
+    }
+    evs.sort((a, b) => RANK[a.tf] - RANK[b.tf] || b.per - a.per || a.s.ago - b.s.ago);
+    const list = h("div", "malist");
+    const hd = h("h4", null, "Level changes");
+    hd.appendChild(h("span", "masub", " · fresh crosses of the 50 and 200, slowest timeframe first"));
+    list.appendChild(hd);
+    if (!evs.length) list.appendChild(h("p", "manone", "Nothing has changed sides recently."));
+    for (const e of evs.slice(0, 14)) {
+      const row = h("div", "marow " + (e.s.state === "reclaimed" ? "good" : "bad"));
+      const a = h("a", null, e.p.tk + " · " + (e.p.name || ""));
+      const u = CHART(e.p); if (u) { a.href = u; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+      row.appendChild(a);
+      row.appendChild(h("span", "mawhat", e.s.state + " its " + LABEL[e.tf] + " " + e.per +
+        (e.s.ago === 0 ? " on the latest bar" : " " + e.s.ago + " bar" + (e.s.ago > 1 ? "s" : "") + " ago")));
+      row.appendChild(h("span", "madist", (e.s.dist > 0 ? "+" : "") + fmt(e.s.dist) + "% vs the average"));
+      list.appendChild(row);
+    }
+    box.appendChild(list);
   })();
 
   // ---------- exposure ----------

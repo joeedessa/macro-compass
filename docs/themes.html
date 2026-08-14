@@ -118,9 +118,38 @@
     border-radius:4px; padding:0 4px; margin-left:5px; }
   .sigcol .signone { font-size:11.5px; color:var(--text-muted);
     margin:0; padding:9px 12px 2px; }
+  /* ---- shared moving-average structure block (ma.js) ---- */
+  .mabreadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:8px;
+    margin-bottom:11px; }
+  .macard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 11px; }
+  .macard.on { background:var(--on-bg); border-color:var(--up); }
+  .macard.off { background:var(--off-bg); border-color:var(--down); }
+  .macard .mal { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .macard .mav { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .macard .mas { font-size:10.5px; color:var(--text-secondary); }
+  .malist { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .malist h4 { font-size:12.5px; font-weight:650; margin:0; padding:9px 13px;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .malist h4 .masub { font-weight:500; color:var(--text-muted); }
+  .marow { display:grid; grid-template-columns:150px 1fr auto; gap:10px; align-items:baseline;
+    padding:6px 13px; border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .marow:last-child { border-bottom:none; }
+  .marow a { color:var(--text-primary); font-weight:640; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marow a:hover { text-decoration:underline; }
+  .marow .mawhat { color:var(--text-secondary); }
+  .marow.good .mawhat { color:var(--up); }
+  .marow.bad .mawhat { color:var(--down); }
+  .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
+    font-size:11.5px; white-space:nowrap; }
+  .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
 </style>
 </head>
 <body>
+<script src="ma.js?v=20260814d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -161,7 +190,13 @@
     </div>
     <div class="lead" id="lead"></div>
 
-    <h2>Signal scan — moving-average crosses</h2>
+    <h2>Structure</h2>
+    <p class="lede">Position against the 50 and 200 on three timeframes, and any theme that has
+      just changed sides. Weekly and monthly matter more here than daily: these are held for the
+      cycle, not the week.</p>
+    <div id="structure"></div>
+
+  <h2>Signal scan — moving-average crosses</h2>
     <p class="lede">Theme ETFs that crossed a key average in the last ten sessions. Columns run
       left to right along the escalation ladder — <strong>5-EMA × 21</strong> is a timing trigger,
       <strong>price × 50</strong> the swing break, <strong>21-EMA × 50</strong> the momentum turn,
@@ -552,6 +587,13 @@
       x.setAttribute("aria-pressed", String(x === b)));
     renderStamp(); renderLead(); renderTable();
   }));
+  (async function structure() {
+    const rs = rows.map(r => ({ sym: r.sym, name: r.name, daily: series[r.sym].map(p => p[1]) }));
+    MA.panel(document.querySelector("#structure"), rs, { link: s => YQ(s) });
+    await MA.load(rs.map(r => r.sym));
+    MA.panel(document.querySelector("#structure"), rs, { link: s => YQ(s) });
+  })();
+
   renderStamp(); renderLead(); renderTable();
 })();
 </script>

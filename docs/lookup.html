@@ -156,9 +156,38 @@
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
+  /* ---- shared moving-average structure block (ma.js) ---- */
+  .mabreadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:8px;
+    margin-bottom:11px; }
+  .macard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 11px; }
+  .macard.on { background:var(--on-bg); border-color:var(--up); }
+  .macard.off { background:var(--off-bg); border-color:var(--down); }
+  .macard .mal { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .macard .mav { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .macard .mas { font-size:10.5px; color:var(--text-secondary); }
+  .malist { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .malist h4 { font-size:12.5px; font-weight:650; margin:0; padding:9px 13px;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .malist h4 .masub { font-weight:500; color:var(--text-muted); }
+  .marow { display:grid; grid-template-columns:150px 1fr auto; gap:10px; align-items:baseline;
+    padding:6px 13px; border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .marow:last-child { border-bottom:none; }
+  .marow a { color:var(--text-primary); font-weight:640; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marow a:hover { text-decoration:underline; }
+  .marow .mawhat { color:var(--text-secondary); }
+  .marow.good .mawhat { color:var(--up); }
+  .marow.bad .mawhat { color:var(--down); }
+  .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
+    font-size:11.5px; white-space:nowrap; }
+  .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
 </style>
 </head>
 <body>
+<script src="ma.js?v=20260814d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -1065,6 +1094,21 @@
     }
     if (!anyRatio) rbox.appendChild(h("div", "rrow", "No overlapping history for these pairs."));
     box.appendChild(rbox);
+
+    // ---- higher-timeframe structure for this subject's complex ----
+    box.appendChild(h("h2", null, "Structure"));
+    box.appendChild(h("p", "lede", "Where each leg of the complex sits against its 50 and 200 on " +
+      "the daily, weekly and monthly, and anything that has just changed sides. Closes only, so a " +
+      "wick through a level that closed back above it reads as held."));
+    const sbox = h("div");
+    box.appendChild(sbox);
+    (function () {
+      const rows = S.complex.filter(c => SERIES[c[0]])
+        .map(c => ({ sym: c[0], name: c[1], daily: SERIES[c[0]].map(p => p[1]) }));
+      if (!rows.length) { sbox.appendChild(h("p", "lede", "No price history for this complex.")); return; }
+      MA.panel(sbox, rows, { link: s => YQ(s) });
+      MA.load(rows.map(r => r.sym)).then(() => MA.panel(sbox, rows, { link: s => YQ(s) }));
+    })();
 
     // ---- signals ----
     box.appendChild(h("h2", null, "Signals"));

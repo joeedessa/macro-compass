@@ -201,9 +201,38 @@
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
+  /* ---- shared moving-average structure block (ma.js) ---- */
+  .mabreadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:8px;
+    margin-bottom:11px; }
+  .macard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 11px; }
+  .macard.on { background:var(--on-bg); border-color:var(--up); }
+  .macard.off { background:var(--off-bg); border-color:var(--down); }
+  .macard .mal { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .macard .mav { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .macard .mas { font-size:10.5px; color:var(--text-secondary); }
+  .malist { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .malist h4 { font-size:12.5px; font-weight:650; margin:0; padding:9px 13px;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .malist h4 .masub { font-weight:500; color:var(--text-muted); }
+  .marow { display:grid; grid-template-columns:150px 1fr auto; gap:10px; align-items:baseline;
+    padding:6px 13px; border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .marow:last-child { border-bottom:none; }
+  .marow a { color:var(--text-primary); font-weight:640; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marow a:hover { text-decoration:underline; }
+  .marow .mawhat { color:var(--text-secondary); }
+  .marow.good .mawhat { color:var(--up); }
+  .marow.bad .mawhat { color:var(--down); }
+  .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
+    font-size:11.5px; white-space:nowrap; }
+  .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
 </style>
 </head>
 <body>
+<script src="ma.js?v=20260814d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -251,6 +280,13 @@
       rightmost arrive weeks later and rarely lie. A cross that reverses again inside the window is
       flagged as whipsawed rather than hidden.</p>
     <div id="sigscan"></div>
+
+    <h2>Structure</h2>
+    <p class="lede">Where each market sits against its own 50 and 200 on the daily, weekly and
+      monthly, and which have just changed sides. A country reclaiming its weekly 200 is a
+      different event from one poking above a daily average for a session. Built on closes, so a
+      wick through a level that closed back above it reads as held.</p>
+    <div id="structure"></div>
 
     <h2>All countries</h2>
     <p class="lede">Forty-six country markets plus three benchmarks. Sort on any column header,
@@ -1096,6 +1132,16 @@
   });
 
   document.addEventListener("click", () => { if (OPEN_POP) { OPEN_POP = null; repaint(); } });
+
+  /* Higher timeframes load after first paint so the page is usable immediately;
+     the structure block fills in when they arrive. */
+  (async function structure() {
+    const rows = PRICED.filter(r => r.region !== "Benchmark")
+      .map(r => ({ sym: r.etf, name: r.name, daily: r.pts.map(p => p[1]) }));
+    MA.panel($("#structure"), rows, { link: s => YQ(s) });
+    await MA.load(rows.map(r => r.sym));
+    MA.panel($("#structure"), rows, { link: s => YQ(s) });
+  })();
 
   renderLead();
   renderTable();

@@ -540,7 +540,7 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
-  if (live) { renderRegime(); renderMovers(); renderFamily(); renderInternals(); renderCross(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
+  if (live) { renderRegime(); renderMovers(); renderFamily(); renderInternals(); renderCross(); renderStructure(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
   renderMacro();
   renderOfficial();
   renderSentiment();
@@ -1289,6 +1289,19 @@ function sigColumns(found) {
       box.appendChild(block);
     }
   return box;
+}
+
+/* Higher-timeframe structure, drawn by the shared module. Loads after first
+   paint so the page is usable while the weekly and monthly bars arrive. */
+function renderStructure() {
+  const box = $("#structure");
+  if (!box || typeof MA === "undefined") return;
+  const rows = UNIVERSE
+    .filter(u => SERIES[u[0]] && u[3] !== "yield")   // yields are levels, not prices
+    .map(u => ({ sym: u[0], name: u[1], daily: SERIES[u[0]].map(p => p[1]) }));
+  if (!rows.length) return;
+  MA.panel(box, rows, { link: s => YQ(s) });
+  MA.load(rows.map(r => r.sym)).then(() => MA.panel(box, rows, { link: s => YQ(s) }));
 }
 
 function renderTables() {

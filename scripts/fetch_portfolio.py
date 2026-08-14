@@ -272,6 +272,82 @@ def earnings_reaction(symbols_by_date):
     return out
 
 
+def sma_last(vals, n):
+    return sum(vals[-n:]) / n if len(vals) >= n else None
+
+
+def ma_structure(closes):
+    """Distance from 50 and 200, and the last level test, for one bar series.
+
+    Mirrors docs/ma.js so the Portfolio page reads the same as every other
+    page. Closes only — the feed carries no intraday high or low — so a spike
+    through a level that closed back above it counts as held.
+    """
+    out = {}
+    for n in (50, 200):
+        if len(closes) < n + 2:
+            continue
+        ma, s = [], 0.0
+        for i, v in enumerate(closes):
+            s += v
+            if i >= n:
+                s -= closes[i - n]
+            if i >= n - 1:
+                ma.append(s / n)
+        off = len(closes) - len(ma)
+        last, last_ma = closes[-1], ma[-1]
+        dist = (last / last_ma - 1) * 100
+        above = dist >= 0
+        look = min(15, len(ma) - 1)
+        best = None
+        for k in range(len(ma) - look, len(ma)):
+            d = closes[k + off] / ma[k] - 1
+            if best is None or abs(d) < abs(best[0]):
+                best = (d, k)
+        state = None
+        if best and abs(best[0]) <= 0.02:
+            was = best[0] >= 0
+            state = ("held" if (was and above) else "rejected" if (not was and not above)
+                     else "reclaimed" if (not was and above) else "lost")
+        ago = None
+        for k in range(len(ma) - 2, -1, -1):
+            if (closes[k + off] >= ma[k]) != above:
+                ago = len(ma) - 1 - k
+                break
+        out[str(n)] = {"dist": round(dist, 1), "above": above,
+                       "state": state, "ago": ago}
+    return out
+
+
+def timeframe_bars(symbols, rng, interval):
+    """Weekly or monthly closes for a list of Yahoo symbols.
+
+    Spark honours the interval on a bounded range but ignores it on range=max,
+    returning the same ~168 downsampled bars whatever you ask for — hence the
+    explicit windows, which give roughly 263 weekly and 301 monthly bars.
+    """
+    out = {}
+    for i in range(0, len(symbols), 10):
+        chunk = symbols[i:i + 10]
+        url = ("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+               ",".join(urllib.parse.quote(s) for s in chunk) +
+               f"&range={rng}&interval={interval}")
+        r = subprocess.run(["curl", "-s", "--max-time", "40",
+                            "-H", "User-Agent: Mozilla/5.0", url],
+                           capture_output=True, text=True, timeout=60)
+        try:
+            data = json.loads(r.stdout)
+        except json.JSONDecodeError:
+            continue
+        for row in data.get("spark", {}).get("result", []):
+            closes = [c for c in row["response"][0]["indicators"]["quote"][0].get("close", [])
+                      if c is not None]
+            if closes:
+                out[row["symbol"]] = closes
+        time.sleep(0.15)
+    return out
+
+
 def main():
     positions = json.loads(POSITIONS.read_text())
     tv_map = {p["tv"]: p for p in positions if p.get("tv")}
@@ -436,6 +512,24 @@ def main():
         back[ys]["earn"]["reaction"] = react["pct"]
         back[ys]["earn"]["reaction_sessions"] = react["sessions"]
     print(f"post-earnings reaction: {len(reactions)}/{len(want)} measured from daily closes")
+
+    # ---- higher-timeframe structure for every position ----
+    ys = {r["y"]: r for r in out["positions"] if r.get("y")}
+    for key, rng, interval in (("w", "5y", "1wk"), ("m", "25y", "1mo")):
+        bars = timeframe_bars(sorted(ys), rng, interval)
+        for sym, closes in bars.items():
+            st = ma_structure(closes)
+            if st:
+                ys[sym].setdefault("ma", {})[key] = st
+    # daily comes from the same 3-month window used for the earnings reaction,
+    # which is too short for a 200-day average, so pull a year for the dailies
+    daily = timeframe_bars(sorted(ys), "1y", "1d")
+    for sym, closes in daily.items():
+        st = ma_structure(closes)
+        if st:
+            ys[sym].setdefault("ma", {})["d"] = st
+    withma = sum(1 for r in out["positions"] if r.get("ma"))
+    print(f"moving-average structure: {withma} positions")
 
     # ---- news, only where something actually happened ----
     def newsworthy(r):
