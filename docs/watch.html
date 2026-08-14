@@ -92,7 +92,13 @@
   tr.epsrow td { background:var(--surface-2); font-size:12.5px; color:var(--text-secondary);
     white-space:normal; }
   td.soon { color:var(--series-2); font-weight:620; }
-  #alerts { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  #alerts, #signals { display:flex; flex-direction:column; gap:6px; }
+  .algroup { margin-bottom:14px; }
+  .alhead { font-size:12px; font-weight:650; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--text-secondary); margin:0 0 6px; }
+  .alhead .alcount { font-weight:600; color:var(--text-muted); }
+  .alhead .alsub { font-weight:400; text-transform:none; letter-spacing:0;
+    color:var(--text-muted); font-size:12px; }
   .albox { border:1px solid var(--border); border-radius:10px; padding:9px 14px; font-size:13px; }
   .albox.new { background:var(--on-bg); }
   .albox.warn { background:var(--mixed-bg); }
@@ -321,7 +327,18 @@
   </div>
 
   <div id="gauge"></div>
-  <div id="alerts"></div>
+
+  <div class="algroup" id="grp-setup" hidden>
+    <h3 class="alhead">Setup events<span class="alcount"></span><span class="alsub"> · your own levels — a trigger taken, a
+      target reached, a negation hit</span></h3>
+    <div id="alerts"></div>
+  </div>
+
+  <div class="algroup" id="grp-signals" hidden>
+    <h3 class="alhead">Structure signals<span class="alcount"></span><span class="alsub"> · price changing sides on the 150 or
+      200, slowest timeframe first — nothing to do with your levels</span></h3>
+    <div id="signals"></div>
+  </div>
 
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
     <code>docs/data/watchlist.json</code> in the repo — edit it there (or ask Claude to), use
@@ -1192,8 +1209,13 @@
     });
   }
 
-  /* Alerts: (1) new transitions sealed by the most recent settled close, and
-     (2) watch setups trading through their trigger intraday — awaiting a close. */
+  /* Two separate streams, deliberately not merged.
+     Setup events are the state machine on your own levels: a trigger taken, a
+     target reached, a negation hit. Structure signals are the market's own
+     moving averages changing hands and know nothing about your setup.
+     They used to share one list and one cap, which meant a busy day on the
+     moving averages could push a confirmed breakout off the bottom — the two
+     now have their own budgets and cannot crowd each other out. */
   function renderAlerts(all) {
     const box = $("#alerts");
     box.textContent = "";
@@ -1252,14 +1274,32 @@
       }
     }
     struct.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    for (const s of struct.slice(0, 8)) items.push([s[2], s[3]]);
 
-    for (const [cls, msg] of items.slice(0, 14)) {
-      const b = h("div", "albox " + cls);
-      b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
-      b.appendChild(document.createTextNode(msg));
-      box.appendChild(b);
-    }
+    const draw = (target, rows, limit) => {
+      target.textContent = "";
+      for (const [cls, msg] of rows.slice(0, limit)) {
+        const b = h("div", "albox " + cls);
+        b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
+        b.appendChild(document.createTextNode(msg));
+        target.appendChild(b);
+      }
+      return Math.min(rows.length, limit);
+    };
+
+    const nSetup = draw(box, items, 12);
+    const nSignal = draw($("#signals"), struct.map(s => [s[2], s[3]]), 10);
+
+    /* Each group carries its own count and hides itself when empty, so a quiet
+       day shows nothing rather than a heading over a blank space. */
+    const label = (id, headSel, shown, total) => {
+      const grp = $(id);
+      grp.hidden = shown === 0;
+      const cnt = $(headSel + " .alcount");
+      if (cnt) cnt.textContent = total > shown ? " (" + shown + " of " + total + ")"
+        : shown ? " (" + shown + ")" : "";
+    };
+    label("#grp-setup", "#grp-setup .alhead", nSetup, items.length);
+    label("#grp-signals", "#grp-signals .alhead", nSignal, struct.length);
   }
 
   /* One line above everything: how much of the universe is red today. A broad
