@@ -29,6 +29,9 @@ jobs:
       - name: Enrich portfolio positions
         run: python3 scripts/fetch_portfolio.py || true  # 405 names in one scanner call; keep last good file on a bad run
 
+      - name: Fetch AI credit, capex and concentration
+        run: python3 scripts/fetch_ai.py || true         # FINRA and FRED both rate-limit; keep last good file rather than fail the run
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"

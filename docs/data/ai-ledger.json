@@ -1,0 +1,153 @@
+{
+ "curated_through": "2026-08-14",
+ "note": "Hand-maintained. No free feed carries vendor-financing structures or issuance terms, so this file is written by hand and every row carries the date it was announced and a link to the primary source. Figures are as announced, which is not the same as committed and not the same as spent — the basis field says which. Nothing here updates itself: the page shows how old this file is and says so plainly.",
+ "basis_key": {
+  "invest": "Equity or equity-linked investment, often staged against milestones.",
+  "contract": "Contracted revenue over a multi-year term. Headline value covers the whole term, not one year, and is frequently reported as though it were annual.",
+  "capacity": "A commitment to supply or deploy hardware or power. Denominated in gigawatts or units rather than money; any dollar figure attached is an estimate.",
+  "debt": "Money actually raised in the debt market, priced and settled."
+ },
+
+ "circular": [
+  {
+   "date": "2025-09-22",
+   "from": "Nvidia", "to": "OpenAI",
+   "headline": "Up to $100bn", "usd_bn": 100, "basis": "invest",
+   "what": "Letter of intent to invest progressively as OpenAI deploys 10GW of Nvidia systems.",
+   "why": "The supplier funds the customer's purchases of the supplier's own product. Revenue recognised by Nvidia is, in part, capital Nvidia provided.",
+   "source": "https://nvidianews.nvidia.com/news/openai-and-nvidia-announce-strategic-partnership"
+  },
+  {
+   "date": "2025-10-06",
+   "from": "AMD", "to": "OpenAI",
+   "headline": "6GW, warrants over ~160m shares", "usd_bn": null, "basis": "capacity",
+   "what": "Multi-year supply of Instinct accelerators, with warrants for up to roughly 160m AMD shares vesting against deployment and share-price milestones.",
+   "why": "The customer is paid in the supplier's equity for agreeing to buy from the supplier. If the stock rises on the announcement, the customer's compensation rises with it.",
+   "source": "https://ir.amd.com/news-events/press-releases"
+  },
+  {
+   "date": "2025-10-13",
+   "from": "Broadcom", "to": "OpenAI",
+   "headline": "10GW of custom accelerators", "usd_bn": null, "basis": "capacity",
+   "what": "Co-development and deployment of OpenAI-designed accelerators and Ethernet networking.",
+   "why": "Not itself circular, but it is a capacity commitment from a customer whose funding depends on continued external capital.",
+   "source": "https://investors.broadcom.com/news-releases"
+  },
+  {
+   "date": "2025-09-10",
+   "from": "Oracle", "to": "OpenAI",
+   "headline": "~$300bn over five years", "usd_bn": 300, "basis": "contract",
+   "what": "Cloud capacity contract reported at roughly $300bn across a five-year term beginning 2027.",
+   "why": "Oracle is borrowing to build capacity whose principal counterparty is loss-making and itself dependent on raising capital. The backlog is booked long before the cash arrives.",
+   "source": "https://investor.oracle.com/investor-news/default.aspx"
+  },
+  {
+   "date": "2025-11-18",
+   "from": "Microsoft and Nvidia", "to": "Anthropic",
+   "headline": "Up to $5bn and $10bn against a $30bn Azure commitment", "usd_bn": 15, "basis": "invest",
+   "what": "Investment by Microsoft and Nvidia alongside Anthropic's commitment to purchase Azure capacity.",
+   "why": "The same loop as Nvidia–OpenAI, with the cloud provider added: the investors are also the vendors being paid.",
+   "source": "https://news.microsoft.com/source/"
+  },
+  {
+   "date": "2025-10-23",
+   "from": "Google", "to": "Anthropic",
+   "headline": "Up to 1m TPUs, over 1GW", "usd_bn": null, "basis": "capacity",
+   "what": "Expanded agreement for Anthropic to use Google TPU capacity, alongside Google's existing equity stake.",
+   "why": "An investor supplying compute to its investee, who pays for it with capital partly supplied by the investor.",
+   "source": "https://www.anthropic.com/news"
+  },
+  {
+   "date": "2024-11-22",
+   "from": "Amazon", "to": "Anthropic",
+   "headline": "$8bn cumulative", "usd_bn": 8, "basis": "invest",
+   "what": "Total investment to date, tied to Anthropic using AWS as primary cloud and training partner and adopting Trainium.",
+   "why": "Cloud revenue funded by the cloud provider's own balance sheet.",
+   "source": "https://www.aboutamazon.com/news/company-news"
+  },
+  {
+   "date": "2025-03-10",
+   "from": "Nvidia", "to": "CoreWeave",
+   "headline": "$6.3bn order backstop to 2032", "usd_bn": 6.3, "basis": "contract",
+   "what": "Nvidia agreed to purchase unsold CoreWeave cloud capacity, and holds equity in the company.",
+   "why": "The chip supplier guarantees demand for a customer whose only business is renting out that supplier's chips. Read alongside CoreWeave's cost of debt in the credit table.",
+   "source": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CRWV&type=10-K"
+  }
+ ],
+
+ "issuance": [
+  {
+   "date": "2025-10-30", "issuer": "Meta", "usd_bn": 30, "basis": "debt",
+   "kind": "Senior unsecured, six tranches to 40 years",
+   "note": "Largest US corporate bond sale since 2023 at the time of pricing, with an order book reported at roughly $125bn.",
+   "source": "https://investor.atmeta.com/"
+  },
+  {
+   "date": "2025-09-24", "issuer": "Oracle", "usd_bn": 18, "basis": "debt",
+   "kind": "Senior unsecured, multi-tranche",
+   "note": "Raised as the OpenAI capacity commitment moved into build. Oracle carries the highest net debt to EBITDA of any hyperscaler on this page.",
+   "source": "https://investor.oracle.com/investor-news/default.aspx"
+  },
+  {
+   "date": "2025-11-10", "issuer": "Alphabet", "usd_bn": 25, "basis": "debt",
+   "kind": "Senior unsecured, US dollar and euro tranches",
+   "note": "Alphabet had been a rare issuer before the capex cycle.",
+   "source": "https://abc.xyz/investor/"
+  },
+  {
+   "date": "2025-12-01", "issuer": "Amazon", "usd_bn": 15, "basis": "debt",
+   "kind": "Senior unsecured, multi-tranche",
+   "note": "First US dollar bond sale since 2022.",
+   "source": "https://ir.aboutamazon.com/"
+  },
+  {
+   "date": "2025-05-16", "issuer": "CoreWeave", "usd_bn": 2, "basis": "debt",
+   "kind": "Senior unsecured high-yield notes",
+   "note": "Priced with a coupon around 9.25%, against investment-grade hyperscaler paper in the 4-5% area at the time. The clearest market price of the difference between earning the capex and borrowing it.",
+   "source": "https://investors.coreweave.com/"
+  }
+ ],
+
+ "structures": [
+  {
+   "date": "2025-10-21", "name": "Hyperion (Meta and Blue Owl)",
+   "usd_bn": 27, "basis": "debt",
+   "kind": "Off-balance-sheet joint venture, private placement",
+   "what": "Financing for the Louisiana data centre campus through a JV in which Meta holds a minority stake, funded largely by private credit and reported with a coupon near 6.6%.",
+   "why": "Capex routed through a vehicle Meta does not consolidate. The spending appears in neither Meta's capex line nor its debt, so the funding-gap table above understates the true build.",
+   "source": "https://investor.atmeta.com/"
+  },
+  {
+   "date": "2025-01-21", "name": "Stargate",
+   "usd_bn": 500, "basis": "capacity",
+   "kind": "Announced joint venture",
+   "what": "OpenAI, SoftBank, Oracle and MGX, with a stated ambition of $500bn of US data-centre investment over four years and $100bn deployed immediately.",
+   "why": "The largest number on this page and the least anchored. An ambition, not a financing — included because it is quoted as though it were the latter.",
+   "source": "https://openai.com/index/announcing-the-stargate-project/"
+  }
+ ],
+
+ "accounting": [
+  {
+   "what": "Server useful life extended",
+   "who": "Microsoft, Alphabet, Amazon, Meta have each lengthened assumed server and network equipment lives over recent years, broadly from three years toward five or six.",
+   "why": "A longer life spreads the same capex over more years, so depreciation per year falls and reported earnings rise without any change in cash. Amazon partially reversed course in 2025, shortening the life of some servers — the first move back the other way.",
+   "watch": "If GPUs are economically obsolete faster than the schedule assumes, the depreciation catch-up arrives as a non-cash earnings hit precisely when the cycle turns.",
+   "source": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MSFT&type=10-K"
+  },
+  {
+   "what": "Backlog and RPO as a revenue proxy",
+   "who": "Oracle's remaining performance obligation stepped up by hundreds of billions on the OpenAI contract.",
+   "why": "RPO is contracted, not collected. It assumes the counterparty survives the term and honours it, and for the largest contracts on this page the counterparty is loss-making.",
+   "watch": "The gap between RPO growth and cash revenue growth, and any change in disclosure about concentration.",
+   "source": "https://investor.oracle.com/financials/"
+  },
+  {
+   "what": "Vendor financing and receivables",
+   "who": "Suppliers investing in, lending to, or guaranteeing the customers who buy from them.",
+   "why": "This is the mechanism that turned the 2000 telecom build into a credit event: Lucent and Nortel financed customer purchases, booked the revenue, and took the losses when the customers failed.",
+   "watch": "Days sales outstanding rising faster than revenue, and the share of revenue from customers the supplier has invested in.",
+   "source": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NVDA&type=10-Q"
+  }
+ ]
+}

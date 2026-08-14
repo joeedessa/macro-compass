@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI froth — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b; --warn:#8a6100;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+    --mixed-bg:rgba(237,161,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767; --warn:#eda100;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+      --mixed-bg:rgba(237,161,0,0.16);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.5;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1340px; margin:0 auto; padding:26px 22px 70px; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px;
+    flex-wrap:wrap; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:17px; margin:36px 0 4px; letter-spacing:-0.01em; }
+  h3.sub { font-size:13.5px; margin:18px 0 6px; color:var(--text-secondary); font-weight:650; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  .lede { color:var(--text-secondary); font-size:13.5px; max-width:90ch; margin-bottom:12px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  #status { color:var(--text-muted); font-size:13.5px; margin-top:20px; }
+  .up { color:var(--up); } .down { color:var(--down); } .warn { color:var(--warn); }
+
+  /* ---- froth gauge ---- */
+  .gauge { background:var(--surface-1); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; }
+  .gaugetop { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  .gaugetop .gv { font-size:44px; font-weight:720; letter-spacing:-0.03em;
+    font-variant-numeric:tabular-nums; line-height:1; }
+  .gaugetop .gl { font-size:15px; font-weight:650; }
+  .gaugetop .gn { font-size:12px; color:var(--text-muted); margin-left:auto; }
+  .gbar { height:12px; border-radius:6px; margin:10px 0 4px; position:relative;
+    background:linear-gradient(90deg,#2f8f4e 0%,#b8b02c 45%,#e08b28 70%,#d03b3b 100%);
+    opacity:0.88; }
+  .gbar i { position:absolute; top:-4px; width:3px; height:20px; background:var(--text-primary);
+    border-radius:2px; box-shadow:0 0 0 2px var(--surface-1); }
+  .gscale { display:flex; justify-content:space-between; font-size:10.5px;
+    color:var(--text-muted); margin-bottom:12px; }
+  .comps { display:grid; gap:7px; }
+  .comp { display:grid; grid-template-columns:172px 1fr 52px; gap:11px; align-items:center;
+    font-size:12.5px; }
+  .comp .cl { font-weight:620; }
+  .comp .cl span { display:block; font-weight:400; color:var(--text-muted); font-size:11px;
+    line-height:1.3; }
+  .comp .cbar { height:15px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+  .comp .cbar i { display:block; height:100%; border-radius:4px; background:var(--series-1); }
+  .comp .cbar i.hot { background:var(--down); }
+  .comp .cbar i.warm { background:#e08b28; }
+  .comp .cv { text-align:right; font-weight:680; font-variant-numeric:tabular-nums;
+    font-size:14px; }
+  .comp .cv small { display:block; font-weight:400; font-size:10px; color:var(--text-muted); }
+
+  /* ---- tiles ---- */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(172px,1fr)); gap:9px; }
+  .tile { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:10px 13px; }
+  .tile .tl { font-size:11px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .tile .tv { font-size:22px; font-weight:690; font-variant-numeric:tabular-nums;
+    letter-spacing:-0.01em; }
+  .tile .ts { font-size:11.5px; color:var(--text-secondary); line-height:1.35; }
+  .tile.good { background:var(--on-bg); border-color:var(--up); }
+  .tile.bad { background:var(--off-bg); border-color:var(--down); }
+  .tile.warn { background:var(--mixed-bg); }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th { font-size:10.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:8px 10px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  th.left { text-align:left; } th.nosort { cursor:default; }
+  th.active { color:var(--text-primary); }
+  th.active::after { content:" ▾"; } th.active.asc::after { content:" ▴"; }
+  td { padding:6px 10px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.left { text-align:left; white-space:normal; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  tbody tr:hover td { background:var(--surface-2); }
+  tbody tr.grouphead td { background:var(--surface-2); font-weight:650; font-size:11.5px;
+    text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); }
+  .cname { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .cname:hover { text-decoration:underline; }
+  .csub { color:var(--text-muted); font-size:10.5px; display:block; font-weight:400; }
+
+  .pill { display:inline-block; font-size:10px; font-weight:650; border-radius:999px;
+    padding:1px 8px; }
+  .pill.hot { background:var(--off-bg); color:var(--down); }
+  .pill.cold { background:var(--on-bg); color:var(--up); }
+  .pill.mid { background:var(--mixed-bg); color:var(--warn); }
+  .pill.flat { color:var(--text-muted); border:1px solid var(--border); }
+
+  /* ---- ledger cards ---- */
+  .ledger { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:11px; }
+  .lcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; }
+  .lcard .lh { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .lcard .lh b { font-size:13.5px; }
+  .lcard .lh .ld { font-size:11px; color:var(--text-muted); margin-left:auto;
+    font-variant-numeric:tabular-nums; }
+  .lcard .lamt { font-size:19px; font-weight:690; font-variant-numeric:tabular-nums;
+    margin:3px 0 1px; }
+  .lcard .lbasis { font-size:10px; font-weight:650; text-transform:uppercase;
+    letter-spacing:0.04em; color:var(--text-muted); }
+  .lcard p { font-size:12px; color:var(--text-secondary); margin-top:6px; line-height:1.45; }
+  .lcard p.why { color:var(--text-primary); }
+  .lcard p.why::before { content:"Why it counts: "; color:var(--text-muted); font-weight:600; }
+  .lcard a.src { font-size:11px; color:var(--series-1); text-decoration:none; }
+  .lcard a.src:hover { text-decoration:underline; }
+
+  /* ---- checklist ---- */
+  .checks { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .chk { display:grid; grid-template-columns:210px 1fr; gap:12px; padding:10px 14px;
+    border-bottom:1px solid var(--grid); font-size:12.5px; align-items:baseline; }
+  .chk:last-child { border-bottom:none; }
+  .chk .ct { font-weight:650; }
+  .chk .cd { color:var(--text-secondary); line-height:1.45; }
+  .chk .cd b { color:var(--text-primary); font-weight:620; }
+
+  .toolbar { display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin-bottom:9px; }
+  .toolbar button { font:inherit; font-size:12px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px;
+    padding:5px 11px; cursor:pointer; }
+  .toolbar button[aria-pressed="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .toolbar .cnt { font-size:12px; color:var(--text-muted); margin-left:auto; }
+
+  .note { font-size:12px; color:var(--text-muted); margin-top:7px; max-width:90ch;
+    line-height:1.45; }
+
+  footer { margin-top:48px; font-size:13px; color:var(--text-muted); max-width:90ch; }
+  footer a { color:var(--text-secondary); }
+  #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
+    border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
+    font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
+    justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
+  #totop.show { display:flex; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+
+  /* ---- shared moving-average structure block (ma.js) ---- */
+  .mabreadth { display:grid; grid-template-columns:repeat(auto-fit,minmax(126px,1fr)); gap:8px;
+    margin-bottom:11px; }
+  .macard { background:var(--surface-1); border:1px solid var(--border); border-radius:11px;
+    padding:8px 11px; }
+  .macard.on { background:var(--on-bg); border-color:var(--up); }
+  .macard.off { background:var(--off-bg); border-color:var(--down); }
+  .macard .mal { font-size:10.5px; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.04em; }
+  .macard .mav { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; }
+  .macard .mas { font-size:10.5px; color:var(--text-secondary); }
+  .malist { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; }
+  .malist h4 { font-size:12.5px; font-weight:650; margin:0; padding:9px 13px;
+    background:var(--surface-2); border-bottom:1px solid var(--grid); }
+  .malist h4 .masub { font-weight:500; color:var(--text-muted); }
+  .marow { display:grid; grid-template-columns:150px 1fr auto; gap:10px; align-items:baseline;
+    padding:6px 13px; border-bottom:1px solid var(--grid); font-size:12.5px; }
+  .marow:last-child { border-bottom:none; }
+  .marow a { color:var(--text-primary); font-weight:640; text-decoration:none;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marow a:hover { text-decoration:underline; }
+  .marow .mawhat { color:var(--text-secondary); }
+  .marow.good .mawhat { color:var(--up); }
+  .marow.bad .mawhat { color:var(--down); }
+  .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
+    font-size:11.5px; white-space:nowrap; }
+  .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
+</style>
+</head>
+<body>
+<script src="ma.js?v=20260814d"></script>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>AI froth</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="tape.html">Today</a>
+    <a href="portfolio.html">Portfolio</a>
+    <a href="markets.html">Markets</a>
+    <a href="ai.html" class="here">AI</a>
+    <a href="commodities.html">Commodities</a>
+    <a href="countries.html">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+    <a href="lookup.html">Lookup</a>
+  </nav>
+
+  <p id="status">Fetching prices, credit and filings…</p>
+
+  <div id="content" hidden>
+
+    <h2>How frothy, and on what evidence</h2>
+    <p class="lede">Six measurable conditions, each scored against its own history and each shown
+      with the raw number behind it. The composite is an average, not a model — it is here to be
+      argued with, which is why every input is visible and every mapping is stated. A high reading
+      says the conditions that have accompanied late-cycle equity markets are present now. It says
+      nothing about timing, and these conditions can persist for years.</p>
+    <div class="gauge" id="gauge"></div>
+    <p class="note" id="gaugenote"></p>
+
+    <h2>The funding gap</h2>
+    <p class="lede">The question underneath everything else on this page: are the people building
+      this paying for it out of what they earn? Trailing capital spending against trailing
+      operating cash flow, then the same against what the sell side expects each name to spend over
+      the next twelve months. Where forward capex exceeds cash flow, the difference has to come
+      from the balance sheet or the bond market — which is exactly what has been happening.</p>
+    <div class="tiles" id="fundtiles"></div>
+    <div class="tablewrap" id="fundtable" style="margin-top:12px"></div>
+    <p class="note" id="fundnote"></p>
+
+    <h2>Credit — where it breaks first</h2>
+    <p class="lede">Equity prices the upside; credit prices survival. In every comparable
+      build-out, credit moved before the equity did. Three views: the long history, the rating
+      ladder, and what the builders themselves are paying to borrow.</p>
+
+    <h3 class="sub">The long view</h3>
+    <p class="lede">Moody's Baa against the 10-year Treasury — a daily corporate spread running
+      back to 1986, and the only credit series here with enough history to mean anything against
+      previous cycles.</p>
+    <div class="tiles" id="longcredit"></div>
+
+    <h3 class="sub">The rating ladder</h3>
+    <p class="lede">ICE BofA option-adjusted spreads by rating. What matters is not any one line
+      but the shape: an index at its tights while the bottom of the ladder gaps wider is a market
+      that has already started discriminating.</p>
+    <div class="tablewrap" id="ladder"></div>
+    <p class="note" id="laddernote"></p>
+
+    <h3 class="sub">What the builders pay</h3>
+    <p class="lede">The blended cost of debt each company is actually carrying, from interest
+      expense in the filings, set beside its leverage and its ability to cover interest out of
+      earnings <i>after</i> capital spending. That last column is the one that matters in a
+      build-out: a company whose EBITDA less capex will not cover its interest bill is funding
+      the gap with new money.</p>
+    <div class="tablewrap" id="costdebt"></div>
+    <p class="note">This is not a new-issue spread. The effective rate is interest expense over
+      average debt, so it reflects the coupon stack a company has accumulated — Amazon's number
+      is largely a memory of 2020 issuance, not a quote for this morning. It is comparable
+      <i>across</i> issuers at a point in time, and it drifts upward as cheap legacy paper matures
+      into a more expensive market. The gap to the 10-year Treasury is shown as context, not as a
+      credit spread.</p>
+
+    <h3 class="sub">What has actually been raised</h3>
+    <div class="ledger" id="issuance"></div>
+
+    <h2>The circular economy</h2>
+    <p class="lede">The defining feature of this cycle, and the one no data feed carries. Suppliers
+      investing in their own customers, customers paid in supplier equity to place orders,
+      cloud providers funding the tenants who rent their capacity. None of it is improper and all
+      of it is disclosed — but it means a portion of the revenue growth in the tables above is
+      capital travelling in a circle, and it is the mechanism that turned the 2000 telecom
+      build-out into a credit event.</p>
+    <div class="ledger" id="circular"></div>
+
+    <h3 class="sub">Financing structures worth knowing about</h3>
+    <div class="ledger" id="structures"></div>
+
+    <h3 class="sub">Accounting to keep an eye on</h3>
+    <div class="checks" id="accounting"></div>
+
+    <h2>Concentration</h2>
+    <p class="lede">How much of the market <i>is</i> this trade. When index gains depend on a
+      handful of names, an idiosyncratic shock to those names transmits to the whole index and to
+      every passive flow tracking it — which is the reason this page exists rather than sitting
+      inside Themes.</p>
+    <div class="tiles" id="conctiles"></div>
+    <div class="tablewrap" id="conctable" style="margin-top:12px"></div>
+
+    <h2>Asia — the physical layer</h2>
+    <p class="lede">Korea and Taiwan are where the AI trade stops being a narrative and becomes
+      silicon. Memory is the part of the chain that has been genuinely supply-constrained, which
+      makes the Korean market the cleanest read on whether the build is real — and has turned the
+      KOSPI into something closer to a memory-cycle instrument than a country index.</p>
+    <div class="tiles" id="asiatiles"></div>
+    <div class="tablewrap" id="asiatable" style="margin-top:12px"></div>
+    <p class="note" id="asianote"></p>
+
+    <h2>The power constraint</h2>
+    <p class="lede">Compute is bounded by electricity, and electricity is bounded by turbines,
+      transformers, cooling and grid interconnection — none of which can be ordered on a
+      twelve-month lead time. Which layer of the complex is leading tells you what the market is
+      pricing: chips and the speculative tail leading is a narrative bid, power and cooling
+      leading is a bid on the build actually happening.</p>
+    <div class="tablewrap" id="layers"></div>
+    <p class="note" id="layernote"></p>
+
+    <h2>Speculative temperature</h2>
+    <p class="lede">How much of the bid is borrowed, and how far down the quality ladder it has
+      reached. The profitless tail leads on the way up and stops confirming first — a rising
+      complex whose junk end has already rolled over is the shape that has preceded previous
+      turns.</p>
+    <div class="tiles" id="spectiles"></div>
+    <div class="tablewrap" id="spectable" style="margin-top:12px"></div>
+
+    <h2>The complex</h2>
+    <p class="lede">Every name on the page, layered by what it actually is. Valuation is shown but
+      deliberately kept out of the froth score: there is no free history deep enough to rank
+      today's multiples against previous cycles, and a percentile invented from three years of
+      data would be worse than no percentile at all. Click any column to sort.</p>
+    <div class="toolbar" id="layerfilter"></div>
+    <div class="tablewrap" id="complex"></div>
+
+    <h2>Structure</h2>
+    <p class="lede">Where the complex sits against its own moving averages on the daily, weekly
+      and monthly. In a crowded trade the monthly averages are the ones that matter: they are
+      slow enough that a break is rare, and rare enough that a break is information.</p>
+    <div id="structure"></div>
+
+    <h2>What would break it</h2>
+    <p class="lede">A bubble page that only counts reasons to worry is a mood, not an analysis.
+      These are the specific, observable things that would move the reading — in both directions —
+      written down in advance so they cannot be reinterpreted after the fact.</p>
+    <div class="checks" id="falsifiers"></div>
+
+  </div>
+
+  <footer>
+    <p>Prices from Yahoo Finance, fetched live on each load and delayed rather than real-time, in
+      each instrument's own listing currency — never converted. Credit spreads from FRED: ICE BofA
+      option-adjusted spreads, which are licensed data and served with a rolling three-year window
+      however they are requested, and Moody's Baa and Aaa yields against the 10-year Treasury,
+      which are not restricted and run back to the 1980s. Every percentile on this page states the
+      history it was drawn from. Margin debt from FINRA, monthly and published with a lag.
+      Fundamentals from the TradingView scanner, in native reporting currency; forward capital
+      spending is a consensus estimate and will be wrong. The deal and issuance ledgers are
+      maintained by hand, carry the date each item was announced, and link to a primary source.
+      Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
+  </footer>
+</div>
+<button id="totop" type="button" title="Back to top" aria-label="Back to top">↑</button>
+
+<script>
+"use strict";
+(async function () {
+  const $ = s => document.querySelector(s);
+  const h = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const PROXIES = [
+    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  ];
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  const YC = s => "https://finance.yahoo.com/chart/" + encodeURIComponent(s);
+
+  const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
+    : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const pct = (v, d = 1) => v == null || !isFinite(v) ? "–" : (v > 0 ? "+" : "") + fmt(v, d) + "%";
+  const cls = v => v == null ? "" : v >= 0 ? "up" : "down";
+  /* Sign outside the currency symbol: "$-133bn" reads as a typo where
+     "-$133bn" reads as a number. Several columns here go negative. */
+  const usd = v => {
+    if (v == null || !isFinite(v)) return "–";
+    const a = Math.abs(v), sign = v < 0 ? "-" : "";
+    if (a >= 1e12) return sign + "$" + fmt(a / 1e12, 2) + "tn";
+    if (a >= 1e9) return sign + "$" + fmt(a / 1e9, 0) + "bn";
+    if (a >= 1e6) return sign + "$" + fmt(a / 1e6, 0) + "m";
+    return sign + "$" + fmt(a, 0);
+  };
+  /* How much history a series carries, in words. Floored above five years
+     rather than rounded, because "41 years (1986 onward)" invites the reader
+     to do the subtraction and find 40 — and claiming slightly less history
+     than you have is the safe direction to be wrong in. */
+  const spanTxt = y => y == null ? "?" : y >= 5 ? fmt(Math.floor(y), 0) : fmt(y, 1);
+
+  /* Ordinals for percentiles. Rounding is kept away from the ends on purpose:
+     a reading of 99.6 printed as "100th" claims the series has never been here
+     before, which is a different and stronger statement than the truth. */
+  const ord = n => {
+    if (n == null || !isFinite(n)) return "–";
+    if (n > 99 && n < 100) return fmt(n, 1) + "th";
+    if (n > 0 && n < 1) return fmt(n, 1) + "th";
+    const r = Math.round(n);
+    const s = ["th", "st", "nd", "rd"], v = r % 100;
+    return r + (s[(v - 20) % 10] || s[v] || s[0]);
+  };
+
+  /* ---------------------------------------------------------------------
+     Price plumbing. Two years of daily closes: enough for a 200-day average
+     with room to spare, and enough to measure a full year of performance.
+     --------------------------------------------------------------------- */
+  async function proxied(url) {
+    let err;
+    for (const w of PROXIES) {
+      try {
+        const r = await fetch(w(url), { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+  async function fetchSeries(symbols) {
+    const chunks = [];
+    for (let i = 0; i < symbols.length; i += 10) chunks.push(symbols.slice(i, i + 10));
+    const res = await Promise.all(chunks.map(async c => {
+      try {
+        return (await proxied("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          c.map(encodeURIComponent).join(",") + "&range=2y&interval=1d")).spark?.result || [];
+      } catch { return []; }
+    }));
+    const out = {};
+    for (const row of res.flat()) {
+      const resp = row.response?.[0];
+      const closes = resp?.indicators?.quote?.[0]?.close, stamps = resp?.timestamp;
+      if (!closes || !stamps) continue;
+      const pts = [];
+      for (let i = 0; i < stamps.length; i++) {
+        if (closes[i] != null)
+          pts.push([new Date(stamps[i] * 1000).toISOString().slice(0, 10), closes[i]]);
+      }
+      if (pts.length > 30) out[row.symbol] = pts;
+    }
+    return out;
+  }
+
+  /* Value as at roughly N calendar days back, found by walking dates rather
+     than counting rows. Row counting silently mixes frequencies and holiday
+     calendars, which on a page spanning Seoul, Taipei, Tokyo and New York
+     would put a "3-month" reading weeks out of place. */
+  function atDaysAgo(pts, days) {
+    if (!pts.length) return null;
+    const target = new Date(pts[pts.length - 1][0]);
+    target.setDate(target.getDate() - days);
+    const iso = target.toISOString().slice(0, 10);
+    let best = null;
+    for (const [d, v] of pts) { if (d <= iso) best = v; else break; }
+    return best;
+  }
+  function ytdBase(pts) {
+    if (!pts.length) return null;
+    const year = pts[pts.length - 1][0].slice(0, 4);
+    let base = null;
+    for (const [d, v] of pts) { if (d < year + "-01-01") base = v; else break; }
+    return base;
+  }
+  function sma(vals, n) {
+    if (vals.length < n) return null;
+    let s = 0;
+    for (let i = vals.length - n; i < vals.length; i++) s += vals[i];
+    return s / n;
+  }
+  /* Wilder's smoothing, the 14-period definition everyone quotes. */
+  function rsi(vals, n = 14) {
+    if (vals.length < n + 2) return null;
+    let g = 0, l = 0;
+    for (let i = 1; i <= n; i++) {
+      const d = vals[i] - vals[i - 1];
+      if (d > 0) g += d; else l -= d;
+    }
+    g /= n; l /= n;
+    for (let i = n + 1; i < vals.length; i++) {
+      const d = vals[i] - vals[i - 1];
+      g = (g * (n - 1) + (d > 0 ? d : 0)) / n;
+      l = (l * (n - 1) + (d < 0 ? -d : 0)) / n;
+    }
+    if (l === 0) return 100;
+    return 100 - 100 / (1 + g / l);
+  }
+  function metrics(pts) {
+    const vals = pts.map(p => p[1]);
+    const last = vals[vals.length - 1];
+    const chg = (base) => base ? (last / base - 1) * 100 : null;
+    const s200 = sma(vals, 200), s50 = sma(vals, 50);
+    const yr = vals.slice(-252);
+    return {
+      last, asOf: pts[pts.length - 1][0],
+      d1: chg(vals[vals.length - 2]),
+      w1: chg(atDaysAgo(pts, 7)), m1: chg(atDaysAgo(pts, 30)),
+      m3: chg(atDaysAgo(pts, 91)), m6: chg(atDaysAgo(pts, 182)),
+      ytd: chg(ytdBase(pts)), y1: chg(atDaysAgo(pts, 365)),
+      dist200: s200 ? (last / s200 - 1) * 100 : null,
+      dist50: s50 ? (last / s50 - 1) * 100 : null,
+      rsi: rsi(vals),
+      hi52: yr.length ? Math.max(...yr) : null,
+      lo52: yr.length ? Math.min(...yr) : null,
+    };
+  }
+
+  /* ---------------------------------------------------------------------
+     Extra instruments beyond the complex itself.
+     --------------------------------------------------------------------- */
+  const INDICES = [
+    ["^KS11", "KOSPI", "Korea"], ["^KQ11", "KOSDAQ", "Korea, smaller listings"],
+    ["^TWII", "Taiwan Weighted", "Taiwan"], ["^N225", "Nikkei 225", "Japan"],
+    ["^SOX", "Philadelphia Semiconductor", "US semis"],
+    ["^NDX", "Nasdaq 100", "US large-cap growth"],
+    ["^GSPC", "S&P 500", "US broad"],
+  ];
+  const SPEC = [
+    ["^VXN", "Nasdaq volatility (VXN)", "vol"],
+    ["^VIX", "S&P volatility (VIX)", "vol"],
+    ["ARKK", "ARK Innovation", "Long-duration speculative equity"],
+    ["IPO", "Renaissance IPO", "Newly listed companies"],
+    ["BTC-USD", "Bitcoin", "The risk-appetite twin"],
+    ["SOXL", "3x semiconductors (SOXL)", "Leveraged retail vehicle"],
+    ["TQQQ", "3x Nasdaq 100 (TQQQ)", "Leveraged retail vehicle"],
+    ["HYG", "High yield bonds (HYG)", "Credit appetite"],
+    ["LQD", "Investment grade bonds (LQD)", "Credit appetite"],
+  ];
+  const POWER_INPUTS = [
+    ["URA", "Uranium miners (URA)", "Fuel for the nuclear answer"],
+    ["XLU", "US utilities (XLU)", "The incumbent grid"],
+    ["GRID", "Grid infrastructure (GRID)", "Transmission and equipment"],
+    ["PAVE", "US infrastructure (PAVE)", "Construction capacity"],
+    ["NG=F", "Natural gas", "The marginal fuel for new load"],
+  ];
+  const BREADTH = [["RSP", "S&P equal weight"], ["SPY", "S&P cap weighted"],
+                   ["QQQ", "Nasdaq 100"], ["SMH", "Semiconductors"], ["IGV", "Software"]];
+
+  /* ---------------------------------------------------------------------
+     Load everything.
+     --------------------------------------------------------------------- */
+  let AI, LEDGER;
+  try {
+    [AI, LEDGER] = await Promise.all([
+      fetch("data/ai.json?v=20260814e", { cache: "no-store" }).then(r => r.json()),
+      fetch("data/ai-ledger.json?v=20260814e", { cache: "no-store" }).then(r => r.json()),
+    ]);
+  } catch (e) {
+    $("#status").textContent = "Could not load the AI dataset. " + e;
+    return;
+  }
+
+  const NAMES = AI.names || [];
+  const extraSyms = [...INDICES, ...SPEC, ...POWER_INPUTS, ...BREADTH].map(r => r[0]);
+  const allSyms = [...new Set([...NAMES.map(n => n.sym), ...extraSyms])];
+  const SERIES = await fetchSeries(allSyms);
+  const M = {};
+  for (const [s, pts] of Object.entries(SERIES)) M[s] = metrics(pts);
+
+  const liveCount = Object.keys(M).length;
+  if (!liveCount) { $("#status").textContent = "No price data returned."; return; }
+
+  for (const n of NAMES) n.m = M[n.sym] || null;
+  const withPx = NAMES.filter(n => n.m);
+  const byLayer = k => withPx.filter(n => n.layer === k);
+  const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const median = a => {
+    const v = a.filter(x => x != null && isFinite(x)).sort((x, y) => x - y);
+    if (!v.length) return null;
+    const i = Math.floor(v.length / 2);
+    return v.length % 2 ? v[i] : (v[i - 1] + v[i]) / 2;
+  };
+
+  $("#status").hidden = true;
+  $("#content").hidden = false;
+
+  const stampBits = ["Live prices " + new Date().toLocaleTimeString("en-US",
+    { hour: "2-digit", minute: "2-digit" }) + " · " + liveCount + " instruments"];
+  if (AI.generated_at) stampBits.push("filings and credit " + AI.generated_at.slice(0, 10));
+  if (LEDGER.curated_through) stampBits.push("ledger reviewed " + LEDGER.curated_through);
+  $("#stamp").textContent = stampBits.join(" · ");
+
+  /* =====================================================================
+     1. The froth gauge
+     ===================================================================== */
+
+  /* Each component maps a raw reading onto 0-100 through a stated linear
+     range. The ranges are judgements and the page says so; what it must not
+     do is hide them, so every one is printed beside its own bar. */
+  const clamp01 = x => Math.max(0, Math.min(100, x));
+  const mapTo = (v, lo, hi) => v == null ? null : clamp01((v - lo) / (hi - lo) * 100);
+
+  const comps = [];
+
+  // -- credit compression ------------------------------------------------
+  const baa = AI.long_credit && AI.long_credit.baa10y;
+  const hy = AI.credit && AI.credit.hy;
+  if (baa || hy) {
+    const parts = [], detail = [];
+    if (baa && baa.pct_span != null) {
+      parts.push(100 - baa.pct_span);
+      detail.push("Baa spread " + fmt(baa.last, 2) + "pp, " + ord(baa.pct_span) +
+        " percentile of " + spanTxt(baa.span_years) + " years");
+    }
+    if (hy && hy.pct_span != null) {
+      parts.push(100 - hy.pct_span);
+      detail.push("high yield " + fmt(hy.last, 2) + "pp, " + ord(hy.pct_span) +
+        " percentile of the " + spanTxt(hy.span_years) + " years the licence serves");
+    }
+    comps.push({
+      key: "credit", label: "Credit compression",
+      hint: "Tight spreads mean lenders are not demanding much to fund this",
+      score: mean(parts), detail: detail.join("; "),
+      map: "the inverse of each spread's own percentile",
+    });
+  }
+
+  // -- debt-funded buildout ---------------------------------------------
+  const fund = AI.funding;
+  if (fund && fund.hyper_ratio_fwd != null) {
+    comps.push({
+      key: "buildout", label: "Debt-funded build",
+      hint: "Forward capex against the cash flow available to pay for it",
+      score: mapTo(fund.hyper_ratio_fwd, 70, 150),
+      detail: "the " + fund.hyperscaler.n + " largest spenders are expected to lay out " +
+        usd(fund.hyperscaler.capex_ntm) + " over the next twelve months against " +
+        usd(fund.hyperscaler.cfo) + " of trailing operating cash flow — " +
+        fmt(fund.hyper_ratio_fwd, 0) + "%",
+      map: "70% of cash flow scores 0, 150% scores 100",
+    });
+  }
+
+  // -- concentration -----------------------------------------------------
+  const conc = AI.concentration;
+  if (conc && conc.top10_pct != null) {
+    comps.push({
+      key: "conc", label: "Concentration",
+      hint: "How much of the market is a handful of names",
+      score: mapTo(conc.top10_pct, 20, 40),
+      detail: "the ten largest US listings are " + fmt(conc.top10_pct, 1) +
+        "% of the 500 largest by value; the AI complex on this page is " +
+        fmt(conc.ai_pct, 1) + "%",
+      map: "20% of the universe scores 0, 40% scores 100",
+    });
+  }
+
+  // -- borrowed bid ------------------------------------------------------
+  const mg = AI.margin;
+  if (mg && mg.yoy != null) {
+    comps.push({
+      key: "margin", label: "Borrowed bid",
+      hint: "Customer margin debt growth, the cleanest public read on leverage",
+      score: mg.yoy_pct_rank != null ? mg.yoy_pct_rank : mapTo(mg.yoy, 0, 50),
+      detail: "margin debt " + usd(mg.last * 1e6) + " in " + mg.period + ", " +
+        pct(mg.yoy, 0) + " on a year earlier" +
+        (mg.yoy_pct_rank != null ? " — " + ord(mg.yoy_pct_rank) +
+          " percentile of the " + mg.n_yoy + " monthly readings since " + mg.from.slice(0, 4)
+          : ""),
+      map: "the percentile of that growth rate in its own history",
+    });
+  }
+
+  // -- extension ---------------------------------------------------------
+  const ext = withPx.filter(n => n.m.dist200 != null);
+  if (ext.length > 20) {
+    const stretched = ext.filter(n => n.m.dist200 > 20).length;
+    const share = stretched / ext.length * 100;
+    comps.push({
+      key: "ext", label: "Price extension",
+      hint: "How far the complex has run above its own 200-day average",
+      score: mapTo(share, 10, 60),
+      detail: stretched + " of " + ext.length + " names sit more than 20% above their 200-day " +
+        "average (" + fmt(share, 0) + "%); the median name is " +
+        pct(median(ext.map(n => n.m.dist200)), 1) + " from it",
+      map: "10% of the complex stretched scores 0, 60% scores 100",
+    });
+  }
+
+  // -- quality of the bid ------------------------------------------------
+  /* Medians, matching the layer table further down. Means and medians of the
+     same basket printed in two places would differ by a point or two and read
+     as an error, and the median is the better statistic here anyway — these
+     baskets are small enough that one name can otherwise carry a layer. */
+  const tail3 = median(byLayer("tail").map(n => n.m.m3));
+  const hyper3 = median(byLayer("hyperscaler").map(n => n.m.m3));
+  if (tail3 != null && hyper3 != null) {
+    const spread = tail3 - hyper3;
+    comps.push({
+      key: "tail", label: "Junk leadership",
+      hint: "The profitless tail against the companies with the cash",
+      score: mapTo(spread, -20, 40),
+      detail: "the speculative tail is " + pct(tail3, 1) + " over three months against " +
+        pct(hyper3, 1) + " for the hyperscalers — a gap of " +
+        (spread > 0 ? "+" : "") + fmt(spread, 1) + " points" +
+        (spread > 0 ? ", with the lowest-quality end leading"
+                    : ", with the tail no longer leading"),
+      map: "the tail lagging by 20 points scores 0, leading by 40 scores 100",
+    });
+  }
+
+  const scored = comps.filter(c => c.score != null);
+  const composite = mean(scored.map(c => c.score));
+  const verdict = composite == null ? "no reading"
+    : composite >= 80 ? "Extreme"
+    : composite >= 65 ? "Elevated"
+    : composite >= 45 ? "Warm"
+    : composite >= 25 ? "Contained" : "Cold";
+
+  const g = $("#gauge");
+  const top = h("div", "gaugetop");
+  top.appendChild(h("div", "gv", composite == null ? "–" : fmt(composite, 0)));
+  top.appendChild(h("div", "gl", verdict));
+  top.appendChild(h("div", "gn", scored.length + " of " + comps.length +
+    " components reporting · equally weighted"));
+  g.appendChild(top);
+  const bar = h("div", "gbar");
+  if (composite != null) {
+    const mark = h("i");
+    mark.style.left = "calc(" + composite.toFixed(1) + "% - 1.5px)";
+    bar.appendChild(mark);
+  }
+  g.appendChild(bar);
+  const scale = h("div", "gscale");
+  for (const t of ["0 cold", "25", "50", "75", "100 extreme"]) scale.appendChild(h("span", null, t));
+  g.appendChild(scale);
+  const cbox = h("div", "comps");
+  for (const c of scored.sort((a, b) => b.score - a.score)) {
+    const row = h("div", "comp");
+    const lab = h("div", "cl", c.label);
+    lab.appendChild(h("span", null, c.hint));
+    row.appendChild(lab);
+    const cb = h("div", "cbar");
+    const fill = h("i", c.score >= 75 ? "hot" : c.score >= 50 ? "warm" : "");
+    fill.style.width = c.score.toFixed(1) + "%";
+    cb.appendChild(fill);
+    row.appendChild(cb);
+    const cv = h("div", "cv", fmt(c.score, 0));
+    row.appendChild(cv);
+    cbox.appendChild(row);
+    const det = h("div", "comp");
+    det.appendChild(h("div", null, ""));
+    const d = h("div", null, c.detail + " · scored so that " + c.map + ".");
+    d.style.cssText = "font-size:11.5px;color:var(--text-secondary);line-height:1.4;" +
+      "grid-column:2 / span 2;margin:-3px 0 5px";
+    det.appendChild(d);
+    cbox.appendChild(det);
+  }
+  g.appendChild(cbox);
+
+  /* The dissent is usually the information. A composite that hides which
+     component disagrees with the other five is worse than no composite, so
+     the spread between the extremes is named before the caveats. */
+  if (scored.length > 2) {
+    const hi = scored[0], lo = scored[scored.length - 1];
+    if (hi.score - lo.score > 25) {
+      const d = h("p");
+      d.style.cssText = "font-size:12.5px;margin-top:12px;padding-top:11px;" +
+        "border-top:1px solid var(--grid);color:var(--text-primary);line-height:1.5";
+      d.appendChild(h("b", null, "The disagreement: "));
+      d.appendChild(document.createTextNode(
+        hi.label.toLowerCase() + " reads " + fmt(hi.score, 0) + " while " +
+        lo.label.toLowerCase() + " reads " + fmt(lo.score, 0) + ". " +
+        (lo.key === "tail"
+          ? "That combination is worth more attention than the composite. The financing " +
+            "conditions are as loose as they have been, and the lowest-quality end of the " +
+            "complex has stopped leading anyway — which is the order in which these things " +
+            "have historically come apart, not a contradiction of it."
+          : "Read the components rather than the average until they converge.")));
+      g.appendChild(d);
+    }
+  }
+
+  $("#gaugenote").textContent =
+    "Equal weighting is a choice, not a finding — a reader who thinks credit matters more than " +
+    "price extension should read the components rather than the composite. Two of the six are " +
+    "measured against fewer than five years of history because that is all the licence permits, " +
+    "and each says so. None of this is a timing signal: these conditions have persisted for " +
+    "years at a time before resolving, in both directions.";
+
+  /* =====================================================================
+     2. The funding gap
+     ===================================================================== */
+  if (fund) {
+    const ft = $("#fundtiles");
+    const hyp = fund.hyperscaler, neo = fund.neocloud;
+    const tile = (label, value, sub, kind) => {
+      const t = h("div", "tile" + (kind ? " " + kind : ""));
+      t.appendChild(h("div", "tl", label));
+      t.appendChild(h("div", "tv", value));
+      t.appendChild(h("div", "ts", sub));
+      return t;
+    };
+    ft.appendChild(tile("Capex, last 12 months", usd(hyp.capex_ttm),
+      "across " + hyp.n + " hyperscalers"));
+    ft.appendChild(tile("Capex, next 12 months", usd(hyp.capex_ntm),
+      "consensus estimate, " + pct(hyp.capex_ttm ? (hyp.capex_ntm / hyp.capex_ttm - 1) * 100 : null, 0) +
+      " on trailing", "warn"));
+    ft.appendChild(tile("Operating cash flow", usd(hyp.cfo), "trailing twelve months"));
+    ft.appendChild(tile("Forward capex / cash flow", fmt(fund.hyper_ratio_fwd, 0) + "%",
+      fund.hyper_ratio_fwd > 100 ? "more than they earn" : "within cash flow",
+      fund.hyper_ratio_fwd > 100 ? "bad" : "good"));
+    ft.appendChild(tile("The gap", usd(fund.hyper_gap_fwd),
+      "to be found from balance sheet or bond market",
+      fund.hyper_gap_fwd > 0 ? "bad" : "good"));
+    if (neo && neo.capex_ntm) {
+      ft.appendChild(tile("Neocloud capex, next 12m", usd(neo.capex_ntm),
+        "on " + usd(neo.cfo) + " of operating cash flow", "bad"));
+    }
+
+    /* Layer first, then size within the layer. Sorting by size across both
+       layers interleaves them and the group headings then repeat down the
+       table, which reads as a rendering fault rather than an ordering. */
+    const FUND_ORDER = ["hyperscaler", "neocloud"];
+    const rows = NAMES
+      .filter(n => n.capex_ntm && FUND_ORDER.includes(n.layer))
+      .sort((a, b) => FUND_ORDER.indexOf(a.layer) - FUND_ORDER.indexOf(b.layer) ||
+                      (b.capex_ntm || 0) - (a.capex_ntm || 0));
+    const inAggregate = new Set([...(AI.funding.hyper_members || []),
+                                 ...(AI.funding.neo_members || [])]);
+    const tbl = h("table");
+    const thead = h("thead");
+    const hr = h("tr");
+    for (const [t, l] of [["Company", 1], ["Capex TTM", 0], ["Capex NTM", 0], ["Growth", 0],
+                          ["Cash flow", 0], ["Capex / CFO now", 0], ["Forward", 0], ["Gap", 0]]) {
+      const th = h("th", (l ? "left " : "") + "nosort", t);
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    tbl.appendChild(thead);
+    const tb = h("tbody");
+    let lastLayer = null;
+    for (const n of rows) {
+      if (n.layer !== lastLayer) {
+        lastLayer = n.layer;
+        const gr = h("tr", "grouphead");
+        const gd = h("td", "left");
+        gd.colSpan = 8;
+        gd.textContent = AI.layers[n.layer] || n.layer;
+        gr.appendChild(gd);
+        tb.appendChild(gr);
+      }
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      const a = h("a", "cname", n.name);
+      a.href = YC(n.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      c0.appendChild(a);
+      c0.appendChild(h("span", "csub", n.sym +
+        (inAggregate.has(n.sym) ? " · in the totals above" : "")));
+      tr.appendChild(c0);
+      tr.appendChild(h("td", null, usd(n.capex_ttm)));
+      tr.appendChild(h("td", null, usd(n.capex_ntm)));
+      const gcell = h("td", cls(n.capex_growth), pct(n.capex_growth, 0));
+      tr.appendChild(gcell);
+      tr.appendChild(h("td", null, usd(n.cfo)));
+      tr.appendChild(h("td", n.capex_cfo > 100 ? "down" : "",
+        n.capex_cfo == null ? "–" : fmt(n.capex_cfo, 0) + "%"));
+      tr.appendChild(h("td", n.capex_cfo_fwd > 100 ? "down" : "",
+        n.capex_cfo_fwd == null ? "–" : fmt(n.capex_cfo_fwd, 0) + "%"));
+      const gap = (n.capex_ntm != null && n.cfo != null) ? n.capex_ntm - n.cfo : null;
+      tr.appendChild(h("td", gap > 0 ? "down" : "up", gap == null ? "–" : usd(gap)));
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    $("#fundtable").appendChild(tbl);
+    $("#fundnote").textContent =
+      "Forward capex is a consensus estimate and consensus has consistently been too low through " +
+      "this cycle, so the gap shown is more likely understated than overstated. Cash flow is " +
+      "trailing and will grow, so the forward ratio overstates the eventual shortfall to the " +
+      "extent that it does. Neither correction is applied here — both are stated so the reader " +
+      "can apply their own. Spending routed through unconsolidated joint ventures, of which " +
+      "there is now a material amount, appears in neither column.";
+  }
+
+  /* =====================================================================
+     3. Credit
+     ===================================================================== */
+  const lc = $("#longcredit");
+  for (const key of ["baa10y", "aaa10y"]) {
+    const s = AI.long_credit && AI.long_credit[key];
+    if (!s) continue;
+    const frothy = s.pct_span != null && s.pct_span < 25;
+    const t = h("div", "tile" + (frothy ? " bad" : ""));
+    t.appendChild(h("div", "tl", s.label));
+    t.appendChild(h("div", "tv", fmt(s.last, 2) + "pp"));
+    t.appendChild(h("div", "ts", ord(s.pct_span) + " percentile of " +
+      spanTxt(s.span_years) + " years (" + s.from.slice(0, 4) + " onward, " +
+      s.n.toLocaleString("en-US") + " daily observations)"));
+    t.appendChild(h("div", "ts", "range " + fmt(s.min_span, 2) + " to " + fmt(s.max_span, 2) +
+      "pp · " + (s.chg_1y >= 0 ? "+" : "") + fmt(s.chg_1y, 2) + "pp over a year"));
+    lc.appendChild(t);
+  }
+  if (AI.dispersion) {
+    const d = AI.dispersion;
+    const t = h("div", "tile" + (d.pct_span > 75 ? " bad" : ""));
+    t.appendChild(h("div", "tl", "Dispersion inside high yield"));
+    t.appendChild(h("div", "tv", fmt(d.last, 2) + "pp"));
+    t.appendChild(h("div", "ts", "CCC less BB · " + ord(d.pct_span) + " percentile of the " +
+      spanTxt(d.span_years) + " years available"));
+    t.appendChild(h("div", "ts", "the gap between the safest and riskiest ends of high yield"));
+    lc.appendChild(t);
+  }
+
+  const ladderRows = [];
+  for (const k of ["aaa", "aa", "a", "bbb", "ig", "bb", "b", "ccc", "hy"]) {
+    const s = AI.credit && AI.credit[k];
+    if (s) ladderRows.push(s);
+  }
+  if (ladderRows.length) {
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [t, l] of [["Rating", 1], ["Spread", 0], ["1m", 0], ["3m", 0], ["1y", 0],
+                          ["Percentile", 0], ["Range over the window", 0]]) {
+      hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    for (const s of ladderRows) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      c0.appendChild(h("b", null, s.label));
+      c0.appendChild(h("span", "csub", s.series));
+      tr.appendChild(c0);
+      tr.appendChild(h("td", null, fmt(s.last, 2) + "pp"));
+      for (const k of ["chg_1m", "chg_3m", "chg_1y"]) {
+        // Widening is the bearish direction for credit, so the colour is
+        // inverted against every other table on the site.
+        tr.appendChild(h("td", s[k] == null ? "" : s[k] > 0 ? "down" : "up",
+          s[k] == null ? "–" : (s[k] > 0 ? "+" : "") + fmt(s[k], 2)));
+      }
+      const p = h("td");
+      const pl = h("span", "pill " + (s.pct_span < 25 ? "hot" : s.pct_span > 75 ? "cold" : "flat"),
+        ord(s.pct_span));
+      p.appendChild(pl);
+      tr.appendChild(p);
+      tr.appendChild(h("td", null, fmt(s.min_span, 2) + " – " + fmt(s.max_span, 2) + "pp"));
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    $("#ladder").appendChild(tbl);
+    const sp = ladderRows[0];
+    $("#laddernote").textContent =
+      "Percentiles here are drawn from " + spanTxt(sp.span_years) + " years — the whole window " +
+      "FRED serves for ICE BofA data, which is licensed and truncated to a rolling span however " +
+      "it is requested. That is enough to rank today within the current cycle and not enough to " +
+      "compare it with 2007 or 2000; the Moody's series above exists to cover that. A red " +
+      "percentile means tight against that window, which on this page is the frothy direction.";
+  }
+
+  const cdRows = NAMES.filter(n => n.cost_debt != null)
+    .sort((a, b) => b.cost_debt - a.cost_debt);
+  if (cdRows.length) {
+    const ust = AI.ust10 ? AI.ust10.last : null;
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [t, l] of [["Company", 1], ["Layer", 1], ["Cost of debt", 0], ["vs 10-year", 0],
+                          ["Total debt", 0], ["Net debt / EBITDA", 0],
+                          ["Interest cover after capex", 0]]) {
+      hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    for (const n of cdRows) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      const a = h("a", "cname", n.name);
+      a.href = YC(n.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      c0.appendChild(a);
+      tr.appendChild(c0);
+      tr.appendChild(h("td", "left", (AI.layers[n.layer] || n.layer).replace(/ and .*/, "")));
+      tr.appendChild(h("td", null, fmt(n.cost_debt, 2) + "%"));
+      tr.appendChild(h("td", null, ust == null ? "–"
+        : (n.cost_debt - ust > 0 ? "+" : "") + fmt(n.cost_debt - ust, 2) + "pp"));
+      tr.appendChild(h("td", null, usd(n.debt)));
+      tr.appendChild(h("td", n.nd_ebitda > 3 ? "down" : "",
+        n.nd_ebitda == null ? "–" : fmt(n.nd_ebitda, 1) + "x"));
+      const cc = h("td", n.capex_cover == null ? "" : n.capex_cover < 0 ? "down"
+        : n.capex_cover < 3 ? "warn" : "up",
+        n.capex_cover == null ? "–" : fmt(n.capex_cover, 1) + "x");
+      tr.appendChild(cc);
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    $("#costdebt").appendChild(tbl);
+  }
+
+  /* ---- ledgers ---- */
+  const ledgerCard = (o, opts) => {
+    const c = h("div", "lcard");
+    const head = h("div", "lh");
+    head.appendChild(h("b", null, opts.title(o)));
+    head.appendChild(h("span", "ld", o.date || ""));
+    c.appendChild(head);
+    if (o.headline || o.usd_bn != null) {
+      c.appendChild(h("div", "lamt", o.headline ||
+        ("$" + fmt(o.usd_bn, o.usd_bn >= 100 ? 0 : 1) + "bn")));
+    }
+    const basisKey = (LEDGER.basis_key || {})[o.basis];
+    if (o.basis) {
+      const b = h("div", "lbasis", (o.kind || o.basis));
+      b.title = basisKey || "";
+      c.appendChild(b);
+    }
+    if (o.what) c.appendChild(h("p", null, o.what));
+    if (o.note) c.appendChild(h("p", null, o.note));
+    if (o.why) c.appendChild(h("p", "why", o.why));
+    if (basisKey) {
+      const bn = h("p", null, basisKey);
+      bn.style.cssText = "font-size:11px;color:var(--text-muted)";
+      c.appendChild(bn);
+    }
+    if (o.source) {
+      const a = h("a", "src", "Source ↗");
+      a.href = o.source; a.target = "_blank"; a.rel = "noopener noreferrer";
+      c.appendChild(a);
+    }
+    return c;
+  };
+  for (const o of (LEDGER.issuance || [])) {
+    $("#issuance").appendChild(ledgerCard(o, { title: x => x.issuer }));
+  }
+  for (const o of (LEDGER.circular || [])) {
+    $("#circular").appendChild(ledgerCard(o, { title: x => x.from + " → " + x.to }));
+  }
+  for (const o of (LEDGER.structures || [])) {
+    $("#structures").appendChild(ledgerCard(o, { title: x => x.name }));
+  }
+  for (const o of (LEDGER.accounting || [])) {
+    const row = h("div", "chk");
+    row.appendChild(h("div", "ct", o.what));
+    const d = h("div", "cd");
+    d.appendChild(document.createTextNode(o.who + " "));
+    d.appendChild(h("b", null, o.why));
+    d.appendChild(document.createTextNode(" What to watch: " + o.watch + " "));
+    if (o.source) {
+      const a = h("a", "src", "Source ↗");
+      a.href = o.source; a.target = "_blank"; a.rel = "noopener noreferrer";
+      d.appendChild(a);
+    }
+    row.appendChild(d);
+    $("#accounting").appendChild(row);
+  }
+
+  /* =====================================================================
+     4. Concentration
+     ===================================================================== */
+  if (conc) {
+    const ct = $("#conctiles");
+    const t1 = h("div", "tile bad");
+    t1.appendChild(h("div", "tl", "Ten largest US listings"));
+    t1.appendChild(h("div", "tv", fmt(conc.top10_pct, 1) + "%"));
+    t1.appendChild(h("div", "ts", "of the value of the 500 largest, " + usd(conc.universe_cap)));
+    ct.appendChild(t1);
+
+    const t2 = h("div", "tile warn");
+    t2.appendChild(h("div", "tl", "The AI complex"));
+    t2.appendChild(h("div", "tv", fmt(conc.ai_pct, 1) + "%"));
+    t2.appendChild(h("div", "ts", "the US-listed names on this page, " + usd(conc.ai_cap)));
+    ct.appendChild(t2);
+
+    if (AI.nvda_gdp != null) {
+      const t3 = h("div", "tile bad");
+      t3.appendChild(h("div", "tl", "Nvidia against US GDP"));
+      t3.appendChild(h("div", "tv", fmt(AI.nvda_gdp, 1) + "%"));
+      t3.appendChild(h("div", "ts", "market value as a share of annualised GDP. Cisco, the " +
+        "comparison usually reached for, peaked near 5% in March 2000"));
+      ct.appendChild(t3);
+    }
+    const rsp = M["RSP"], spy = M["SPY"];
+    if (rsp && spy) {
+      const rel1 = rsp.y1 != null && spy.y1 != null ? rsp.y1 - spy.y1 : null;
+      const t4 = h("div", "tile" + (rel1 < 0 ? " bad" : " good"));
+      t4.appendChild(h("div", "tl", "Equal weight vs cap weight"));
+      t4.appendChild(h("div", "tv", pct(rel1, 1)));
+      t4.appendChild(h("div", "ts", "the average S&P company against the index over a year. " +
+        "Negative means the gains are concentrated in the largest names"));
+      ct.appendChild(t4);
+    }
+
+    if (conc.largest && conc.largest.length) {
+      const tbl = h("table");
+      const thead = h("thead"), hr = h("tr");
+      for (const [t, l] of [["Rank", 1], ["Company", 1], ["Market value", 0],
+                            ["Share of the 500", 0], ["YTD", 0], ["From 200-day", 0]]) {
+        hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+      }
+      thead.appendChild(hr); tbl.appendChild(thead);
+      const tb = h("tbody");
+      conc.largest.forEach((row, i) => {
+        const tr = h("tr");
+        tr.appendChild(h("td", "left", String(i + 1)));
+        const c1 = h("td", "left");
+        const a = h("a", "cname", row.s);
+        a.href = YC(row.s); a.target = "_blank"; a.rel = "noopener noreferrer";
+        c1.appendChild(a);
+        const known = NAMES.find(n => n.sym === row.s);
+        if (known) c1.appendChild(h("span", "csub", known.name));
+        tr.appendChild(c1);
+        tr.appendChild(h("td", null, usd(row.cap)));
+        tr.appendChild(h("td", null, fmt(row.cap / conc.universe_cap * 100, 1) + "%"));
+        const m = M[row.s];
+        tr.appendChild(h("td", m ? cls(m.ytd) : "", m ? pct(m.ytd) : "–"));
+        tr.appendChild(h("td", m ? cls(m.dist200) : "", m ? pct(m.dist200) : "–"));
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      $("#conctable").appendChild(tbl);
+    }
+  }
+
+  /* =====================================================================
+     5. Asia
+     ===================================================================== */
+  const at = $("#asiatiles");
+  for (const [sym, name, sub] of INDICES.filter(r => ["^KS11", "^KQ11", "^TWII", "^N225"].includes(r[0]))) {
+    const m = M[sym];
+    if (!m) continue;
+    const t = h("div", "tile");
+    t.appendChild(h("div", "tl", name));
+    t.appendChild(h("div", "tv", fmt(m.last, 0)));
+    const s = h("div", "ts");
+    s.innerHTML = "";
+    const ytd = h("span", cls(m.ytd), pct(m.ytd, 1));
+    s.appendChild(document.createTextNode("YTD "));
+    s.appendChild(ytd);
+    s.appendChild(document.createTextNode(" · 1y "));
+    const y1 = h("span", cls(m.y1), pct(m.y1, 1));
+    s.appendChild(y1);
+    t.appendChild(s);
+    t.appendChild(h("div", "ts", sub + " · " + pct(m.dist200, 1) + " from its 200-day · RSI " +
+      fmt(m.rsi, 0)));
+    at.appendChild(t);
+  }
+  if (AI.korea) {
+    const k = AI.korea;
+    const t = h("div", "tile bad");
+    t.appendChild(h("div", "tl", "Samsung and SK Hynix"));
+    t.appendChild(h("div", "tv", fmt(k.memory_pct, 1) + "%"));
+    t.appendChild(h("div", "ts", "of the value of the " + k.universe_n +
+      " largest Korean listings. Two memory companies are half the market"));
+    at.appendChild(t);
+  }
+
+  const asiaNames = byLayer("memory");
+  if (asiaNames.length) {
+    const tbl = h("table");
+    const thead = h("thead"), hr = h("tr");
+    for (const [t, l] of [["Name", 1], ["Last", 0], ["Currency", 1], ["1M", 0], ["3M", 0],
+                          ["YTD", 0], ["1Y", 0], ["From 200-day", 0], ["RSI", 0]]) {
+      hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+    }
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = h("tbody");
+    for (const n of asiaNames.sort((a, b) => (b.m.y1 || -999) - (a.m.y1 || -999))) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      const a = h("a", "cname", n.name);
+      a.href = YC(n.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      c0.appendChild(a);
+      c0.appendChild(h("span", "csub", n.sym));
+      tr.appendChild(c0);
+      tr.appendChild(h("td", null, fmt(n.m.last, n.m.last > 1000 ? 0 : 2)));
+      tr.appendChild(h("td", "left", n.currency || ""));
+      for (const k of ["m1", "m3", "ytd", "y1"]) {
+        tr.appendChild(h("td", cls(n.m[k]), pct(n.m[k])));
+      }
+      tr.appendChild(h("td", cls(n.m.dist200), pct(n.m.dist200)));
+      tr.appendChild(h("td", n.m.rsi > 70 ? "down" : n.m.rsi < 30 ? "up" : "", fmt(n.m.rsi, 0)));
+      tb.appendChild(tr);
+    }
+    tbl.appendChild(tb);
+    $("#asiatable").appendChild(tbl);
+  }
+  $("#asianote").textContent =
+    "Every price here is in its own listing currency — Korean won, Taiwan dollars, yen — and is " +
+    "never converted, so a Korean return is what a Korean investor earned and carries no currency " +
+    "translation. Both a strength and a caveat: the KOSPI's move and the won's move are separate " +
+    "questions and this page only answers the first.";
+
+  /* =====================================================================
+     6. Layer leadership and the power constraint
+     ===================================================================== */
+  const LAYER_ORDER = ["chips", "hyperscaler", "memory", "network", "power", "software",
+                       "neocloud", "tail"];
+  const tbl = h("table");
+  const thead = h("thead"), hr = h("tr");
+  for (const [t, l] of [["Layer", 1], ["Names", 0], ["1W", 0], ["1M", 0], ["3M", 0],
+                        ["YTD", 0], ["1Y", 0], ["Median from 200-day", 0], ["Median RSI", 0]]) {
+    hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+  }
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tb = h("tbody");
+  const layerStats = [];
+  for (const key of LAYER_ORDER) {
+    const rows = byLayer(key);
+    if (!rows.length) continue;
+    const st = {
+      key, label: AI.layers[key] || key, n: rows.length,
+      w1: median(rows.map(r => r.m.w1)), m1: median(rows.map(r => r.m.m1)),
+      m3: median(rows.map(r => r.m.m3)), ytd: median(rows.map(r => r.m.ytd)),
+      y1: median(rows.map(r => r.m.y1)),
+      d200: median(rows.map(r => r.m.dist200)), rsi: median(rows.map(r => r.m.rsi)),
+    };
+    layerStats.push(st);
+    const tr = h("tr");
+    tr.appendChild(h("td", "left", st.label));
+    tr.appendChild(h("td", null, String(st.n)));
+    for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
+      tr.appendChild(h("td", cls(st[k]), pct(st[k])));
+    }
+    tr.appendChild(h("td", cls(st.d200), pct(st.d200)));
+    tr.appendChild(h("td", st.rsi > 70 ? "down" : st.rsi < 30 ? "up" : "", fmt(st.rsi, 0)));
+    tb.appendChild(tr);
+  }
+  // The physical inputs sit in the same table, marked off, because the
+  // comparison against the equity layers is the whole point.
+  const gr = h("tr", "grouphead");
+  const gd = h("td", "left"); gd.colSpan = 9;
+  gd.textContent = "The physical inputs";
+  gr.appendChild(gd); tb.appendChild(gr);
+  for (const [sym, label, sub] of POWER_INPUTS) {
+    const m = M[sym];
+    if (!m) continue;
+    const tr = h("tr");
+    const c0 = h("td", "left");
+    const a = h("a", "cname", label);
+    a.href = YC(sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+    c0.appendChild(a);
+    c0.appendChild(h("span", "csub", sub));
+    tr.appendChild(c0);
+    tr.appendChild(h("td", null, "–"));
+    for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
+      tr.appendChild(h("td", cls(m[k]), pct(m[k])));
+    }
+    tr.appendChild(h("td", cls(m.dist200), pct(m.dist200)));
+    tr.appendChild(h("td", m.rsi > 70 ? "down" : m.rsi < 30 ? "up" : "", fmt(m.rsi, 0)));
+    tb.appendChild(tr);
+  }
+  tbl.appendChild(tb);
+  $("#layers").appendChild(tbl);
+
+  const chips = layerStats.find(s => s.key === "chips");
+  const power = layerStats.find(s => s.key === "power");
+  const tailS = layerStats.find(s => s.key === "tail");
+  if (chips && power && chips.m3 != null && power.m3 != null) {
+    const lead = power.m3 - chips.m3;
+    $("#layernote").textContent =
+      "Over three months, power and cooling has " +
+      (lead >= 0 ? "led" : "lagged") + " chips by " + fmt(Math.abs(lead), 1) + " points" +
+      (tailS && tailS.m3 != null ? ", and the speculative tail has done " + pct(tailS.m3, 1) : "") +
+      ". Read it as a question rather than an answer: physical layers leading is consistent with " +
+      "the build being real and being bottlenecked, chips and the tail leading is consistent with " +
+      "the expectation of a build running ahead of the equipment being installed. Medians rather " +
+      "than means, so one name cannot carry a layer.";
+  }
+
+  /* =====================================================================
+     7. Speculative temperature
+     ===================================================================== */
+  const st = $("#spectiles");
+  if (mg) {
+    const t = h("div", "tile" + (mg.yoy > 25 ? " bad" : ""));
+    t.appendChild(h("div", "tl", "Margin debt"));
+    t.appendChild(h("div", "tv", usd(mg.last * 1e6)));
+    t.appendChild(h("div", "ts", pct(mg.yoy, 0) + " on a year earlier · " + mg.period +
+      (mg.yoy_pct_rank != null ? " · " + ord(mg.yoy_pct_rank) +
+        " percentile of the " + mg.n_yoy + " monthly readings since " +
+        mg.from.slice(0, 4) : "")));
+    st.appendChild(t);
+
+    /* The percentile says how unusual this is. The episodes say what company
+       it keeps, which is the part that lands — and the current run is held out
+       of the comparison so the present is not offered as a precedent for
+       itself. */
+    if (mg.faster_episodes && mg.faster_episodes.length) {
+      const monthName = p => {
+        const [y, m] = p.split("-");
+        return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
+                "Oct", "Nov", "Dec"][+m - 1] + " " + y;
+      };
+      const eps = mg.faster_episodes.map(e =>
+        (e.from === e.to ? monthName(e.from) : monthName(e.from) + " to " + monthName(e.to)) +
+        " (peak " + pct(e.peak, 0) + ")").join(", ");
+      const t2 = h("div", "tile bad");
+      t2.style.gridColumn = "span 2";
+      t2.appendChild(h("div", "tl", "The company that growth rate keeps"));
+      t2.appendChild(h("div", "tv", mg.faster_episodes.length + " earlier episodes"));
+      t2.appendChild(h("div", "ts", "Since " + mg.from.slice(0, 4) + ", margin debt has grown " +
+        "faster than today's " + pct(mg.yoy, 0) + " only in " + eps + "."));
+      t2.appendChild(h("div", "ts", mg.current_run_peak != null && mg.current_run_peak > mg.yoy
+        ? "This run peaked at " + pct(mg.current_run_peak, 0) + " and has since slowed — the " +
+          "level is still rising, the rate of increase is not."
+        : "Each of those was within months of a market high, which is a small sample and not a " +
+          "rule."));
+      st.appendChild(t2);
+    }
+  }
+  const vxn = M["^VXN"], vix = M["^VIX"];
+  if (vxn && vix) {
+    const gap = vxn.last - vix.last;
+    const t = h("div", "tile");
+    t.appendChild(h("div", "tl", "Tech volatility premium"));
+    t.appendChild(h("div", "tv", fmt(gap, 1)));
+    t.appendChild(h("div", "ts", "VXN " + fmt(vxn.last, 1) + " less VIX " + fmt(vix.last, 1) +
+      " — what options charge for Nasdaq risk above the broad market"));
+    st.appendChild(t);
+  }
+  if (tail3 != null && hyper3 != null) {
+    const t = h("div", "tile" + (tail3 - hyper3 > 0 ? " bad" : " good"));
+    t.appendChild(h("div", "tl", "Junk versus quality"));
+    t.appendChild(h("div", "tv", (tail3 - hyper3 > 0 ? "+" : "") + fmt(tail3 - hyper3, 1) + "pts"));
+    t.appendChild(h("div", "ts", "the profitless tail against the hyperscalers over three months"));
+    st.appendChild(t);
+  }
+  const btc = M["BTC-USD"];
+  if (btc) {
+    const t = h("div", "tile");
+    t.appendChild(h("div", "tl", "Bitcoin"));
+    t.appendChild(h("div", "tv", usd(btc.last)));
+    t.appendChild(h("div", "ts", "3m " + pct(btc.m3) + " · the risk-appetite twin, and the " +
+      "asset the neoclouds were mining before they were neoclouds"));
+    st.appendChild(t);
+  }
+
+  const specRows = [...SPEC, ...BREADTH.map(b => [b[0], b[1], "Breadth reference"])];
+  const stbl = h("table");
+  const sthead = h("thead"), shr = h("tr");
+  for (const [t, l] of [["Instrument", 1], ["Last", 0], ["1W", 0], ["1M", 0], ["3M", 0],
+                        ["YTD", 0], ["1Y", 0], ["From 200-day", 0], ["RSI", 0]]) {
+    shr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
+  }
+  sthead.appendChild(shr); stbl.appendChild(sthead);
+  const stb = h("tbody");
+  for (const [sym, label, sub] of specRows) {
+    const m = M[sym];
+    if (!m) continue;
+    const tr = h("tr");
+    const c0 = h("td", "left");
+    const a = h("a", "cname", label);
+    a.href = YC(sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+    c0.appendChild(a);
+    if (sub) c0.appendChild(h("span", "csub", sub));
+    tr.appendChild(c0);
+    tr.appendChild(h("td", null, fmt(m.last, m.last > 1000 ? 0 : 2)));
+    for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
+      tr.appendChild(h("td", cls(m[k]), pct(m[k])));
+    }
+    tr.appendChild(h("td", cls(m.dist200), pct(m.dist200)));
+    tr.appendChild(h("td", m.rsi > 70 ? "down" : m.rsi < 30 ? "up" : "", fmt(m.rsi, 0)));
+    stb.appendChild(tr);
+  }
+  stbl.appendChild(stb);
+  $("#spectable").appendChild(stbl);
+
+  /* =====================================================================
+     8. The complex — sortable, filterable
+     ===================================================================== */
+  let sortKey = "cap", sortAsc = false, layerFilter = "all";
+  const COLS = [
+    ["name", "Company", 1, n => n.name],
+    ["layer", "Layer", 1, n => AI.layers[n.layer] || n.layer],
+    ["last", "Last", 0, n => n.m.last],
+    ["cap", "Market value", 0, n => n.cap],
+    ["d1", "1D", 0, n => n.m.d1],
+    ["m1", "1M", 0, n => n.m.m1],
+    ["m3", "3M", 0, n => n.m.m3],
+    ["ytd", "YTD", 0, n => n.m.ytd],
+    ["y1", "1Y", 0, n => n.m.y1],
+    ["dist200", "From 200-day", 0, n => n.m.dist200],
+    ["rsi", "RSI", 0, n => n.m.rsi],
+    ["ps", "EV / sales", 0, n => n.ps],
+    ["ev_ebitda", "EV / EBITDA", 0, n => n.ev_ebitda],
+    ["nd_ebitda", "Net debt / EBITDA", 0, n => n.nd_ebitda],
+  ];
+  const fb = $("#layerfilter");
+  const mkBtn = (key, label) => {
+    const b = h("button", null, label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(layerFilter === key));
+    b.addEventListener("click", () => { layerFilter = key; drawComplex(); });
+    return b;
+  };
+  function drawFilter() {
+    fb.textContent = "";
+    fb.appendChild(mkBtn("all", "All"));
+    for (const k of LAYER_ORDER) {
+      if (byLayer(k).length) fb.appendChild(mkBtn(k, AI.layers[k] || k));
+    }
+    const c = h("span", "cnt");
+    const shown = layerFilter === "all" ? withPx.length : byLayer(layerFilter).length;
+    c.textContent = shown + " of " + withPx.length + " names";
+    fb.appendChild(c);
+  }
+  function drawComplex() {
+    drawFilter();
+    const box = $("#complex");
+    box.textContent = "";
+    let rows = layerFilter === "all" ? withPx.slice() : byLayer(layerFilter);
+    const col = COLS.find(c => c[0] === sortKey);
+    rows.sort((a, b) => {
+      const x = col[3](a), y = col[3](b);
+      if (x == null) return 1;
+      if (y == null) return -1;
+      const r = typeof x === "string" ? x.localeCompare(y) : x - y;
+      return sortAsc ? r : -r;
+    });
+    const t = h("table");
+    const th = h("thead"), r = h("tr");
+    for (const [key, label, left] of COLS) {
+      const c = h("th", (left ? "left " : "") + (sortKey === key ? "active " : "") +
+        (sortKey === key && sortAsc ? "asc" : ""), label);
+      c.addEventListener("click", () => {
+        if (sortKey === key) sortAsc = !sortAsc;
+        else { sortKey = key; sortAsc = key === "name" || key === "layer"; }
+        drawComplex();
+      });
+      r.appendChild(c);
+    }
+    th.appendChild(r); t.appendChild(th);
+    const b = h("tbody");
+    for (const n of rows) {
+      const tr = h("tr");
+      const c0 = h("td", "left");
+      const a = h("a", "cname", n.name);
+      a.href = YC(n.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
+      c0.appendChild(a);
+      c0.appendChild(h("span", "csub", n.sym + (n.currency && n.currency !== "USD"
+        ? " · " + n.currency : "")));
+      tr.appendChild(c0);
+      tr.appendChild(h("td", "left", (AI.layers[n.layer] || n.layer)));
+      tr.appendChild(h("td", null, fmt(n.m.last, n.m.last > 1000 ? 0 : 2)));
+      tr.appendChild(h("td", null, usd(n.cap)));
+      for (const k of ["d1", "m1", "m3", "ytd", "y1"]) {
+        tr.appendChild(h("td", cls(n.m[k]), pct(n.m[k])));
+      }
+      tr.appendChild(h("td", cls(n.m.dist200), pct(n.m.dist200)));
+      tr.appendChild(h("td", n.m.rsi > 70 ? "down" : n.m.rsi < 30 ? "up" : "", fmt(n.m.rsi, 0)));
+      tr.appendChild(h("td", null, n.ps == null ? "–" : fmt(n.ps, 1) + "x"));
+      tr.appendChild(h("td", null, n.ev_ebitda == null ? "–" : fmt(n.ev_ebitda, 1) + "x"));
+      tr.appendChild(h("td", n.nd_ebitda > 3 ? "down" : "",
+        n.nd_ebitda == null ? "–" : fmt(n.nd_ebitda, 1) + "x"));
+      b.appendChild(tr);
+    }
+    t.appendChild(b);
+    box.appendChild(t);
+  }
+  drawComplex();
+
+  /* =====================================================================
+     9. Structure
+     ===================================================================== */
+  const maRows = withPx.map(n => ({
+    sym: n.sym, name: n.name, daily: SERIES[n.sym].map(p => p[1]),
+  }));
+  if (maRows.length && typeof MA !== "undefined") {
+    MA.panel($("#structure"), maRows, { link: s => YC(s) });
+    MA.load(maRows.map(r => r.sym)).then(() =>
+      MA.panel($("#structure"), maRows, { link: s => YC(s) }));
+  }
+
+  /* =====================================================================
+     10. Falsifiers
+     ===================================================================== */
+  const hyRow = AI.credit && AI.credit.hy;
+  const FALSIFIERS = [
+    ["Credit widens before equity falls",
+     "The single most reliable sequence in every comparable episode. Watch high yield and the " +
+     "CCC-less-BB gap in the ladder above" +
+     (AI.dispersion ? " — that gap is already at the " + ord(AI.dispersion.pct_span) +
+       " percentile of the window available, which is the early part of this pattern rather " +
+       "than the late part" : "") +
+     ". A move above roughly 4pp on the high yield index, from " +
+     (hyRow ? fmt(hyRow.last, 2) + "pp" : "here") + ", would be the confirmation."],
+    ["A hyperscaler cuts capital spending",
+     "The forward capex line in the funding gap is the load-bearing assumption of the entire " +
+     "complex. One credible guide-down from a top-five spender reprices every supplier " +
+     "immediately, and the semiconductor equipment names first."],
+    ["A neocloud fails to refinance",
+     "These companies borrow at high yield to buy depreciating hardware and rent it out. They " +
+     "are the marginal borrower, so they meet a closed window first. Watch the cost-of-debt " +
+     "table and any funding round that prices below the last."],
+    ["Depreciation schedules shorten",
+     "Extended server lives have flattered reported earnings across the group. Any move back the " +
+     "other way is management telling you the assets wear out faster than they said."],
+    ["Memory pricing rolls over",
+     "Korea and Taiwan are the physical read. If memory pricing breaks while the US complex is " +
+     "still rising, the shortage that justified the multiples has ended and the US names have " +
+     "not noticed yet."],
+    ["The tail stops confirming",
+     "Profitless AI-adjacent names lead on the way up and break first. A complex still making " +
+     "highs while its speculative end has already rolled over is the classic shape of a top — " +
+     "the junk-versus-quality tile is the live reading of that."],
+    ["What would argue the other way",
+     "Forward capex converting into actual revenue at the hyperscalers rather than into backlog; " +
+     "the funding gap closing because cash flow grows into it; credit staying tight through a " +
+     "genuine growth scare; the physical layers continuing to lead, which says the build is " +
+     "real and constrained rather than imagined. None of these are currently ruled out, and a " +
+     "high reading on this page is a description of conditions, not a forecast."],
+  ];
+  for (const [t, d] of FALSIFIERS) {
+    const row = h("div", "chk");
+    row.appendChild(h("div", "ct", t));
+    row.appendChild(h("div", "cd", d));
+    $("#falsifiers").appendChild(row);
+  }
+
+  /* ---- back to top ---- */
+  const totop = $("#totop");
+  window.addEventListener("scroll", () => {
+    totop.classList.toggle("show", window.scrollY > 600);
+  }, { passive: true });
+  totop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+})();
+</script>
+</body>
+</html>
