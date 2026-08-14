@@ -469,6 +469,8 @@
   async function loadTimeframe(key) {
     const tf = TF[key];
     if (tf.data || tf.loading) return;
+    // Fetched whether or not the columns are shown: a weekly-200 reclaim is
+    // worth an alert even when the reader never switches the toggle on.
     tf.loading = true;
     const syms = [...new Set(workingList().map(p => p.sym))];
     const out = {};
@@ -518,7 +520,15 @@
             : !wasAbove && !isAbove ? "rejected"
             : !wasAbove && isAbove ? "reclaimed" : "lost";
     }
-    return { ma: lastMa, dist, state };
+    /* Bars since the close last changed sides on this average. "Reclaimed"
+       anywhere in a 15-bar window is context; reclaimed on the latest bar is
+       news, and only the second belongs in an alert. */
+    let crossedAgo = null;
+    const isAbove = dist >= 0;
+    for (let k = ma.length - 2; k >= 0; k--) {
+      if ((vals[k + off] >= ma[k]) !== isAbove) { crossedAgo = ma.length - 1 - k; break; }
+    }
+    return { ma: lastMa, dist, state, crossedAgo };
   }
 
   /* Replay on SETTLED closes only:
@@ -1211,7 +1221,39 @@
           "); a close " + side + " confirms the breakout"]);
       }
     }
-    for (const [cls, msg] of items.slice(0, 12)) {
+    /* Structure: a close that has just changed sides on the 150 or 200. Ranked
+       monthly first — a monthly 200 changes hands a handful of times in a
+       decade, a daily 150 several times a year, and they should not queue
+       equally. Only fires while the cross is fresh. */
+    const TFS = [["m", "monthly", 1, 0], ["w", "weekly", 1, 1], ["d", "daily", 2, 2]];
+    const struct = [];
+    for (const r of all) {
+      if (r.st.state === "failed") continue;
+      for (const [tf, label, maxAgo, rank] of TFS) {
+        const vals = tf === "d" ? r.ma.d : tf === "w" ? r.ma.w : r.ma.m;
+        if (!vals) continue;
+        for (const n of [200, 150]) {
+          const m = maReadFor(vals, n);
+          if (!m || !m.state || m.crossedAgo == null || m.crossedAgo > maxAgo) continue;
+          if (m.state !== "reclaimed" && m.state !== "lost") continue;
+          /* Colour by what it means for THIS position, not by a generic bullish
+             reading. A short whose name has just lost its 200-day is being
+             helped, and painting that red says the opposite of the truth. */
+          const long = r.p.dir === "long";
+          const helps = long ? m.state === "reclaimed" : m.state === "lost";
+          struct.push([rank, n === 200 ? 0 : 1, helps ? "new" : "bad",
+            r.p.sym + " " + r.p.dir + " — " + m.state + " its " + label + " " + n +
+            " (" + fmt(r.prevClose) + " vs " + fmt(m.ma, 2) + ")" +
+            (m.crossedAgo === 0 ? " on the latest bar"
+              : " " + m.crossedAgo + " bar" + (m.crossedAgo > 1 ? "s" : "") + " ago") +
+            (helps ? " — the setup's way" : " — against the setup")]);
+        }
+      }
+    }
+    struct.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const s of struct.slice(0, 8)) items.push([s[2], s[3]]);
+
+    for (const [cls, msg] of items.slice(0, 14)) {
       const b = h("div", "albox " + cls);
       b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
       b.appendChild(document.createTextNode(msg));
@@ -1591,7 +1633,11 @@
     if (OPEN_POP) { OPEN_POP = null; render(); }
   });
 
-  refresh();
+  refresh().then(() => {
+    /* Deferred so the page paints on the daily data first, then fills in the
+       higher timeframes for the structure alerts. */
+    setTimeout(() => { loadTimeframe("weekly"); loadTimeframe("monthly"); }, 400);
+  });
 })();
 </script>
 </body>
