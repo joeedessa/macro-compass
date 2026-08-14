@@ -662,21 +662,21 @@
     watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
                ["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["","Actions","nosort"]],
     breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Confirmed"],
                ["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["negation","Negation"],["","Actions","nosort"]],
     target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Reached"],
                ["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["negation","Negation"],["","Actions","nosort"]],
     failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],["breakthrough","Trigger"],
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["","Actions","nosort"]],
   };
   /* The moving-average columns are spliced in after the price block so the
@@ -716,6 +716,7 @@
     key === "gap" ? "last close → trigger" :
     key === "prev" ? "settled, drives the rules" :
     key === "prev2" ? "the session before" :
+    key === "added" ? "on the list since" :
     key === "relm" ? "day % vs index" :
     key === "rels" ? "day % vs sector" : null;
   // Columns filterable via checkbox multi-select, and how to read their value.
@@ -734,6 +735,7 @@
     if (key === "exchange" || key === "country") return r.p[key] || "";
     if (key === "pattern") return r.p.pattern || "";
     if (key === "dur") return r.p.duration_m;
+    if (key === "added") return r.p.created || "";
     if (key === "breakthrough" || key === "negation" || key === "target") return r.p[key];
     if (key === "live") return r.live;
     if (key === "prev") return r.prevClose;
@@ -1013,6 +1015,20 @@
       case "country": return h("td", null, p.country || "–");
       case "pattern": return h("td", "pat", p.pattern || "–");
       case "dur": return h("td", null, p.duration_m != null ? p.duration_m + "m" : "–");
+      case "added": {
+        const td = h("td");
+        if (!p.created) { td.textContent = "–"; return td; }
+        td.textContent = fmtD(p.created);
+        /* How long this setup has been carried. A pattern still waiting after
+           months is a different proposition from one added last week, and the
+           date alone does not make that obvious at a glance. */
+        const days = -daysUntil(p.created);
+        if (days >= 0) {
+          td.appendChild(h("span", "wname", days === 0 ? "today"
+            : days === 1 ? "1 day ago" : days + " days ago"));
+        }
+        return td;
+      }
       default: return null;   // "" columns: Reason / Actions handled by caller
     }
   }
@@ -1256,8 +1272,22 @@
     const box = $("#details");
     box.textContent = "";
     const seen = new Set();
+    /* Ordered by recency, not alphabetically: the card worth reading is the one
+       where something just happened. The key is the latest of the last result
+       and the newest wire headline, so a name that reported this morning sits
+       above one that reported three weeks ago whatever its ticker. Names with
+       neither fall to the bottom, ordered by symbol so they stay findable. */
+    const recencyOf = r => {
+      const e = r.ev.last_eps || {}, w = r.ev.wire || {};
+      const heads = (w.heads || []).map(x => x.d);
+      return [e.reported || "", ...heads].sort().pop() || "";
+    };
     const rows = all.filter(r => !seen.has(r.p.sym) && seen.add(r.p.sym))
-      .sort((a, b) => a.p.sym.localeCompare(b.p.sym));
+      .sort((a, b) => {
+        const ra = recencyOf(a), rb = recencyOf(b);
+        if (ra !== rb) return rb.localeCompare(ra);
+        return a.p.sym.localeCompare(b.p.sym);
+      });
     for (const r of rows) {
       const p = r.p, ev = r.ev, ccy = ev.ccy || r.currency || "";
       const card = h("div", "dcard");
@@ -1269,6 +1299,8 @@
       if (ev.sector) meta.push(ev.sector);
       if (p.country) meta.push(p.country + (p.exchange ? " · " + p.exchange : ""));
       if (meta.length) card.appendChild(h("p", "dmeta", meta.join(" — ")));
+      const rec = recencyOf(r);
+      if (rec) card.appendChild(h("p", "dmeta", "Latest activity " + fmtD(rec)));
 
       /* line helper: label + value pairs with a highlighted number */
       const line = (parent, label, parts) => {
