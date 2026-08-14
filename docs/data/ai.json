@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-14T20:47:49+00:00",
+ "generated_at": "2026-08-14T21:43:28+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -141,34 +141,34 @@
   "baa10y": {
    "label": "Moody's Baa less 10-year Treasury",
    "series": "BAA10Y",
-   "last": 1.66,
-   "date": "2026-08-12",
+   "last": 1.67,
+   "date": "2026-08-13",
    "from": "1986-01-02",
    "span_years": 40.6,
-   "n": 10153,
-   "pct_10y": 15.9,
-   "pct_20y": 10.8,
-   "pct_span": 16.6,
+   "n": 10154,
+   "pct_10y": 16.7,
+   "pct_20y": 11.4,
+   "pct_span": 17.6,
    "min_span": 1.16,
    "max_span": 6.16,
-   "chg_3m": 0.0,
-   "chg_1y": -0.07
+   "chg_3m": 0.05,
+   "chg_1y": -0.04
   },
   "aaa10y": {
    "label": "Moody's Aaa less 10-year Treasury",
    "series": "AAA10Y",
-   "last": 1.21,
-   "date": "2026-08-12",
+   "last": 1.22,
+   "date": "2026-08-13",
    "from": "1983-01-03",
    "span_years": 43.6,
-   "n": 10900,
-   "pct_10y": 61.1,
-   "pct_20y": 36.3,
-   "pct_span": 51.0,
+   "n": 10901,
+   "pct_10y": 62.6,
+   "pct_20y": 37.1,
+   "pct_span": 51.6,
    "min_span": -0.44,
    "max_span": 3.2,
-   "chg_3m": 0.11,
-   "chg_1y": 0.14
+   "chg_3m": 0.17,
+   "chg_1y": 0.17
   }
  },
  "dispersion": {
@@ -936,9 +936,9 @@
  },
  "fx": {
   "USD": 1.0,
-  "KRW": 0.00070548,
-  "TWD": 0.03124805,
-  "JPY": 0.00627707
+  "TWD": 0.03124609,
+  "KRW": 0.00070598,
+  "JPY": 0.00627727
  },
  "names": [
   {
@@ -2770,8 +2770,8 @@
    "gm": null,
    "ytd": 128.37,
    "y1": 281.78,
-   "cap_usd": 1192493038331,
-   "rev_usd": 342350851870,
+   "cap_usd": 1193326490345,
+   "rev_usd": 342590126228,
    "ebitda_usd": null,
    "fcf_usd": null,
    "debt_usd": null,
@@ -2804,8 +2804,8 @@
    "gm": null,
    "ytd": 152.69,
    "y1": 492.79,
-   "cap_usd": 819123302275,
-   "rev_usd": 133456521126,
+   "cap_usd": 819695800347,
+   "rev_usd": 133549795973,
    "ebitda_usd": null,
    "fcf_usd": null,
    "debt_usd": null,
@@ -2838,12 +2838,12 @@
    "gm": 63.45,
    "ytd": 54.02,
    "y1": 102.11,
-   "cap_usd": 1973167891301,
-   "rev_usd": 138756739548,
-   "ebitda_usd": 99119440035,
-   "fcf_usd": 36025663584,
-   "debt_usd": 30699550028,
-   "net_debt_usd": -79231485532
+   "cap_usd": 1973044583721,
+   "rev_usd": 138748068335,
+   "ebitda_usd": 99113245844,
+   "fcf_usd": 36023412261,
+   "debt_usd": 30697631546,
+   "net_debt_usd": -79226534183
   },
   {
    "tv": "TSE:6857",
@@ -2872,12 +2872,12 @@
    "gm": 65.73,
    "ytd": 80.69,
    "y1": 214.99,
-   "cap_usd": 157370377488,
-   "rev_usd": 7735277133,
-   "ebitda_usd": 3711706735,
-   "fcf_usd": 2437204193,
-   "debt_usd": 678965539,
-   "net_debt_usd": -1914242672
+   "cap_usd": 157375316767,
+   "rev_usd": 7735519915,
+   "ebitda_usd": 3711823232,
+   "fcf_usd": 2437280688,
+   "debt_usd": 678986849,
+   "net_debt_usd": -1914302753
   },
   {
    "tv": "TSE:6146",
@@ -2906,12 +2906,12 @@
    "gm": 70.63,
    "ytd": 31.02,
    "y1": 54.05,
-   "cap_usd": 44822516504,
-   "rev_usd": 2895505618,
-   "ebitda_usd": 1343129747,
+   "cap_usd": 44823923319,
+   "rev_usd": 2895596497,
+   "ebitda_usd": 1343171903,
    "fcf_usd": null,
    "debt_usd": 0,
-   "net_debt_usd": -1782009918
+   "net_debt_usd": -1782065849
   },
   {
    "tv": "TSE:8035",
@@ -2940,12 +2940,12 @@
    "gm": 45.56,
    "ytd": 63.89,
    "y1": 175.09,
-   "cap_usd": 169684456634,
-   "rev_usd": 16485688281,
-   "ebitda_usd": 4885656895,
-   "fcf_usd": 2455916138,
-   "debt_usd": 424624945,
-   "net_debt_usd": -2146513088
+   "cap_usd": 169689782408,
+   "rev_usd": 16486205706,
+   "ebitda_usd": 4885810238,
+   "fcf_usd": 2455993221,
+   "debt_usd": 424638272,
+   "net_debt_usd": -2146580459
   },
   {
    "tv": "NASDAQ:PLTR",
