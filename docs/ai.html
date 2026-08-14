@@ -359,8 +359,12 @@
       however they are requested, and Moody's Baa and Aaa yields against the 10-year Treasury,
       which are not restricted and run back to the 1980s. Every percentile on this page states the
       history it was drawn from. Margin debt from FINRA, monthly and published with a lag.
-      Fundamentals from the TradingView scanner, in native reporting currency; forward capital
-      spending is a consensus estimate and will be wrong. The deal and issuance ledgers are
+      Fundamentals from the TradingView scanner in each company's own reporting currency; forward
+      capital spending is a consensus estimate and will be wrong. The two columns that rank the
+      whole complex against itself — market value and total debt — are the exception and are
+      converted to US dollars at the current spot rate, because Samsung's won and Nvidia's dollars
+      cannot be ranked in the same column; they are labelled <i>(USD)</i> where that applies and
+      nothing else on the page is converted. The deal and issuance ledgers are
       maintained by hand, carry the date each item was announced, and link to a primary source.
       Part of <a href="./">Macro Compass</a>. Not investment advice.</p>
   </footer>
@@ -503,7 +507,6 @@
     const last = vals[vals.length - 1];
     const chg = (base) => base ? (last / base - 1) * 100 : null;
     const s200 = sma(vals, 200), s50 = sma(vals, 50);
-    const yr = vals.slice(-252);
     return {
       last, asOf: pts[pts.length - 1][0],
       d1: chg(vals[vals.length - 2]),
@@ -513,9 +516,18 @@
       dist200: s200 ? (last / s200 - 1) * 100 : null,
       dist50: s50 ? (last / s50 - 1) * 100 : null,
       rsi: rsi(vals),
-      hi52: yr.length ? Math.max(...yr) : null,
-      lo52: yr.length ? Math.min(...yr) : null,
     };
+  }
+
+  /* Anything whose last real close is old enough to be suspicious.
+     A delisted instrument does not leave this feed: Yahoo keeps serving the old
+     history and pads a null bar at today's timestamp, so the last row looks
+     current until the last non-null close is checked. Two liquidated country
+     funds shipped on the Countries page for exactly this reason. Ten days
+     covers a long holiday in Seoul, Taipei or Tokyo without covering a death. */
+  const STALE_DAYS = 10;
+  function daysSince(iso) {
+    return Math.round((Date.now() - new Date(iso + "T00:00:00Z").getTime()) / 86400000);
   }
 
   /* ---------------------------------------------------------------------
@@ -567,8 +579,13 @@
   const extraSyms = [...INDICES, ...SPEC, ...POWER_INPUTS, ...BREADTH].map(r => r[0]);
   const allSyms = [...new Set([...NAMES.map(n => n.sym), ...extraSyms])];
   const SERIES = await fetchSeries(allSyms);
-  const M = {};
-  for (const [s, pts] of Object.entries(SERIES)) M[s] = metrics(pts);
+  const M = {}, dropped = [];
+  for (const [s, pts] of Object.entries(SERIES)) {
+    const m = metrics(pts);
+    const age = daysSince(m.asOf);
+    if (age > STALE_DAYS) { dropped.push(s + " (" + m.asOf + ")"); delete SERIES[s]; continue; }
+    M[s] = m;
+  }
 
   const liveCount = Object.keys(M).length;
   if (!liveCount) { $("#status").textContent = "No price data returned."; return; }
@@ -591,6 +608,11 @@
     { hour: "2-digit", minute: "2-digit" }) + " · " + liveCount + " instruments"];
   if (AI.generated_at) stampBits.push("filings and credit " + AI.generated_at.slice(0, 10));
   if (LEDGER.curated_through) stampBits.push("ledger reviewed " + LEDGER.curated_through);
+  /* Named rather than silently absent: a name that quietly leaves the complex
+     changes every median on the page. */
+  if (dropped.length) {
+    stampBits.push("dropped as stale: " + dropped.join(", "));
+  }
   $("#stamp").textContent = stampBits.join(" · ");
 
   /* =====================================================================
@@ -934,29 +956,66 @@
       c0.appendChild(h("span", "csub", s.series));
       tr.appendChild(c0);
       tr.appendChild(h("td", null, fmt(s.last, 2) + "pp"));
+      /* No colour in this table, on purpose.
+         Red and green cannot carry it. Tight spreads are the frothy end and
+         wide spreads are the stressed end, so both extremes are bad news for
+         different reasons — colouring one green necessarily lies about it.
+         The version of this table that shaded the percentile put a reassuring
+         green on CCC at the 97th percentile, which is the single most stressed
+         reading on the page. Words instead. */
       for (const k of ["chg_1m", "chg_3m", "chg_1y"]) {
-        // Widening is the bearish direction for credit, so the colour is
-        // inverted against every other table on the site.
-        tr.appendChild(h("td", s[k] == null ? "" : s[k] > 0 ? "down" : "up",
-          s[k] == null ? "–" : (s[k] > 0 ? "+" : "") + fmt(s[k], 2)));
+        const v = s[k];
+        tr.appendChild(h("td", null, v == null ? "–"
+          : (v > 0 ? "+" : "") + fmt(v, 2) + (v > 0 ? " wider" : v < 0 ? " tighter" : "")));
       }
       const p = h("td");
-      const pl = h("span", "pill " + (s.pct_span < 25 ? "hot" : s.pct_span > 75 ? "cold" : "flat"),
-        ord(s.pct_span));
-      p.appendChild(pl);
+      p.appendChild(h("span", "pill flat", ord(s.pct_span) + " · " +
+        (s.pct_span < 25 ? "tight" : s.pct_span > 75 ? "wide" : "middling")));
       tr.appendChild(p);
       tr.appendChild(h("td", null, fmt(s.min_span, 2) + " – " + fmt(s.max_span, 2) + "pp"));
       tb.appendChild(tr);
     }
     tbl.appendChild(tb);
     $("#ladder").appendChild(tbl);
+    /* The shape, in a sentence, because it is the reason the table is here and
+       a reader should not have to derive it from nine rows of percentiles. */
     const sp = ladderRows[0];
-    $("#laddernote").textContent =
-      "Percentiles here are drawn from " + spanTxt(sp.span_years) + " years — the whole window " +
-      "FRED serves for ICE BofA data, which is licensed and truncated to a rolling span however " +
-      "it is requested. That is enough to rank today within the current cycle and not enough to " +
-      "compare it with 2007 or 2000; the Moody's series above exists to cover that. A red " +
-      "percentile means tight against that window, which on this page is the frothy direction.";
+    const cc = AI.credit.ccc, hyr = AI.credit.hy;
+    const shape = [];
+    if (cc && hyr && cc.pct_span != null && hyr.pct_span != null) {
+      const split = cc.pct_span - hyr.pct_span;
+      if (split > 40) {
+        /* Sign-aware, because "widened 0.89pp against -0.11pp" is not English
+           and hides that the two moved in opposite directions — which is the
+           whole point of the sentence. */
+        const moved = (v) => v == null ? "been unchanged"
+          : v > 0 ? "widened " + fmt(v, 2) + "pp"
+          : v < 0 ? "tightened " + fmt(-v, 2) + "pp" : "been unchanged";
+        shape.push("The shape right now is a split one: the high yield index sits at the " +
+          ord(hyr.pct_span) + " percentile of this window while CCC sits at the " +
+          ord(cc.pct_span) + ". Over three months CCC has " + moved(cc.chg_3m) +
+          " while the index has " + moved(hyr.chg_3m) +
+          ". The market is already charging the weakest " +
+          "borrowers a great deal more while the headline stays calm — which is what " +
+          "discrimination looks like before it becomes contagion, and is the single most " +
+          "useful line on this page.");
+      } else if (split < -20) {
+        shape.push("Unusually, the riskiest end is tighter than the index against this window — " +
+          "the market is not discriminating by quality at all.");
+      } else {
+        shape.push("The ladder is moving together rather than splitting: the index and the CCC " +
+          "tier sit at broadly similar points in this window, which is a calmer shape than a " +
+          "widening tail.");
+      }
+    }
+    shape.push("Percentiles here are drawn from " + spanTxt(sp.span_years) + " years — the whole " +
+      "window FRED serves for ICE BofA data, which is licensed and truncated to a rolling span " +
+      "however it is requested. That is enough to rank today within the current cycle and not " +
+      "enough to compare it with 2007 or 2000; the Moody's series above exists to cover that.");
+    shape.push("Deliberately uncoloured: tight spreads are the frothy end and wide spreads are " +
+      "the stressed end, so both extremes are bad news for different reasons and a red-green " +
+      "scale would have to lie about one of them.");
+    $("#laddernote").textContent = shape.join(" ");
   }
 
   const cdRows = NAMES.filter(n => n.cost_debt != null)
@@ -966,7 +1025,7 @@
     const tbl = h("table");
     const thead = h("thead"), hr = h("tr");
     for (const [t, l] of [["Company", 1], ["Layer", 1], ["Cost of debt", 0], ["vs 10-year", 0],
-                          ["Total debt", 0], ["Net debt / EBITDA", 0],
+                          ["Total debt (USD)", 0], ["Net debt / EBITDA", 0],
                           ["Interest cover after capex", 0]]) {
       hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
     }
@@ -983,7 +1042,7 @@
       tr.appendChild(h("td", null, fmt(n.cost_debt, 2) + "%"));
       tr.appendChild(h("td", null, ust == null ? "–"
         : (n.cost_debt - ust > 0 ? "+" : "") + fmt(n.cost_debt - ust, 2) + "pp"));
-      tr.appendChild(h("td", null, usd(n.debt)));
+      tr.appendChild(h("td", null, usd(n.debt_usd)));
       tr.appendChild(h("td", n.nd_ebitda > 3 ? "down" : "",
         n.nd_ebitda == null ? "–" : fmt(n.nd_ebitda, 1) + "x"));
       const cc = h("td", n.capex_cover == null ? "" : n.capex_cover < 0 ? "down"
@@ -1067,7 +1126,8 @@
     const t2 = h("div", "tile warn");
     t2.appendChild(h("div", "tl", "The AI complex"));
     t2.appendChild(h("div", "tv", fmt(conc.ai_pct, 1) + "%"));
-    t2.appendChild(h("div", "ts", "the US-listed names on this page, " + usd(conc.ai_cap)));
+    t2.appendChild(h("div", "ts", "the names on this page that rank inside those 500, " +
+      usd(conc.ai_cap) + ". Smaller members — the neoclouds, the tail, the specialist\n      power names — fall outside the universe and are not counted here"));
     ct.appendChild(t2);
 
     if (AI.nvda_gdp != null) {
@@ -1197,7 +1257,8 @@
   const tbl = h("table");
   const thead = h("thead"), hr = h("tr");
   for (const [t, l] of [["Layer", 1], ["Names", 0], ["1W", 0], ["1M", 0], ["3M", 0],
-                        ["YTD", 0], ["1Y", 0], ["Median from 200-day", 0], ["Median RSI", 0]]) {
+                        ["YTD", 0], ["1Y", 0], ["Best to worst, 3M", 0],
+                        ["Median from 200-day", 0], ["Median RSI", 0]]) {
     hr.appendChild(h("th", (l ? "left " : "") + "nosort", t));
   }
   thead.appendChild(hr); tbl.appendChild(thead);
@@ -1206,12 +1267,19 @@
   for (const key of LAYER_ORDER) {
     const rows = byLayer(key);
     if (!rows.length) continue;
+    /* A median is exactly the statistic that can hide the thing this table
+       exists to surface — the hyperscaler row reads roughly flat over three
+       months while one member is up twenty-odd per cent and another down
+       twenty. The spread column is here so that cannot happen silently. */
+    const m3vals = rows.map(r => r.m.m3).filter(v => v != null).sort((a, b) => b - a);
     const st = {
       key, label: AI.layers[key] || key, n: rows.length,
       w1: median(rows.map(r => r.m.w1)), m1: median(rows.map(r => r.m.m1)),
       m3: median(rows.map(r => r.m.m3)), ytd: median(rows.map(r => r.m.ytd)),
       y1: median(rows.map(r => r.m.y1)),
       d200: median(rows.map(r => r.m.dist200)), rsi: median(rows.map(r => r.m.rsi)),
+      best: m3vals.length ? m3vals[0] : null,
+      worst: m3vals.length ? m3vals[m3vals.length - 1] : null,
     };
     layerStats.push(st);
     const tr = h("tr");
@@ -1220,6 +1288,8 @@
     for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
       tr.appendChild(h("td", cls(st[k]), pct(st[k])));
     }
+    tr.appendChild(h("td", null, st.best == null ? "–"
+      : pct(st.best, 0) + " to " + pct(st.worst, 0)));
     tr.appendChild(h("td", cls(st.d200), pct(st.d200)));
     tr.appendChild(h("td", st.rsi > 70 ? "down" : st.rsi < 30 ? "up" : "", fmt(st.rsi, 0)));
     tb.appendChild(tr);
@@ -1227,7 +1297,7 @@
   // The physical inputs sit in the same table, marked off, because the
   // comparison against the equity layers is the whole point.
   const gr = h("tr", "grouphead");
-  const gd = h("td", "left"); gd.colSpan = 9;
+  const gd = h("td", "left"); gd.colSpan = 10;
   gd.textContent = "The physical inputs";
   gr.appendChild(gd); tb.appendChild(gr);
   for (const [sym, label, sub] of POWER_INPUTS) {
@@ -1244,6 +1314,7 @@
     for (const k of ["w1", "m1", "m3", "ytd", "y1"]) {
       tr.appendChild(h("td", cls(m[k]), pct(m[k])));
     }
+    tr.appendChild(h("td", null, "–"));   // single instrument: no spread to show
     tr.appendChild(h("td", cls(m.dist200), pct(m.dist200)));
     tr.appendChild(h("td", m.rsi > 70 ? "down" : m.rsi < 30 ? "up" : "", fmt(m.rsi, 0)));
     tb.appendChild(tr);
@@ -1372,7 +1443,7 @@
     ["name", "Company", 1, n => n.name],
     ["layer", "Layer", 1, n => AI.layers[n.layer] || n.layer],
     ["last", "Last", 0, n => n.m.last],
-    ["cap", "Market value", 0, n => n.cap],
+    ["cap", "Market value (USD)", 0, n => n.cap_usd],
     ["d1", "1D", 0, n => n.m.d1],
     ["m1", "1M", 0, n => n.m.m1],
     ["m3", "3M", 0, n => n.m.m3],
@@ -1441,7 +1512,7 @@
       tr.appendChild(c0);
       tr.appendChild(h("td", "left", (AI.layers[n.layer] || n.layer)));
       tr.appendChild(h("td", null, fmt(n.m.last, n.m.last > 1000 ? 0 : 2)));
-      tr.appendChild(h("td", null, usd(n.cap)));
+      tr.appendChild(h("td", null, usd(n.cap_usd)));
       for (const k of ["d1", "m1", "m3", "ytd", "y1"]) {
         tr.appendChild(h("td", cls(n.m[k]), pct(n.m[k])));
       }
@@ -1465,9 +1536,25 @@
     sym: n.sym, name: n.name, daily: SERIES[n.sym].map(p => p[1]),
   }));
   if (maRows.length && typeof MA !== "undefined") {
-    MA.panel($("#structure"), maRows, { link: s => YC(s) });
-    MA.load(maRows.map(r => r.sym)).then(() =>
-      MA.panel($("#structure"), maRows, { link: s => YC(s) }));
+    const draw = () => {
+      MA.panel($("#structure"), maRows, { link: s => YC(s) });
+      /* The denominator shrinks as the timeframe lengthens, and not at random.
+         A 200-period monthly average needs seventeen years of history, which
+         CoreWeave, Arm, Oklo, Nebius and the whole quantum tail do not have —
+         so the monthly reading describes the long-listed survivors and quietly
+         excludes the speculative half of the complex. Each card prints its own
+         denominator; this says why they differ. */
+      const n = h("p", "note");
+      n.textContent = "Read the denominators on each card, not just the " +
+        "percentages. A 200-period monthly average needs about seventeen years " +
+        "of history, so the monthly cards cover only the long-listed names and " +
+        "leave out the recent listings — which on this page is most of the " +
+        "speculative end. The monthly breadth is therefore a reading on the " +
+        "established survivors, and is flattered by that.";
+      $("#structure").appendChild(n);
+    };
+    draw();
+    MA.load(maRows.map(r => r.sym)).then(draw);
   }
 
   /* =====================================================================

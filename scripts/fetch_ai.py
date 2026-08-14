@@ -20,7 +20,18 @@ Four sources, all free and keyless:
              thinks each name will spend over the next twelve months — and
              effective_interest_rate_on_debt_ttm, the blended cost of debt
              implied by interest expense in the filings.
-  Yahoo      Nothing. Deliberately: see above.
+  Yahoo      Exchange rates only. Prices are fetched client-side like the rest
+             of the site; the rates are here because balance-sheet figures need
+             converting once, server-side, rather than on every page load.
+
+On currency, because this bit has already gone wrong once. price_conversion
+to_symbol keeps every TradingView figure in the company's own reporting
+currency, which is what the site wants for prices — Samsung quotes in won and
+stays in won. But a market value or a debt load is a comparison across the
+whole complex, and Samsung's 1.69 quadrillion won next to Nvidia's 5.45
+trillion dollars ranks Samsung first by a factor of about fourteen hundred.
+So money-denominated balance-sheet fields get a USD twin here, named _usd,
+and the page shows the twin and says so. Prices are never converted anywhere.
 
 On the cost of debt, stated plainly because the page repeats it: the effective
 rate is backward-looking. It is interest expense over average debt, so it
@@ -311,6 +322,39 @@ def scan(url, payload):
     return json.loads(r.stdout)
 
 
+def fetch_fx(currencies):
+    """USD value of one unit of each currency, from Yahoo's FX pairs.
+
+    Yahoo quotes "KRW=X" as won per dollar, so the multiplier the page needs is
+    the reciprocal. A currency that fails to resolve is left out rather than
+    defaulted to 1.0 — silently treating won as dollars is the exact failure
+    this function exists to prevent.
+    """
+    want = sorted({c for c in currencies if c and c != "USD"})
+    fx = {"USD": 1.0}
+    if not want:
+        return fx
+    url = ("https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+           ",".join(f"{c}=X" for c in want) + "&range=5d&interval=1d")
+    try:
+        payload = json.loads(http_get(url))
+    except Exception as e:  # noqa: BLE001
+        print(f"  ! FX: {e}", file=sys.stderr)
+        return fx
+    for row in payload.get("spark", {}).get("result", []):
+        code = row["symbol"].replace("=X", "")
+        closes = [c for c in
+                  (row.get("response", [{}])[0].get("indicators", {})
+                   .get("quote", [{}])[0].get("close") or []) if c]
+        if closes and closes[-1] > 0:
+            fx[code] = 1.0 / closes[-1]
+    for c in want:
+        if c not in fx:
+            print(f"  ! FX: no rate for {c}; its balance-sheet figures stay null",
+                  file=sys.stderr)
+    return fx
+
+
 def fetch_margin():
     """FINRA customer margin debt, monthly, in $ millions.
 
@@ -544,6 +588,22 @@ def main():
             "ytd": rnd(d.get("Perf.YTD")), "y1": rnd(d.get("Perf.Y")),
         }
         names.append(rec)
+
+    # Money-denominated fields get a USD twin so the complex can be ranked.
+    # Ratios (EV/sales, net debt/EBITDA) and rates (cost of debt) are already
+    # currency-neutral and are deliberately left alone.
+    fx = fetch_fx([n.get("currency") for n in names])
+    out["fx"] = {k: round(v, 8) for k, v in fx.items()}
+    for n in names:
+        rate = fx.get(n.get("currency"))
+        for field in ("cap", "rev", "ebitda", "fcf", "debt", "net_debt"):
+            n[field + "_usd"] = (round(n[field] * rate)
+                                 if rate and n.get(field) is not None else None)
+    non_usd = sorted({n["currency"] for n in names
+                      if n.get("currency") and n["currency"] != "USD"})
+    print(f"  fx: converted {', '.join(non_usd) or 'nothing'} "
+          f"({', '.join(f'{c} {fx[c]:.6f}' for c in non_usd if c in fx)})")
+
     out["names"] = names
     out["layers"] = LAYER_LABEL
     print(f"  complex: {len(names)} of {len(COMPLEX)} names resolved")
