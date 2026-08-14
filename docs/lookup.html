@@ -373,6 +373,7 @@
       lead: "SI=F",
       complex: [
         ["SI=F", "Silver (futures)"], ["SLV", "Silver ETF"], ["PSLV", "Sprott physical silver"],
+        ["^DJI", "Dow Jones (the ratio's other leg)"],
         ["SIL", "Silver miners"], ["SILJ", "Junior silver miners"],
         ["GC=F", "Gold (reference)"], ["TAN", "Solar (industrial demand)"],
       ],
@@ -395,6 +396,8 @@
           "Juniors being derisked first"],
         ["TAN", "SPY", "Solar vs market", "Industrial silver demand being bid",
           "Solar lagging — the industrial leg is not helping"],
+        ["^DJI", "SI=F", "Dow / silver", "Financial assets outrunning the metal — silver cheap against equity",
+          "Silver outrunning financial assets — the monetary bid is winning"],
       ],
       sectors: ["Non-Energy Minerals"],
       cot: { comm: "cot_silver_comm", large: null,

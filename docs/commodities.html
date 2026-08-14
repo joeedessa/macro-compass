@@ -336,6 +336,11 @@
       "Corn favoured — acreage should shift toward corn"],
     ["PL=F", "GC=F", "Platinum / gold", "Platinum closing its historic discount",
       "Platinum's discount to gold widening"],
+    /* How many ounces of silver buy the Dow. A century-scale gauge of financial
+       assets against the monetary metal — it ran near 15 in 1980 and above
+       2,500 in 2001, so the level matters more than the move. */
+    ["^DJI", "SI=F", "Dow / silver", "Financial assets outrunning silver — the metal cheap against equity",
+      "Silver outrunning financial assets — the monetary bid winning"],
   ];
 
   async function proxied(url) {
@@ -462,7 +467,7 @@
   let WIN = "m1", SERIES = {}, MACRO = null, ROWS = [];
 
   const status = $("#status");
-  const syms = [...new Set(ALL.map(c => c[0])
+  const syms = [...new Set(["^DJI"].concat(ALL.map(c => c[0]))
     .concat(CARRY.flatMap(c => [c[0], c[1]]))
     .concat(EQUITY.flatMap(e => [e[0], e[2]].filter(Boolean)))
     .concat(["DBB"]))];

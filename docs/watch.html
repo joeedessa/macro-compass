@@ -115,6 +115,22 @@
   .days.d14 { color:#c98500; font-weight:620; }
   .days.dfar { color:var(--text-muted); }
   td.riskcell { color:var(--down); }
+  /* moving-average cells */
+  td.maup { color:var(--up); } td.madown { color:var(--down); }
+  td.dimcell { color:var(--text-muted); }
+  .matag { display:block; font-size:9.5px; font-weight:650; letter-spacing:0.02em; }
+  .matag.held { color:var(--up); } .matag.reclaimed { color:var(--up); }
+  .matag.rejected { color:var(--down); } .matag.lost { color:var(--down); }
+  .switch { display:flex; gap:6px; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); }
+  .switch .mafixed { font-size:11.5px; color:var(--text-secondary); border:1px solid var(--border);
+    border-radius:8px; padding:4px 10px; background:var(--surface-1); }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:#eda100;
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+  .manote { font-size:11px; color:var(--text-muted); flex-basis:100%; }
   /* frozen headers while the table is in view (JS-driven translateY) */
   table.wl thead th { background:var(--surface-1); position:relative; z-index:4; }
   table.wl thead th.left { z-index:6; }
@@ -294,6 +310,15 @@
     </details>
   </div>
 
+  <div class="switch" id="matoggles" role="group" aria-label="Moving average timeframes">
+    <span class="slabel">Moving averages</span>
+    <span class="mafixed">21 · 50 · 150 · 200 daily</span>
+    <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
+    <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
+    <span class="manote">Distance from each average. <b>held</b> / <b>rejected</b> / <b>reclaimed</b> /
+      <b>lost</b> mark the 150 and 200 when price has been within 2% of them in the last 15 bars.</span>
+  </div>
+
   <div id="gauge"></div>
   <div id="alerts"></div>
 
@@ -415,6 +440,87 @@
     return out;
   }
 
+  /* ---- moving averages -------------------------------------------------
+     Daily comes free with the price history already loaded. Weekly and monthly
+     need their own bars and are fetched only when their toggle is switched on,
+     because a 200-month average needs 200 months and nobody wants that on
+     every page load. Spark honours the interval on a bounded range but silently
+     ignores it on range=max, returning a fixed ~168 downsampled bars whatever
+     you ask for — hence the explicit 5y and 25y windows. */
+  const MA_PERIODS = [21, 50, 150, 200];
+  const smaLast = (vals, n) => {
+    if (vals.length < n) return null;
+    let s = 0;
+    for (let i = vals.length - n; i < vals.length; i++) s += vals[i];
+    return s / n;
+  };
+  const smaSeries = (vals, n) => {
+    if (vals.length < n) return [];
+    const out = []; let s = 0;
+    for (let i = 0; i < vals.length; i++) {
+      s += vals[i];
+      if (i >= n) s -= vals[i - n];
+      if (i >= n - 1) out.push(s / n);
+    }
+    return out;
+  };
+  const TF = { weekly: { on: false, range: "5y", interval: "1wk", data: null, loading: false },
+               monthly: { on: false, range: "25y", interval: "1mo", data: null, loading: false } };
+  async function loadTimeframe(key) {
+    const tf = TF[key];
+    if (tf.data || tf.loading) return;
+    tf.loading = true;
+    const syms = [...new Set(workingList().map(p => p.sym))];
+    const out = {};
+    for (let i = 0; i < syms.length; i += 10) {
+      const chunk = syms.slice(i, i + 10);
+      const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+        chunk.map(encodeURIComponent).join(",") + "&range=" + tf.range + "&interval=" + tf.interval;
+      for (const wrap of PROXIES) {
+        try {
+          const r = await fetch(wrap(url), { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          for (const row of (j.spark?.result || [])) {
+            const resp = row.response?.[0];
+            const closes = (resp?.indicators?.quote?.[0]?.close || []).filter(c => c != null);
+            if (closes.length) out[row.symbol] = closes;
+          }
+          break;
+        } catch { /* next proxy */ }
+      }
+    }
+    tf.data = out; tf.loading = false;
+    render();
+  }
+
+  /* Where the last close sits against a moving average, and what happened the
+     last time it went near one. Built on closes only — the feed carries no
+     intraday high or low here — so a wick through a level that closed back
+     above it reads as held, which is the outcome that matters anyway. */
+  function maReadFor(vals, period) {
+    if (!vals || vals.length < period + 2) return null;
+    const ma = smaSeries(vals, period);
+    const off = vals.length - ma.length;
+    const last = vals[vals.length - 1], lastMa = ma[ma.length - 1];
+    const dist = (last / lastMa - 1) * 100;
+    // Look back over the recent window for the closest approach to the level.
+    const LOOK = Math.min(15, ma.length - 1);
+    let best = null;
+    for (let k = ma.length - LOOK; k < ma.length; k++) {
+      const d = vals[k + off] / ma[k] - 1;
+      if (best === null || Math.abs(d) < Math.abs(best.d)) best = { d, k };
+    }
+    let state = null;
+    if (best && Math.abs(best.d) <= 0.02) {
+      const wasAbove = best.d >= 0, isAbove = dist >= 0;
+      state = wasAbove && isAbove ? "held"
+            : !wasAbove && !isAbove ? "rejected"
+            : !wasAbove && isAbove ? "reclaimed" : "lost";
+    }
+    return { ma: lastMa, dist, state };
+  }
+
   /* Replay on SETTLED closes only:
        watch    --close above trigger (long) / below it (short)-->  breakout
        any      --close through the negation the wrong way-->        failed (outranks all)
@@ -516,6 +622,11 @@
       prevChg: (prev && prev2 && prev2[1]) ? pct1((prev[1] / prev2[1] - 1) * 100) : null,
       currency: hist ? hist.currency : "",
       dayPct: dayPctOf(hist),
+      // Daily comes from the settled series already loaded; the other two only
+      // exist once their toggle has pulled the bars in.
+      ma: { d: hist ? hist.settled.map(x => x[1]) : null,
+            w: TF.weekly.data ? TF.weekly.data[p.sym] : null,
+            m: TF.monthly.data ? TF.monthly.data[p.sym] : null },
       // Signed distance to trigger: shorts read negative (price must fall).
       gap: gap == null ? null : (p.dir === "short" ? -gap : gap),
       ev,
@@ -543,6 +654,10 @@
   /* Column order per the desk's reading flow: identity, price, trigger
      distance, payoff, calendar, then classification. Each key maps to one
      cell builder below, so reordering is a data change. */
+  const MA_COLS = tf => MA_PERIODS.map(n => ["ma_" + tf + n, n + (tf === "d" ? "d" : tf)]);
+  const activeMaCols = () => MA_COLS("d")
+    .concat(TF.weekly.on ? MA_COLS("w") : [])
+    .concat(TF.monthly.on ? MA_COLS("m") : []);
   const COLS = {
     watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
@@ -564,6 +679,14 @@
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],
                ["","Actions","nosort"]],
   };
+  /* The moving-average columns are spliced in after the price block so the
+     table reads price, then structure, then the setup's own levels. */
+  function colsFor(state) {
+    const base = COLS[state];
+    const at = base.findIndex(c => c[0] === "prev2");
+    const mas = activeMaCols();
+    return at < 0 ? base : base.slice(0, at + 1).concat(mas, base.slice(at + 1));
+  }
   const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false], failed: ["when", false] };
   const FILTERS = {};
   const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
@@ -618,6 +741,10 @@
     if (key === "ccy") return r.currency || "";
     if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
     if (key === "upside") return r.upside;
+    if (key.startsWith("ma_")) {
+      const m = maFromKey(r, key);
+      return m ? m.dist : null;
+    }
     if (key === "relm") return r.relm;
     if (key === "rels") return r.rels;
     if (key === "risk") return r.risk;
@@ -626,6 +753,12 @@
     if (key === "exdiv") return r.exdiv || "9999";
     return null;
   }
+
+  const maFromKey = (r, key) => {
+    const tf = key[3], n = +key.slice(4);
+    const vals = tf === "d" ? r.ma.d : tf === "w" ? r.ma.w : r.ma.m;
+    return maReadFor(vals, n);
+  };
 
   function saveEdit(p, fields) {
     if (p.shared) {
@@ -761,6 +894,22 @@
   function cellFor(key, state, r, tr) {
     const { p, st } = r;
     const editing = EDITING.has(idOf(p));
+    if (key.startsWith("ma_")) {
+      const tf = key[3];
+      const loading = (tf === "w" && TF.weekly.loading) || (tf === "m" && TF.monthly.loading);
+      const m = maFromKey(r, key);
+      if (!m) return h("td", "dimcell", loading ? "…" : "–");
+      const td = h("td", m.dist >= 0 ? "maup" : "madown");
+      td.textContent = (m.dist > 0 ? "+" : "") + fmt(m.dist) + "%";
+      /* Only the 150 and 200 carry the test state — those are the levels the
+         desk actually treats as support and resistance. */
+      const n = +key.slice(4);
+      if (m.state && (n === 150 || n === 200)) {
+        td.appendChild(h("span", "matag " + m.state, m.state));
+      }
+      td.title = "SMA " + n + " = " + fmt(m.ma, 2);
+      return td;
+    }
     switch (key) {
       case "sym": {
         const td = h("td", "left");
@@ -896,7 +1045,7 @@
     });
     const table = h("table", "wl");
     const thead = h("thead"), hr = h("tr");
-    for (const [key, label, cls] of COLS[state]) {
+    for (const [key, label, cls] of colsFor(state)) {
       const th = h("th", (cls || "") + (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""));
       const lab = h("span", "hlabel", label);
       th.appendChild(lab);
@@ -923,7 +1072,7 @@
       const { p, st } = r;
       const tr = h("tr");
       let reasonDone = false;
-      for (const [key, label] of COLS[state]) {
+      for (const [key, label] of colsFor(state)) {
         if (key === "") {
           if (label === "Reason" && !reasonDone) {
             reasonDone = true;
@@ -1358,6 +1507,15 @@
   };
   dirSel.addEventListener("change", syncDirWords);
   syncDirWords();
+
+  for (const [key, id] of [["weekly", "#ma-weekly"], ["monthly", "#ma-monthly"]]) {
+    $(id).addEventListener("click", () => {
+      TF[key].on = !TF[key].on;
+      $(id).setAttribute("aria-pressed", String(TF[key].on));
+      if (TF[key].on) loadTimeframe(key);
+      render();
+    });
+  }
 
   $("#refresh").addEventListener("click", refresh);
   $("#exportbtn").addEventListener("click", () => {
