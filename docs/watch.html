@@ -405,6 +405,7 @@
     on the left and works rightward. Switch the timeframe to read the same ladder at a horizon
     where a crossing is rare enough to mean something: a 200 on weekly bars is close to four
     years, on monthly bars about seventeen.</p>
+  <div class="switch" id="scanscope"></div>
   <div id="sigscan"></div>
 
   <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
@@ -691,9 +692,16 @@
     const gap = (prev && p.breakthrough != null && st.state === "watch")
       ? pct1((p.dir === "long" ? p.breakthrough / prev[1] - 1 : 1 - p.breakthrough / prev[1]) * 100)
       : null;
+    /* The same distance in money. A percentage tells you how far in relative
+       terms; the move itself is what you set an order against, and on a stock
+       quoted at 13.29 against a 14.15 trigger "86 cents" is the number you act
+       on. Signed the setup's way — a short needs price to fall. */
+    const gapAbs = (prev && p.breakthrough != null && st.state === "watch")
+      ? (p.dir === "long" ? p.breakthrough - prev[1] : prev[1] - p.breakthrough)
+      : null;
     const ev = EVENTS[p.sym] || {};
     const todayStr = new Date().toISOString().slice(0, 10);
-    return { p, st, live,
+    return { p, st, live, gapAbs,
       liveDate: hist ? hist.liveDate : "",
       prevClose: prev ? prev[1] : null,
       prevDate: prev ? prev[0] : "",
@@ -741,7 +749,7 @@
     .concat(TF.monthly.on ? MA_COLS("m") : []);
   const COLS = {
     watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],["gapAbs","Move"],
                ["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["","Actions","nosort"]],
@@ -764,7 +772,7 @@
        Price and the levels stay, because the question you ask of something you
        removed is whether removing it was right. */
     removed:  [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],["gapAbs","Move"],
                ["target","Target"],["negation","Negation"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["","Actions","nosort"]],
@@ -813,6 +821,7 @@
     key === "upside" ? (state === "watch" ? "trigger → target" : "live → target") :
     key === "risk" ? "live → negation" :
     key === "gap" ? "last close → trigger" :
+    key === "gapAbs" ? "in listing currency" :
     key === "prev" ? "settled, drives the rules" :
     key === "prev2" ? "the session before" :
     key === "added" ? "on the list since" :
@@ -841,6 +850,7 @@
     if (key === "prev2") return r.prevClose2;
     if (key === "ccy") return r.currency || "";
     if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
+    if (key === "gapAbs") return r.gapAbs == null ? null : Math.abs(r.gapAbs);
     if (key === "upside") return r.upside;
     if (key.startsWith("ma_")) {
       const m = maFromKey(r, key);
@@ -1032,6 +1042,14 @@
       return td;
     }
     switch (key) {
+      case "gapAbs": {
+        const td = h("td");
+        if (r.gapAbs == null) { td.textContent = "–"; return td; }
+        td.textContent = (r.gapAbs > 0 ? "+" : "") + fmt(r.gapAbs);
+        td.title = "Needs to move " + fmt(Math.abs(r.gapAbs)) + " " + (r.currency || "") +
+          " to reach the trigger";
+        return td;
+      }
       case "sym": {
         const td = h("td", "left");
         const symLine = h("span");
@@ -1418,19 +1436,51 @@
      would contradict the rest of the page. And it is deduplicated by symbol,
      because a name held both long and short, or listed twice, is one chart and
      should cross its own averages once. */
+  /* Which setups the ladder runs over. The two populations answer different
+     questions — a cross on something still waiting to trigger is a reason to
+     watch it more closely, the same cross on a confirmed breakout is money
+     already at risk — so they are separated rather than pooled. Waiting
+     setups are the default because that is what the page is mostly for. */
+  let SCAN_SCOPE = "watch";
+  const SCAN_SCOPES = [["watch", "Watchlist"], ["breakout", "Breakouts"], ["all", "All"]];
+
   function renderScan(rows) {
-    const box = $("#sigscan");
+    const box = $("#sigscan"), scopeBox = $("#scanscope");
     if (!box || typeof MA === "undefined") return;
-    const seen = new Set();
-    const universe = [];
-    for (const r of rows) {
-      const h2 = HIST[r.p.sym];
-      if (!h2 || seen.has(r.p.sym)) continue;
-      seen.add(r.p.sym);
-      universe.push({ sym: r.p.sym, name: r.p.note || r.p.sym,
-                      daily: h2.settled.map(x => x[1]) });
+
+    const build = scope => {
+      const seen = new Set(), universe = [];
+      for (const r of rows) {
+        if (scope !== "all" && r.section !== scope) continue;
+        const h2 = HIST[r.p.sym];
+        if (!h2 || seen.has(r.p.sym)) continue;
+        seen.add(r.p.sym);
+        universe.push({ sym: r.p.sym, name: r.p.note || r.p.sym,
+                        daily: h2.settled.map(x => x[1]) });
+      }
+      return universe;
+    };
+
+    if (scopeBox) {
+      scopeBox.textContent = "";
+      scopeBox.appendChild(h("span", "slabel", "Scan"));
+      for (const [key, label] of SCAN_SCOPES) {
+        const n = build(key).length;
+        const b = h("button", "rangebtn", label + " (" + n + ")");
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(key === SCAN_SCOPE));
+        b.disabled = n === 0;
+        b.addEventListener("click", () => { SCAN_SCOPE = key; renderScan(rows); });
+        scopeBox.appendChild(b);
+      }
     }
-    if (!universe.length) return;
+
+    const universe = build(SCAN_SCOPE);
+    if (!universe.length) {
+      box.textContent = "";
+      box.appendChild(h("p", "lede", "Nothing in this group to scan."));
+      return;
+    }
     MA.scan(box, universe, { link: s => YQ(s) });
   }
 
