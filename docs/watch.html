@@ -609,7 +609,7 @@
        breakout --close at or past target-->                         target (not terminal)
      Entries with `confirmed` (imported from the source's breakout list) start
      in the breakout state on that date. */
-  function replay(p, hist) {
+  function replay(p, hist, bars) {
     const st = { state: "watch", breakout: null, targetHit: null, failed: null };
     if (p.confirmed) {
       st.state = "breakout";
@@ -628,10 +628,26 @@
          entry. Every negation in the shared list today sits on a confirmed
          breakout, so this changes nothing about what the page currently shows;
          it stops the rule from firing where it does not belong. */
+      /* Touch, not close. A negation is the level at which the trade is wrong,
+         and price being there at all is the event — a wick through it and back
+         still means the position was invalidated during the session. So the
+         test runs against the day's low for a long and its high for a short.
+
+         Those extremes come from the v8 chart feed, which carries OHLC but only
+         one symbol per request; spark batches ten but returns close alone. They
+         are therefore fetched separately, after the table has already drawn,
+         and only for positions that are actually exposed. Where a bar has not
+         arrived the close is used and the row says which basis it ran on —
+         degrading to the old, laxer test rather than silently skipping one.
+
+         Still reproducible: a settled bar's low never changes, so the same
+         history replays to the same state on any device and any day. */
+      const ext = bars && bars[date];
+      const level = ext ? (long ? ext[0] : ext[1]) : c;
       const negHit = st.state !== "watch" && p.negation != null &&
-        (long ? c < p.negation : c > p.negation);
+        (long ? level < p.negation : level > p.negation);
       if (negHit) {
-        st.failed = { when: date, close: c,
+        st.failed = { when: date, close: c, at: level, byTouch: !!ext && level !== c,
           reason: st.state === "target" ? "negated after reaching target" : "failed breakout" };
         st.state = "failed";
         break;
@@ -653,7 +669,60 @@
 
   let OV = loadOverlay();
   let SHARED = [], HIST = {}, EVENTS = {};
+  /* Daily highs and lows, keyed sym -> { 'YYYY-MM-DD': [low, high] }.
+     Empty until the second pass fills it; the replay falls back to closes. */
+  const BARS = {};
   const EDITING = new Set();          // ids currently in edit mode
+
+
+  /* Daily extremes for the positions a negation can actually invalidate.
+     One request per symbol — v8 is the only Yahoo endpoint carrying OHLC and it
+     will not batch — so this runs after the first paint and only over exposed
+     rows, which is a few dozen rather than the whole list. The table redraws
+     when it lands. */
+  async function fetchExtremes(symbols) {
+    const out = {};
+    const CONC = 6;
+    const queue = [...new Set(symbols)].filter(Boolean);
+    async function one(sym) {
+      const url = "https://query1.finance.yahoo.com/v8/finance/chart/" +
+        encodeURIComponent(sym) + "?range=2y&interval=1d";
+      for (const wrap of PROXIES) {
+        try {
+          const r = await fetch(wrap(url), { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          const res = j.chart && j.chart.result && j.chart.result[0];
+          const q = res && res.indicators && res.indicators.quote && res.indicators.quote[0];
+          if (!res || !q || !res.timestamp) return;
+          const map = {};
+          for (let i = 0; i < res.timestamp.length; i++) {
+            const lo = q.low[i], hi = q.high[i];
+            if (lo == null || hi == null) continue;
+            map[new Date(res.timestamp[i] * 1000).toISOString().slice(0, 10)] = [lo, hi];
+          }
+          if (Object.keys(map).length) out[sym] = map;
+          return;
+        } catch { /* next proxy */ }
+      }
+    }
+    const workers = Array.from({ length: CONC }, async () => {
+      while (queue.length) await one(queue.shift());
+    });
+    await Promise.all(workers);
+    return out;
+  }
+
+  /* Second pass: which rows could a negation touch invalidate. */
+  async function loadExtremes() {
+    const want = workingList()
+      .filter(p => p.negation != null && p.manualState !== "removed" && p.manualState !== "failed")
+      .map(p => p.sym);
+    if (!want.length) return;
+    const got = await fetchExtremes(want);
+    Object.assign(BARS, got);
+    if (Object.keys(got).length) render();
+  }
 
   function workingList() {
     const list = [];
@@ -1273,7 +1342,11 @@
             reasonDone = true;
             const td = h("td");
             td.appendChild(h("span", "wstat bad",
-              st.failed ? st.failed.reason + (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "") : "moved manually"));
+              st.failed
+              ? st.failed.reason + (st.failed.byTouch
+                  ? " (touched " + fmt(st.failed.at) + " intraday)"
+                  : st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "")
+              : "moved manually"));
             tr.appendChild(td);
           } else if (label === "Actions") {
             tr.appendChild(actionsCell(p, tr, state));
@@ -1775,7 +1848,7 @@
     const items = { watch: [], breakout: [], target: [], failed: [], removed: [] };
     const all = [];
     for (const p of list) {
-      const st = replay(p, HIST[p.sym]);
+      const st = replay(p, HIST[p.sym], BARS[p.sym]);
       /* Three manual overrides, and they do not all work the same way.
          Failed and removed outrank the replay outright — you have decided the
          setup is done and the page should say so. A manual breakout does not:
@@ -1929,7 +2002,10 @@
   refresh().then(() => {
     /* Deferred so the page paints on the daily data first, then fills in the
        higher timeframes for the structure alerts. */
-    setTimeout(() => { loadTimeframe("weekly"); loadTimeframe("monthly"); }, 400);
+    /* Extremes first: they can change a row's state, which the higher
+       timeframes cannot, so they are the more urgent of the two refills. */
+    setTimeout(() => { loadExtremes(); }, 200);
+    setTimeout(() => { loadTimeframe("weekly"); loadTimeframe("monthly"); }, 600);
   });
 })();
 </script>
