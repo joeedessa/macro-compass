@@ -276,15 +276,22 @@ def sma_last(vals, n):
     return sum(vals[-n:]) / n if len(vals) >= n else None
 
 
+MA_PERIODS = (21, 50, 150, 200)
+
+
 def ma_structure(closes):
-    """Distance from 50 and 200, and the last level test, for one bar series.
+    """Distance from each average, and the last level test, for one bar series.
 
     Mirrors docs/ma.js so the Portfolio page reads the same as every other
-    page. Closes only — the feed carries no intraday high or low — so a spike
-    through a level that closed back above it counts as held.
+    page, and carries the same four periods the watchlist shows rather than
+    only the two the Structure block needed — the page now prints them per
+    position, so the shorter averages have somewhere to go.
+
+    Closes only — the feed carries no intraday high or low — so a spike through
+    a level that closed back above it counts as held.
     """
     out = {}
-    for n in (50, 200):
+    for n in MA_PERIODS:
         if len(closes) < n + 2:
             continue
         ma, s = [], 0.0
@@ -314,8 +321,12 @@ def ma_structure(closes):
             if (closes[k + off] >= ma[k]) != above:
                 ago = len(ma) - 1 - k
                 break
+        # The average's own level travels with the distance so the page can
+        # show it on hover — "+8.4%" is the reading, "and the 50 sits at
+        # 41.30" is what makes it actionable.
         out[str(n)] = {"dist": round(dist, 1), "above": above,
-                       "state": state, "ago": ago}
+                       "state": state, "ago": ago,
+                       "ma": round(last_ma, 4 if last_ma < 10 else 2)}
     return out
 
 

@@ -191,6 +191,23 @@
   .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
     font-size:11.5px; white-space:nowrap; }
   .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
+  /* moving-average columns and their toggles */
+  .switch { display:flex; gap:5px; align-items:center; margin:0 0 10px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+  .switch .mafixed { font-size:12px; color:var(--text-secondary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:8px; padding:4px 11px; }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px;
+    padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+  .switch .manote { font-size:11.5px; color:var(--text-muted); }
+  .matag { display:block; font-size:9.5px; font-weight:650; letter-spacing:0.02em;
+    text-transform:lowercase; }
+  .matag.held, .matag.reclaimed { color:var(--up); }
+  .matag.lost, .matag.rejected { color:var(--down); }
+  td.dim { color:var(--text-muted); }
 </style>
 </head>
 <body>
@@ -274,6 +291,15 @@
     <div class="newsgrid" id="news"></div>
 
     <h2>All positions</h2>
+    <div class="switch" id="matoggles" role="group" aria-label="Moving average timeframes">
+      <span class="slabel">Moving averages</span>
+      <span class="mafixed">21 · 50 · 150 · 200 daily</span>
+      <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
+      <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
+      <span class="manote">Distance from each average, computed in CI on all three timeframes.
+        <b>held</b> / <b>rejected</b> / <b>reclaimed</b> / <b>lost</b> mark the 150 and 200 where
+        price has been within 2% of them in the last 15 bars.</span>
+    </div>
     <div class="toolbar" id="toolbar"></div>
     <div class="tablewrap">
       <table id="tbl"><thead></thead><tbody></tbody></table>
@@ -745,14 +771,37 @@
   })();
 
   // ---------- full table ----------
-  const COLS = [
+  /* Moving averages per position, not just as breadth.
+     The Structure block above answers "how much of the book is above its
+     200-day"; it cannot answer "where does this holding sit against its
+     monthly 50", which is the question you actually ask of a position you
+     own. Every timeframe is already computed in CI — the toggles only decide
+     what is shown, so switching costs nothing and nothing is fetched. */
+  const MA_PERIODS = [21, 50, 150, 200];
+  const MA_TF = { w: { on: false, label: "weekly" }, m: { on: false, label: "monthly" } };
+  const maCols = tf => MA_PERIODS.map(n => ["ma_" + tf + n, n + (tf === "d" ? "d" : tf)]);
+  const maOf = (p, key) => {
+    const tf = key[3], n = key.slice(4);
+    return p.ma && p.ma[tf] ? p.ma[tf][n] || null : null;
+  };
+  const BASE_COLS = [
     ["tk", "Ticker", "left"], ["theme", "Theme", "left"], ["sector", "Sector", "left"],
     ["ex", "Exch", "left"], ["ccy", "Ccy", "left"], ["close", "Last"], ["chg", "Today"],
     ["atr_mult", "× ATR"], ["w1", "1W"], ["m1", "1M"], ["m3", "3M"], ["ytd", "YTD"],
     ["y1", "1Y"], ["rsi", "RSI"], ["from_hi52", "vs 52w hi"], ["from_ath", "vs ATH"],
     ["yield", "Yield"], ["exdiv", "Ex-div"], ["next", "Earnings"],
   ];
+  /* Spliced in after the price block so the table reads price, then structure,
+     then the income and calendar columns — the same order as the watchlist. */
+  const colsNow = () => {
+    const at = BASE_COLS.findIndex(c => c[0] === "atr_mult");
+    const mas = maCols("d")
+      .concat(MA_TF.w.on ? maCols("w") : [])
+      .concat(MA_TF.m.on ? maCols("m") : []);
+    return BASE_COLS.slice(0, at + 1).concat(mas, BASE_COLS.slice(at + 1));
+  };
   const valOf = (p, k) => {
+    if (k.startsWith("ma_")) { const m = maOf(p, k); return m ? m.dist : null; }
     if (k === "yield") return p.div && p.div.yield != null ? p.div.yield : null;
     if (k === "exdiv") return (p.div && p.div.ex_next) || "";
     if (k === "next") return (p.earn && p.earn.next) || "";
@@ -789,6 +838,18 @@
     bar.appendChild(h("span", "cnt"));
   })();
 
+  /* Both timeframes are already in the payload, so a toggle is a redraw and
+     nothing more — no fetch, no spinner, no lazy state to get wrong. */
+  for (const [tf, id] of [["w", "#ma-weekly"], ["m", "#ma-monthly"]]) {
+    const btn = $(id);
+    if (!btn) continue;
+    btn.addEventListener("click", () => {
+      MA_TF[tf].on = !MA_TF[tf].on;
+      btn.setAttribute("aria-pressed", String(MA_TF[tf].on));
+      renderTable();
+    });
+  }
+
   function renderTable() {
     const rows = P.filter(p =>
       (!FILTER.q || (p.tk + " " + (p.name || "")).toLowerCase().includes(FILTER.q.toLowerCase())) &&
@@ -807,7 +868,7 @@
     const thead = $("#tbl thead"), tb = $("#tbl tbody");
     thead.textContent = ""; tb.textContent = "";
     const hr = h("tr");
-    for (const [k, label, c] of COLS) {
+    for (const [k, label, c] of colsNow()) {
       const th = h("th", (c || "") + (k === sortKey ? " active" + (sortAsc ? " asc" : "") : ""));
       th.textContent = label;
       th.addEventListener("click", () => {
@@ -834,6 +895,18 @@
       tr.appendChild(h("td", cls(p.chg), pct(p.chg)));
       tr.appendChild(h("td", (p.atr_mult || 0) >= 2 ? "up" : null,
         p.atr_mult != null ? fmt(p.atr_mult, 1) + "×" : (p.atr_stale ? "n/a" : "–")));
+      for (const [key] of colsNow().filter(c => c[0].startsWith("ma_"))) {
+        const m = maOf(p, key);
+        if (!m) { tr.appendChild(h("td", "dim", "–")); continue; }
+        const td = h("td", m.dist >= 0 ? "up" : "down");
+        td.textContent = (m.dist > 0 ? "+" : "") + fmt(m.dist, 1) + "%";
+        /* Only the 150 and 200 carry the test state — those are the levels
+           treated as support and resistance. */
+        const n = +key.slice(4);
+        if (m.state && (n === 150 || n === 200)) td.appendChild(h("span", "matag " + m.state, m.state));
+        if (m.ma != null) td.title = "SMA " + n + " = " + fmt(m.ma, m.ma >= 100 ? 1 : 3);
+        tr.appendChild(td);
+      }
       for (const k of ["w1", "m1", "m3", "ytd", "y1"]) tr.appendChild(h("td", cls(p[k]), pct(p[k])));
       tr.appendChild(h("td", p.rsi == null ? null : p.rsi >= 70 ? "down" : p.rsi <= 30 ? "up" : null,
         p.rsi != null ? fmt(p.rsi, 0) : "–"));
