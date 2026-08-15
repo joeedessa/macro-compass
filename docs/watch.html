@@ -793,7 +793,9 @@
     France: "^FCHI", Italy: "FTSEMIB.MI", Spain: "^IBEX", Germany: "^GDAXI",
     "Hong Kong": "^HSI", India: "^NSEI", Australia: "^AXJO", Turkey: "XU100.IS",
     "South Africa": "^J203.JO", Netherlands: "^AEX", Belgium: "^BFX",
-    Finland: "^OMXH25", Norway: "OBX.OL", Ireland: "^ISEQ" };
+    Finland: "^OMXH25", Norway: "OBX.OL", Ireland: "^ISEQ", Austria: "^ATX" };
+  /* The UAE has no index this feed serves usably, so DFM names sit out the
+     Rel mkt column rather than being compared against a wrong benchmark. */
   const median = a => { const s = [...a].sort((x, y) => x - y); const m = s.length >> 1;
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
   /* Day-over-day % using the live tick vs the prior settled close (falls back
