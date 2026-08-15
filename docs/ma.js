@@ -216,5 +216,207 @@
     return evs.length;
   }
 
-  window.MA = { PERIODS, smaSeries, read, load, bars, events, breadth, panel, TF };
+  /* =====================================================================
+     The cross scan
+     =====================================================================
+     Moved here from four near-identical copies in countries, themes, lookup
+     and app.js. They had already drifted — different loop forms, one emitting
+     `key` and `when` where the others emitted `tier`, one null-guarding its
+     input and the rest not — while computing exactly the same thing. Adding a
+     timeframe toggle to four copies would have made that five.
+
+     On what the periods mean once the timeframe moves: a 200 on weekly bars is
+     200 weeks, close to four years, and on monthly bars roughly seventeen.
+     That is the point — the same ladder read at a horizon where a crossing is
+     rare enough to matter — but it also means the monthly scan can only cover
+     names with eighteen years of history, so the panel counts and states how
+     many qualified rather than quietly scanning fewer.
+     --------------------------------------------------------------------- */
+
+  const SCAN_TF = {
+    daily:   { label: "Daily",   unit: "d",  lookback: 10, word: "sessions" },
+    monthly: { label: "Monthly", unit: "mo", lookback: 12, word: "months" },
+    weekly:  { label: "Weekly",  unit: "w",  lookback: 13, word: "weeks" },
+  };
+  const SCAN_ORDER = ["daily", "weekly", "monthly"];
+  /* 200 periods for the slowest average plus room for the window. Anything
+     shorter cannot produce a 50-by-200 cross at all. */
+  const MIN_BARS = 220;
+
+  /* Seeded from the first value and iterated over the whole series, then the
+     first n dropped — matching what the pages have always done, so the crosses
+     this reports are the same ones they reported yesterday. */
+  function emaSeries(vals, n) {
+    if (!vals || vals.length < n) return [];
+    const k = 2 / (n + 1);
+    let prev = vals[0];
+    const out = [];
+    for (let i = 0; i < vals.length; i++) {
+      prev = vals[i] * k + prev * (1 - k);
+      out.push(prev);
+    }
+    return out.slice(n);
+  }
+
+  /* The escalation ladder, left to right: each step costs time and buys
+     confidence. Price leads its own averages arithmetically, so a name
+     normally lights up on the left and works rightward. */
+  const TIERS = [
+    { key: "e5x21",  label: "5 × 21",      sub: "EMA timing trigger",
+      pick: (P, S) => [S.e5, S.e21] },
+    { key: "px50",   label: "price × 50",  sub: "swing trend break",
+      pick: (P, S) => [P, S.s50] },
+    { key: "e21x50", label: "21 × 50",     sub: "intermediate turn",
+      pick: (P, S) => [S.e21, S.s50] },
+    { key: "px200",  label: "price × 200", sub: "regime change",
+      pick: (P, S) => [P, S.s200] },
+    { key: "s50x200", label: "50 × 200",   sub: "golden / death",
+      pick: (P, S) => [S.s50, S.s200] },
+  ];
+
+  /* Sign changes in (fast − slow) inside the window.
+     Every series here is end-aligned — smaSeries and emaSeries both drop their
+     warm-up from the front — so the two legs are compared by offset from the
+     last bar rather than joined on a date. That is what lets the same function
+     read a daily array and a monthly one without caring which it has. */
+  function crosses(vals, lookback) {
+    if (!vals || vals.length < MIN_BARS) return [];
+    const S = { s50: smaSeries(vals, 50), s200: smaSeries(vals, 200),
+                e21: emaSeries(vals, 21), e5: emaSeries(vals, 5) };
+    const out = [];
+    for (const t of TIERS) {
+      const [fast, slow] = t.pick(vals, S);
+      if (!fast.length || !slow.length) continue;
+      const span = Math.min(fast.length, slow.length, lookback + 1);
+      if (span < 2) continue;
+      const d = [];
+      for (let i = span - 1; i >= 0; i--) d.push(fast[fast.length - 1 - i] - slow[slow.length - 1 - i]);
+      for (let i = 1; i < d.length; i++) {
+        const prev = d[i - 1], now = d[i];
+        if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
+        /* Whipsaw: does the sign flip back again later inside the window? A
+           cross that has already been given back is not the same event as one
+           that has held, and the tag says so rather than dropping it. */
+        let whip = false;
+        for (let k = i + 1; k < d.length; k++) {
+          if ((d[k] < 0) !== (now < 0)) { whip = true; break; }
+        }
+        out.push({ key: t.key, label: t.label, bullish: now > 0,
+                   ago: d.length - 1 - i, whip });
+      }
+    }
+    return out;
+  }
+
+  /* The scan panel: a timeframe toggle over the ladder grid.
+     `rows` is [{sym, name, daily}]; higher timeframes come from the shared
+     cache and are fetched on first use, so the default view costs nothing
+     extra and the toggle pays for itself only when pressed. */
+  function scan(container, rows, opts) {
+    const o = opts || {};
+    const st = container.__scan || (container.__scan = { tf: o.tf || "daily", loading: false });
+
+    const valsFor = (r, tf) => tf === "daily" ? r.daily : bars(tf, r.sym);
+
+    function draw() {
+      container.textContent = "";
+      const cfg = SCAN_TF[st.tf];
+
+      const sw = el("div", "switch");
+      sw.appendChild(el("span", "slabel", "Timeframe"));
+      for (const key of SCAN_ORDER) {
+        const b = el("button", "rangebtn", SCAN_TF[key].label);
+        b.type = "button";
+        b.setAttribute("aria-pressed", String(key === st.tf));
+        b.addEventListener("click", () => select(key));
+        sw.appendChild(b);
+      }
+      const note = el("span", "manote");
+      sw.appendChild(note);
+      container.appendChild(sw);
+
+      if (st.loading) {
+        note.textContent = "Loading " + cfg.label.toLowerCase() + " bars…";
+        return;
+      }
+
+      const found = [];
+      let covered = 0;
+      for (const r of rows) {
+        const vals = valsFor(r, st.tf);
+        if (!vals || vals.length < MIN_BARS) continue;
+        covered++;
+        for (const ev of crosses(vals, cfg.lookback)) {
+          found.push({ sym: r.sym, name: r.name || r.sym, ...ev });
+        }
+      }
+      note.textContent = "crosses in the last " + cfg.lookback + " " + cfg.word +
+        " · " + covered + " of " + rows.length + " with enough history";
+
+      if (!covered) {
+        container.appendChild(el("p", "signone",
+          "None of these carry the " + (MIN_BARS) + " " + cfg.word +
+          " a 200-period average needs."));
+        return;
+      }
+      if (!found.length) {
+        container.appendChild(el("p", "signone",
+          "No crosses in the last " + cfg.lookback + " " + cfg.word + "."));
+        return;
+      }
+
+      for (const bullish of [true, false]) {
+        const block = el("div", "sigblock " + (bullish ? "bull" : "bear"));
+        const head = el("h3", null, bullish ? "▲ Bullish crosses" : "▼ Bearish crosses");
+        head.appendChild(el("span", "ladder",
+          "earliest and noisiest on the left → latest and most reliable on the right"));
+        block.appendChild(head);
+        const grid = el("div", "sigcols");
+        for (const t of TIERS) {
+          const col = el("div", "sigcol " + (bullish ? "bull" : "bear"));
+          col.appendChild(el("p", "tierhead", t.label));
+          col.appendChild(el("p", "sigsub", t.sub));
+          const mine = found.filter(f => f.bullish === bullish && f.key === t.key)
+            .sort((a, b) => a.ago - b.ago);
+          if (!mine.length) {
+            col.appendChild(el("p", "signone", "none"));
+            grid.appendChild(col);
+            continue;
+          }
+          for (const f of mine) {
+            const it = el("div", "sigitem");
+            const a = el("a", null, f.name);
+            const href = o.link ? o.link(f.sym) : null;
+            if (href) { a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; }
+            it.appendChild(a);
+            if (f.whip) it.appendChild(el("span", "whiptag", "whipsawed"));
+            it.appendChild(el("span", "sighint", f.sym + " · " +
+              (f.ago === 0 ? "latest close" : f.ago + cfg.unit + " ago")));
+            col.appendChild(it);
+          }
+          grid.appendChild(col);
+        }
+        block.appendChild(grid);
+        container.appendChild(block);
+      }
+    }
+
+    function select(tf) {
+      if (tf === st.tf) return;
+      st.tf = tf;
+      if (tf !== "daily" && !TF[tf].data) {
+        st.loading = true;
+        draw();
+        load(rows.map(r => r.sym)).then(() => { st.loading = false; draw(); });
+        return;
+      }
+      draw();
+    }
+
+    draw();
+    return st;
+  }
+
+  window.MA = { PERIODS, smaSeries, emaSeries, read, load, bars, events, breadth,
+                panel, crosses, scan, TIERS, SCAN_TF, TF };
 })();

@@ -184,10 +184,19 @@
   .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
     font-size:11.5px; white-space:nowrap; }
   .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
+  /* timeframe toggle for the shared cross scan (ma.js) */
+  .switch { display:flex; gap:5px; align-items:center; margin:8px 0 12px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:var(--baseline);
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+  .switch .manote { font-size:11.5px; color:var(--text-muted); }
 </style>
 </head>
 <body>
-<script src="ma.js?v=20260814d"></script>
+<script src="ma.js?v=20260815a"></script>
 <div class="wrap">
   <header>
     <div>
@@ -801,23 +810,6 @@
     for (let i = pts.length - n; i < pts.length; i++) s += pts[i][1];
     return s / n;
   };
-  const smaSeries = (pts, n) => {
-    if (pts.length < n) return [];
-    const out = []; let s = 0;
-    for (let i = 0; i < pts.length; i++) {
-      s += pts[i][1];
-      if (i >= n) s -= pts[i - n][1];
-      if (i >= n - 1) out.push([pts[i][0], s / n]);
-    }
-    return out;
-  };
-  const emaSeries = (pts, n) => {
-    if (pts.length < n) return [];
-    const k = 2 / (n + 1), out = [];
-    let prev = pts[0][1];
-    for (let i = 0; i < pts.length; i++) { prev = pts[i][1] * k + prev * (1 - k); out.push([pts[i][0], prev]); }
-    return out.slice(n);
-  };
   const back = (pts, n) => pts.length > n ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
   function stats(pts) {
     if (!pts || pts.length < 3) return null;
@@ -841,37 +833,6 @@
     const base = joined[joined.length - 1 - days][1];
     return (last / base - 1) * 100;
   }
-  const CROSS_DEFS = [
-    [4, "5 × 21", (P, S) => [S.e5, S.e21]],
-    [2, "price × 50", (P, S) => [P, S.s50]],
-    [3, "21 × 50", (P, S) => [S.e21, S.s50]],
-    [0, "price × 200", (P, S) => [P, S.s200]],
-    [1, "50 × 200", (P, S) => [S.s50, S.s200]],
-  ];
-  function crossEvents(pts, lookback = 10) {
-    if (!pts || pts.length < 220) return [];
-    const S = { s50: smaSeries(pts, 50), s200: smaSeries(pts, 200),
-                e21: emaSeries(pts, 21), e5: emaSeries(pts, 5) };
-    const events = [];
-    for (const [tier, label, pick] of CROSS_DEFS) {
-      const [fast, slow] = pick(pts, S);
-      const bySlow = new Map(slow.map(p => [p[0], p[1]]));
-      const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
-      if (pair.length < lookback + 2) continue;
-      const tail = pair.slice(-(lookback + 1));
-      for (let i = 1; i < tail.length; i++) {
-        const prev = tail[i - 1][1], now = tail[i][1];
-        if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
-        let whip = false;
-        for (let k = i + 1; k < tail.length; k++) {
-          if ((tail[k][1] < 0) !== (now < 0)) { whip = true; break; }
-        }
-        events.push({ tier, label, bullish: now > 0, daysAgo: tail.length - 1 - i, whip });
-      }
-    }
-    return events;
-  }
-
   let SERIES = {}, MACRO = null, EVENTS = {}, WATCH = [];
   const status = $("#status");
 
@@ -1117,7 +1078,11 @@
       "complex, in the same fast-to-slow order used on the other pages."));
     const found = [];
     for (const [sym, name] of S.complex) {
-      for (const ev of crossEvents(SERIES[sym])) found.push({ sym, name, ...ev });
+      /* Shared calculation from ma.js; this page keeps its own compact
+         two-column layout rather than the five-column ladder, because a
+         single subject's complex is short enough to read in one list. */
+      for (const ev of MA.crosses(SERIES[sym].map(p => p[1]), 10))
+        found.push({ sym, name, ...ev, daysAgo: ev.ago });
     }
     const sw = h("div", "sigwrap");
     for (const bullish of [true, false]) {

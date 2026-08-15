@@ -1174,121 +1174,22 @@ function renderRotationSnapshot() {
   box.appendChild(list);
 }
 
-/* ---- cross detection --------------------------------------------------
-   Five moving-average cross signals, ordered from slow to fast:
-     price × SMA200   — regime change, the one the source report keys on
-     SMA50 × SMA200   — golden/death cross; confirms late, whipsaws least
-     price × SMA50    — swing-level trend break
-     EMA21 × SMA50    — intermediate momentum turn
-     EMA5  × EMA21    — short-term trigger; noisy, only meaningful with trend
-   A cross that reverses again within the window is flagged as a whipsaw
-   rather than hidden — a whipsawing signal is itself information. */
-const CROSS_DEFS = [
-  ["price-200", "price crossed the 200-day SMA", (P, S) => [P, S.s200]],
-  ["50-200", "50-day crossed the 200-day (golden/death)", (P, S) => [S.s50, S.s200]],
-  ["price-50", "price crossed the 50-day SMA", (P, S) => [P, S.s50]],
-  ["21-50", "21-day EMA crossed the 50-day SMA", (P, S) => [S.e21, S.s50]],
-  ["5-21", "5-day EMA crossed the 21-day EMA", (P, S) => [S.e5, S.e21]],
-];
-
-function crossEvents(pts, lookback) {
-  lookback = lookback || 10;
-  if (pts.length < 220) return [];
-  const S = { s50: sma(pts, 50), s200: sma(pts, 200), e21: ema(pts, 21), e5: ema(pts, 5) };
-  const events = [];
-  for (const [key, label, pick] of CROSS_DEFS) {
-    const [fast, slow] = pick(pts, S);
-    const bySlow = new Map(slow.map(p => [p[0], p[1]]));
-    const pair = fast.filter(p => bySlow.has(p[0])).map(p => [p[0], p[1] - bySlow.get(p[0])]);
-    if (pair.length < lookback + 2) continue;
-    const tail = pair.slice(-(lookback + 1));
-    for (let i = 1; i < tail.length; i++) {
-      const prev = tail[i - 1][1], now = tail[i][1];
-      if (prev === 0 || now === 0 || (prev < 0) === (now < 0)) continue;
-      const daysAgo = tail.length - 1 - i;
-      // Whipsaw: does the sign flip back later inside the window?
-      let whip = false;
-      for (let k = i + 1; k < tail.length; k++) {
-        if ((tail[k][1] < 0) !== (now < 0)) { whip = true; break; }
-      }
-      events.push({ key, label, bullish: now > 0, daysAgo, whip, when: tail[i][0] });
-    }
-  }
-  return events;
-}
-
 /* Signal scan (Markets page): six columns reading left to right from
    short-term bullish through long-term bullish, then bearish in the same
    fast-to-slow order. ST = 5×21 and 21×50 EMA triggers; Swing = price×50;
    LT = price×200 and the 50×200 golden/death cross. */
+/* The cross scan lives in ma.js — one ladder, one timeframe toggle, shared by
+   every page that draws this grid. Yields are excluded: a yield crossing its
+   own moving average is a real event but not the same kind of event as a price
+   doing it, and mixing them made the columns unreadable. */
 function renderSignals() {
   const box = $("#signals");
-  if (!box) return;
-  box.textContent = "";
-  const found = [];
-  for (const [sym, name] of UNIVERSE) {
-    if (!SERIES[sym]) continue;
-    for (const ev of crossEvents(SERIES[sym])) found.push({ sym, name, ...ev });
-  }
-  if (!found.length) {
-    box.appendChild(h("p", "muted", "No moving-average crosses in the last ten sessions."));
-    return;
-  }
-  const bulls = found.filter(f => f.bullish && !f.whip).length;
-  const bears = found.filter(f => !f.bullish && !f.whip).length;
-  box.appendChild(h("p", "secsum",
-    found.length + " crosses in the last 10 sessions — " + bulls + " bullish and " +
-    bears + " bearish still standing" +
-    (found.some(f => f.whip) ? ", " + found.filter(f => f.whip).length + " whipsawed" : "") + "."));
-  const tierOf = f => CROSS_DEFS.findIndex(d => d[0] === f.key);
-  box.appendChild(sigColumns(found.map(f => ({ ...f, tier: tierOf(f) }))));
-}
-
-/* Shared column builder for the signal scan. Expects events carrying
-   {sym, name, tier (0 slow … 4 fast), bullish, whip, daysAgo}. */
-function sigColumns(found) {
-  const box = h("div");
-    /* Columns are the escalation ladder, left to right: each step costs time
-       and buys confidence. Price leads its own averages arithmetically, so a
-       name normally lights up left first and works rightward — measured over
-       5 years, price crosses the 200 before the 50/200 golden cross 100% of
-       the time, by a median of 18 sessions. Bull block sits above bear. */
-    const TIERS = [
-      [4, "5 \u00d7 21", "EMA timing trigger"],
-      [2, "price \u00d7 50", "swing trend break"],
-      [3, "21 \u00d7 50", "intermediate turn"],
-      [0, "price \u00d7 200", "regime change"],
-      [1, "50 \u00d7 200", "golden / death"],
-    ];
-    for (const bullish of [true, false]) {
-      const block = h("div", "sigblock " + (bullish ? "bull" : "bear"));
-      const head = h("h3", null, bullish ? "\u25b2 Bullish crosses" : "\u25bc Bearish crosses");
-      head.appendChild(h("span", "ladder", "earliest and noisiest on the left \u2192 latest and most reliable on the right"));
-      block.appendChild(head);
-      const grid = h("div", "sigcols");
-      for (const [tier, label, sub] of TIERS) {
-        const col = h("div", "sigcol " + (bullish ? "bull" : "bear"));
-        col.appendChild(h("p", "tierhead", label));
-        col.appendChild(h("p", "sigsub", sub));
-        const mine = found.filter(f => f.bullish === bullish && f.tier === tier)
-          .sort((a, b) => a.daysAgo - b.daysAgo);
-        if (!mine.length) { col.appendChild(h("p", "signone", "none")); grid.appendChild(col); continue; }
-        for (const f of mine) {
-          const it = h("div", "sigitem");
-          const a = h("a", null, f.name);
-          a.href = YQ(f.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
-          it.appendChild(a);
-          if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
-          it.appendChild(h("span", "sighint", f.sym + " \u00b7 " +
-            (f.daysAgo === 0 ? "latest close" : f.daysAgo + "d ago")));
-          col.appendChild(it);
-        }
-        grid.appendChild(col);
-      }
-      block.appendChild(grid);
-      box.appendChild(block);
-    }
-  return box;
+  if (!box || typeof MA === "undefined") return;
+  const rows = UNIVERSE
+    .filter(u => SERIES[u[0]] && u[3] !== "yield")
+    .map(u => ({ sym: u[0], name: u[1], daily: SERIES[u[0]].map(p => p[1]) }));
+  if (!rows.length) return;
+  MA.scan(box, rows, { link: s => YQ(s) });
 }
 
 /* Higher-timeframe structure, drawn by the shared module. Loads after first
