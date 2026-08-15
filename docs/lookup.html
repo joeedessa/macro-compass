@@ -952,7 +952,12 @@
     for (let i = pts.length - n; i < pts.length; i++) s += pts[i][1];
     return s / n;
   };
-  const back = (pts, n) => pts.length > n ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
+  /* Null-guarded like stats and ratioChange beside it. A lead instrument whose
+     feed has gone stale is dropped before it reaches here, and the bare
+     pts.length this used to do would throw on it — the same shape of crash
+     that emptied the signals section. */
+  const back = (pts, n) => pts && pts.length > n
+    ? (pts[pts.length - 1][1] / pts[pts.length - 1 - n][1] - 1) * 100 : null;
   function stats(pts) {
     if (!pts || pts.length < 3) return null;
     const last = pts[pts.length - 1][1];
