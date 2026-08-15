@@ -193,9 +193,13 @@
     font-weight:640; }
   .rangebtn:hover { color:var(--text-primary); }
   .switch .manote { font-size:11.5px; color:var(--text-muted); }
+  .subjhead h3 .kindtag { font-size:10.5px; font-weight:650; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--text-secondary); border:1px solid var(--baseline);
+    border-radius:999px; padding:1px 8px; margin-left:9px; vertical-align:3px; }
 </style>
 </head>
 <body>
+<script src="universe.js?v=20260815a"></script>
 <script src="ma.js?v=20260815a"></script>
 <div class="wrap">
   <header>
@@ -749,6 +753,126 @@
               ["Today — the tape", "tape.html"]],
     },
   };
+
+  /* ---- generated subjects -------------------------------------------------
+     The twelve above are hand-written dossiers: a thesis somebody thought
+     about, drivers with an expected sign, ratios chosen because they answer
+     something. They do not scale, and they were never meant to — but it left
+     the page unable to answer "what about Chile", which is a fair question to
+     ask a lookup.
+
+     So every country, theme and commodity the site already tracks becomes a
+     subject too, built from the shared universe rather than a fourth copy of
+     those lists. What they carry is real: live price, the peer group they
+     belong to, ratios against the benchmark that actually applies, the moving
+     average structure, the cross ladder, and for commodities the CFTC
+     positioning the Commodities page already keys.
+
+     What they deliberately do NOT carry is a thesis or a driver list. Writing
+     ninety-nine of those would mean inventing ninety-nine opinions, and an
+     invented opinion in this house style reads exactly like a considered one.
+     The blurb says which kind of entry you are looking at. */
+  const GEN = {};
+
+  (function buildGenerated() {
+    if (typeof UNIVERSE === "undefined") return;
+    const nameOf = {};
+    for (const [sym, nm] of UNIVERSE.COUNTRIES.map(c => [c[0], c[1]])) nameOf[sym] = nm;
+
+    // --- countries -------------------------------------------------------
+    const byRegion = {};
+    for (const c of UNIVERSE.COUNTRIES) (byRegion[c[2]] = byRegion[c[2]] || []).push(c);
+    for (const [etf, name, region, local] of UNIVERSE.COUNTRIES) {
+      const peers = (byRegion[region] || []).filter(x => x[0] !== etf).slice(0, 7);
+      const complex = [[etf, name]];
+      if (local) complex.push([local, name + " — local index"]);
+      complex.push(...peers.map(x => [x[0], x[1]]));
+      complex.push(["ACWI", "All-country world"]);
+      const ratios = [
+        [etf, "ACWI", "vs the world", "Leading the world index",
+         "Lagging the world index"],
+        [etf, "SPY", "vs the US", "Leading the US", "Lagging the US"],
+      ];
+      /* The dollar ETF against the same market in its own currency: the gap
+         between them IS the currency effect, which is the one comparison this
+         pairing can make that neither line makes alone. */
+      if (local) ratios.push([etf, local, "Dollar view vs local currency",
+        "The dollar return is ahead — the currency is adding to the local move",
+        "The local return is ahead — the currency is taking away from it"]);
+      GEN["country:" + etf] = {
+        name, kind: "country",
+        terms: [name.toLowerCase(), etf.toLowerCase(), region.toLowerCase(), "country"],
+        blurb: "Country · " + region,
+        thesis: "The US-listed dollar ETF for " + name + ", set against the world index and " +
+          "the US, alongside its " + region + " peers." +
+          (local ? " The local index is shown in local currency, so the gap between the two is " +
+            "the currency effect." : " No local index the feed serves usably, so this one is " +
+            "dollar-only."),
+        lead: etf, complex, ratios, drivers: [],
+        links: [["Countries — the full table", "countries.html"],
+                ["Countries — yearly returns", "countries.html"]],
+      };
+    }
+
+    // --- themes ----------------------------------------------------------
+    for (const [band, bandBlurb, list] of UNIVERSE.BANDS) {
+      for (const [etf, name] of list) {
+        const peers = list.filter(x => x[0] !== etf).slice(0, 8);
+        GEN["theme:" + etf] = {
+          name, kind: "theme",
+          terms: [name.toLowerCase(), etf.toLowerCase(), band.toLowerCase(), "theme", "sector"],
+          blurb: band + " · " + etf,
+          thesis: name + " against the S&P 500 and the rest of its band. " + bandBlurb + ".",
+          lead: etf,
+          complex: [[etf, name], ...peers.map(x => [x[0], x[1]]), ["SPY", "S&P 500"]],
+          ratios: [[etf, "SPY", "vs the S&P 500", "Leading the index", "Lagging the index"]],
+          drivers: [],
+          links: [["Themes — the full ranking", "themes.html"]],
+        };
+      }
+    }
+
+    // --- commodities -----------------------------------------------------
+    for (const [complexName, list] of UNIVERSE.COMPLEXES) {
+      for (const [sym, name, unit, cotKey] of list) {
+        const peers = list.filter(x => x[0] !== sym).slice(0, 8);
+        const ratios = peers.slice(0, 3).map(x =>
+          [sym, x[0], "vs " + x[1], name + " leading " + x[1].toLowerCase(),
+           x[1] + " leading " + name.toLowerCase()]);
+        GEN["cmdty:" + sym] = {
+          name, kind: "commodity",
+          terms: [name.toLowerCase(), sym.toLowerCase(), complexName.toLowerCase(),
+                  "commodity", "futures"],
+          blurb: complexName + " · quoted in " + unit,
+          thesis: name + ", quoted in " + unit + " and never converted, shown against the rest " +
+            "of the " + complexName.toLowerCase() + " complex." +
+            (cotKey ? " CFTC positioning is included, because this is a contract the " +
+              "Commission reports." : ""),
+          lead: sym,
+          complex: [[sym, name], ...peers.map(x => [x[0], x[1]])],
+          ratios, drivers: [],
+          cot: cotKey ? { comm: "cot_" + cotKey + "_comm", large: "cot_" + cotKey + "_large",
+                          note: "Commercials in most commodities are producers hedging output, " +
+                            "so their net sits structurally short — the move against that " +
+                            "baseline is the signal, not the minus sign." } : null,
+          links: [["Commodities — the complexes", "commodities.html"],
+                  ["Commodities — positioning", "commodities.html"]],
+        };
+      }
+    }
+    /* A generated entry whose lead instrument already leads a hand-written
+       dossier is strictly the poorer of the two — the dossier has the same
+       price plus a thesis, drivers and chosen ratios. Drop the duplicate
+       rather than offering the reader two "Gold" rows and no way to tell
+       which is which. */
+    const curatedLeads = new Set(Object.values(SUBJECTS).map(x => x.lead));
+    let dropped = 0;
+    for (const k of Object.keys(GEN)) {
+      if (curatedLeads.has(GEN[k].lead)) { delete GEN[k]; dropped++; }
+    }
+    Object.assign(SUBJECTS, GEN);
+  })();
+
   const KEYS = Object.keys(SUBJECTS);
 
   async function proxied(url) {
@@ -836,11 +960,34 @@
   let SERIES = {}, MACRO = null, EVENTS = {}, WATCH = [];
   const status = $("#status");
 
+  const CURATED_KEYS = KEYS.filter(k => !SUBJECTS[k].kind);
+  const symbolsFor = keys => [...new Set(keys.flatMap(k =>
+    SUBJECTS[k].complex.map(c => c[0])
+      .concat((SUBJECTS[k].ratios || []).flatMap(r => [r[0], r[1]]))
+      .concat([SUBJECTS[k].lead])).concat(["SPY"]))];
+
+  /* Pull anything this subject needs that is not already cached. Returns only
+     once the data is in, so the caller can render without a half-empty table. */
+  let loadingKey = null;
+  async function ensureSeries(key) {
+    const want = symbolsFor([key]).filter(sym => !(sym in SERIES) && !DROPPED.includes(sym));
+    if (!want.length) return;
+    loadingKey = key;
+    const got = await fetchSeries(want).catch(() => ({}));
+    Object.assign(SERIES, freshOnly(got));
+    /* Symbols that came back with nothing are recorded so a second selection
+       does not re-request them on every visit. */
+    for (const sym of want) if (!(sym in SERIES)) SERIES[sym] = null;
+    loadingKey = null;
+  }
+
   async function boot() {
-    const syms = [...new Set(KEYS.flatMap(k =>
-      SUBJECTS[k].complex.map(c => c[0])
-        .concat(SUBJECTS[k].ratios.flatMap(r => [r[0], r[1]]))
-        .concat([SUBJECTS[k].lead])).concat(["SPY"]))];
+    /* Only the curated dossiers are pulled up front. Fetching every generated
+       subject too would mean roughly two hundred symbols on a page that shows
+       one at a time — the generated ones load when they are actually asked
+       for, which is the difference between a page that opens and one that
+       hangs for twenty seconds. */
+    const syms = symbolsFor(CURATED_KEYS);
     const [series, macro] = await Promise.all([
       fetchSeries(syms).catch(() => ({})),
       fetch("data/macro.json?t=" + Date.now(), { cache: "no-store" })
@@ -903,7 +1050,9 @@
 
     // ---- head ----
     const head = h("div", "subjhead");
-    head.appendChild(h("h3", null, S.name));
+    const hh = h("h3", null, S.name);
+    if (S.kind) hh.appendChild(h("span", "kindtag", S.kind));
+    head.appendChild(hh);
     head.appendChild(h("p", "thesis", S.thesis));
     const lead = stats(SERIES[S.lead]);
     if (lead) {
@@ -958,6 +1107,11 @@
     tbl.appendChild(tb); tw.appendChild(tbl); box.appendChild(tw);
 
     // ---- drivers ----
+    /* Generated subjects carry none: writing a driver list for ninety-nine
+       instruments would mean inventing the signs, and a made-up expectation
+       reads identically to a considered one. The section simply does not
+       appear rather than appearing empty. */
+    if (S.drivers && S.drivers.length) {
     box.appendChild(h("h2", null, "What drives it"));
     box.appendChild(h("p", "lede", "Each driver carries the sign the relationship is supposed " +
       "to have. Over the last three months the page checks whether it actually held — a driver " +
@@ -1037,8 +1191,10 @@
          : ". Where it breaks is where the story is.");
       box.appendChild(p);
     }
+    }   // end drivers section
 
     // ---- internal relative strength ----
+    if (S.ratios && S.ratios.length) {
     box.appendChild(h("h2", null, "Inside the complex"));
     box.appendChild(h("p", "lede", "Relative strength between the parts, over three months. " +
       "These say who is leading the move, which is usually more informative than the move."));
@@ -1056,6 +1212,7 @@
     }
     if (!anyRatio) rbox.appendChild(h("div", "rrow", "No overlapping history for these pairs."));
     box.appendChild(rbox);
+    }   // end ratios section
 
     // ---- higher-timeframe structure for this subject's complex ----
     box.appendChild(h("h2", null, "Structure"));
@@ -1217,12 +1374,29 @@
   function matches(q) {
     const s = q.trim().toLowerCase();
     if (!s) return KEYS;
-    return KEYS.filter(k => {
+    /* Scored rather than filtered, and the peer group only counts for the
+       hand-written dossiers.
+       Matching on the complex is what lets "GDX" find Gold, which is the point
+       of a lookup — but every generated country carries its regional peers, so
+       the same rule made "chile" return all eight of the Americas with Chile
+       fifth. Generated entries match on their own name, symbol and terms only,
+       and an exact name match always sorts first. */
+    const score = k => {
       const S = SUBJECTS[k];
-      return S.name.toLowerCase().includes(s) || k.includes(s) ||
-        S.terms.some(t => t.includes(s)) ||
-        S.complex.some(c => c[0].toLowerCase().includes(s) || c[1].toLowerCase().includes(s));
-    });
+      const name = S.name.toLowerCase();
+      if (name === s) return 0;
+      if (S.lead.toLowerCase() === s) return 1;
+      if (name.startsWith(s)) return 2;
+      if (name.includes(s)) return 3;
+      if (S.terms.some(t => t === s)) return 4;
+      if (S.terms.some(t => t.includes(s)) || k.toLowerCase().includes(s)) return 5;
+      if (!S.kind && S.complex.some(c => c[0].toLowerCase().includes(s) ||
+                                         c[1].toLowerCase().includes(s))) return 6;
+      return 99;
+    };
+    return KEYS.map(k => [k, score(k)]).filter(x => x[1] < 99)
+      .sort((a, b) => a[1] - b[1] || SUBJECTS[a[0]].name.localeCompare(SUBJECTS[b[0]].name))
+      .map(x => x[0]);
   }
   function openList(list) {
     opts.textContent = "";
@@ -1248,11 +1422,21 @@
     opts.hidden = true; active = -1;
     input.setAttribute("aria-expanded", "false");
   }
-  function choose(k) {
+  async function choose(k) {
     current = k;
     input.value = SUBJECTS[k].name;
     closeList();
     history.replaceState(null, "", "#" + k);
+    /* Generated subjects are not preloaded, so say so rather than showing an
+       empty dossier for the second it takes. */
+    const box = $("#content");
+    if (symbolsFor([k]).some(sym => !(sym in SERIES))) {
+      box.hidden = false;
+      box.textContent = "";
+      box.appendChild(h("p", "lede", "Fetching " + SUBJECTS[k].name + "…"));
+      await ensureSeries(k);
+      if (current !== k) return;           // a faster click won the race
+    }
     renderSubject(k);
   }
   input.addEventListener("focus", () => openList(matches(input.value === (current && SUBJECTS[current].name) ? "" : input.value)));

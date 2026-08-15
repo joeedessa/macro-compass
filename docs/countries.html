@@ -232,6 +232,7 @@
 </style>
 </head>
 <body>
+<script src="universe.js?v=20260815a"></script>
 <script src="ma.js?v=20260815a"></script>
 <div class="wrap">
   <header>
@@ -333,57 +334,8 @@
      resolve and still carry one bar. Chile, Poland, Qatar, Egypt, Vietnam,
      Colombia, Peru and the UAE have no index the feed will serve usably, so
      they are ETF-only and sit out the local-currency view. */
-  const COUNTRIES = [
-    ["SPY", "United States", "Americas", "^GSPC"],
-    ["EWC", "Canada", "Americas", "^GSPTSE"],
-    ["EWW", "Mexico", "Americas", "^MXX"],
-    ["EWZ", "Brazil", "Americas", "^BVSP"],
-    ["ECH", "Chile", "Americas", null],
-    ["ARGT", "Argentina", "Americas", "^MERV"],
-    ["GXG", "Colombia", "Americas", null],
-    ["EPU", "Peru", "Americas", null],
-    ["EWU", "United Kingdom", "Europe", "^FTSE"],
-    ["EWG", "Germany", "Europe", "^GDAXI"],
-    ["EWQ", "France", "Europe", "^FCHI"],
-    ["EWI", "Italy", "Europe", "FTSEMIB.MI"],
-    ["EWP", "Spain", "Europe", "^IBEX"],
-    ["EWN", "Netherlands", "Europe", "^AEX"],
-    ["EWL", "Switzerland", "Europe", "^SSMI"],
-    ["EWD", "Sweden", "Europe", "^OMX"],
-    ["EWK", "Belgium", "Europe", "^BFX"],
-    ["EWO", "Austria", "Europe", "^ATX"],
-    ["EIRL", "Ireland", "Europe", "^ISEQ"],
-    ["ENOR", "Norway", "Europe", "OBX.OL"],
-    ["EDEN", "Denmark", "Europe", "^OMXC25"],
-    ["EFNL", "Finland", "Europe", "^OMXH25"],
-    ["PGAL", "Portugal", "Europe", "PSI20.LS"],
-    ["GREK", "Greece", "Europe", "GD.AT"],
-    ["EPOL", "Poland", "Europe", null],
-    ["EWJ", "Japan", "Asia-Pacific", "^N225"],
-    ["MCHI", "China", "Asia-Pacific", "000300.SS"],
-    ["EWH", "Hong Kong", "Asia-Pacific", "^HSI"],
-    ["EWT", "Taiwan", "Asia-Pacific", "^TWII"],
-    ["EWY", "South Korea", "Asia-Pacific", "^KS11"],
-    ["INDA", "India", "Asia-Pacific", "^NSEI"],
-    ["EIDO", "Indonesia", "Asia-Pacific", "^JKSE"],
-    ["EWM", "Malaysia", "Asia-Pacific", "^KLSE"],
-    ["THD", "Thailand", "Asia-Pacific", "^SET.BK"],
-    ["EPHE", "Philippines", "Asia-Pacific", "PSEI.PS"],
-    ["EWS", "Singapore", "Asia-Pacific", "^STI"],
-    ["VNM", "Vietnam", "Asia-Pacific", null],
-    ["EWA", "Australia", "Asia-Pacific", "^AXJO"],
-    ["ENZL", "New Zealand", "Asia-Pacific", "^NZ50"],
-    ["EZA", "South Africa", "Middle East & Africa", "^J203.JO"],
-    ["TUR", "Turkey", "Middle East & Africa", "XU100.IS"],
-    ["KSA", "Saudi Arabia", "Middle East & Africa", "^TASI.SR"],
-    ["QAT", "Qatar", "Middle East & Africa", null],
-    ["EIS", "Israel", "Middle East & Africa", "^TA125.TA"],
-    ["EGPT", "Egypt", "Middle East & Africa", null],
-    ["UAE", "United Arab Emirates", "Middle East & Africa", null],
-  ];
-  const BENCH = [["ACWI", "All-country world", "Benchmark"],
-                 ["EFA", "Developed ex-US (EAFE)", "Benchmark"],
-                 ["EEM", "Emerging markets", "Benchmark"]];
+  const COUNTRIES = UNIVERSE.COUNTRIES;
+  const BENCH = UNIVERSE.BENCH;
   const REGIONS = ["Americas", "Europe", "Asia-Pacific", "Middle East & Africa", "Benchmark"];
   const BASE = "ACWI";
 

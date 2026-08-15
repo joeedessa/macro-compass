@@ -167,6 +167,7 @@
 </style>
 </head>
 <body>
+<script src="universe.js?v=20260815a"></script>
 <script src="ma.js?v=20260815a"></script>
 <div class="wrap">
   <header>
@@ -291,49 +292,7 @@
   /* [symbol, name, quoted unit, COT key or null]. Units are stated because a
      commodity page that prints 4,445 and 662 without saying one is dollars an
      ounce and the other cents a pound is unreadable. */
-  const COMPLEXES = [
-    ["Energy", [
-      ["CL=F", "WTI crude", "$/bbl", "wti"],
-      ["BZ=F", "Brent crude", "$/bbl", null],
-      ["NG=F", "Natural gas", "$/MMBtu", "natgas"],
-      ["RB=F", "RBOB gasoline", "$/gal", null],
-      ["HO=F", "Heating oil", "$/gal", null],
-    ]],
-    ["Precious metals", [
-      ["GC=F", "Gold", "$/oz", "gold"],
-      ["SI=F", "Silver", "$/oz", "silver"],
-      ["PL=F", "Platinum", "$/oz", "platinum"],
-      ["PA=F", "Palladium", "$/oz", null],
-    ]],
-    ["Industrial metals", [
-      ["HG=F", "Copper", "$/lb", "copper"],
-      ["ALI=F", "Aluminium", "$/tonne", null],
-    ]],
-    ["Grains and oilseeds", [
-      ["ZC=F", "Corn", "¢/bu", "corn"],
-      ["ZW=F", "Wheat", "¢/bu", "wheat"],
-      ["ZS=F", "Soybeans", "¢/bu", "soybeans"],
-      ["ZL=F", "Soybean oil", "¢/lb", null],
-      ["ZM=F", "Soybean meal", "$/ton", null],
-    ]],
-    ["Softs", [
-      ["SB=F", "Sugar", "¢/lb", "sugar"],
-      ["KC=F", "Coffee", "¢/lb", "coffee"],
-      ["CC=F", "Cocoa", "$/tonne", "cocoa"],
-      ["CT=F", "Cotton", "¢/lb", "cotton"],
-      ["OJ=F", "Orange juice", "¢/lb", null],
-    ]],
-    ["Livestock", [
-      ["LE=F", "Live cattle", "¢/lb", null],
-      ["HE=F", "Lean hogs", "¢/lb", null],
-    ]],
-    ["Broad baskets", [
-      ["BCI", "Broad commodities (BCI)", "index", null],
-      ["DBC", "DB commodity index (DBC)", "index", null],
-      ["GSG", "GSCI (GSG)", "index", null],
-      ["DBA", "Agriculture (DBA)", "index", null],
-    ]],
-  ];
+  const COMPLEXES = UNIVERSE.COMPLEXES;
   const ALL = COMPLEXES.flatMap(([, list]) => list);
   /* The equity leg. A miner is a levered, operationally geared claim on the
      commodity: when it leads the metal the market is pricing the move as

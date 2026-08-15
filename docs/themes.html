@@ -149,6 +149,7 @@
 </style>
 </head>
 <body>
+<script src="universe.js?v=20260815a"></script>
 <script src="ma.js?v=20260815a"></script>
 <div class="wrap">
   <header>
@@ -246,38 +247,7 @@
      here (gold and copper miners, uranium, agribusiness, soft commodities) now
      live on Commodities with the metal they track, and country exposure lives
      on Countries. */
-  const BANDS = [
-    ["Secular themes", "A story that cuts across industries — owned for years, not quarters", [
-      ["BOTZ", "Robotics & automation"],
-      ["AIQ", "Artificial intelligence"],
-      ["ARKX", "Space"],
-      ["CIBR", "Cybersecurity"],
-      ["ITA", "Defense & aerospace"],
-      ["NLR", "Nuclear"],
-      ["TAN", "Solar"],
-      ["ICLN", "Clean energy"],
-      ["GRID", "Grid & electrification"],
-      ["PAVE", "Infrastructure"],
-      ["LIT", "Lithium & battery"],
-      ["PHO", "Water"],
-      ["IHI", "Medical devices"],
-      ["BOAT", "Shipping"],
-    ]],
-    ["Sectors & industries", "A slice of the index that rotates with the cycle", [
-      ["SMH", "Semiconductors"],
-      ["XLK", "Technology"],
-      ["XBI", "Biotech"],
-      ["XLV", "Healthcare"],
-      ["XLI", "Industrials"],
-      ["XLE", "Energy"],
-      ["OIH", "Oil services"],
-      ["XLB", "Materials"],
-      ["KBE", "Banks"],
-      ["ITB", "Homebuilders"],
-      ["XRT", "Retail"],
-      ["JETS", "Airlines"],
-    ]],
-  ];
+  const BANDS = UNIVERSE.BANDS;
   const THEMES = BANDS.flatMap(([, , list]) => list);
   const BAND_OF = {};
   for (const [name, , list] of BANDS) for (const [sym] of list) BAND_OF[sym] = name;
