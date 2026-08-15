@@ -362,6 +362,11 @@
   <p id="empty-failed" class="lede" hidden>None — nothing has been negated.</p>
   <div class="tablewrap wl" id="sec-failed"></div>
 
+  <p id="empty-removed" class="lede" hidden>Nothing removed. Setups you take off the watchlist
+    land here rather than disappearing, and keep tracking, so you can see whether removing them
+    was right.</p>
+  <div class="tablewrap wl" id="sec-removed"></div>
+
   <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
   <p class="lede tight">Jump here from the ▮ icon on any row. What the last quarter delivered
     against expectations — including how the market traded it — plus the consensus for the coming
@@ -714,6 +719,15 @@
                ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["","Actions","nosort"]],
+    /* Taken off the list by hand rather than by a rule, so the columns that
+       describe how a trade resolved are dropped — there is no outcome to show.
+       Price and the levels stay, because the question you ask of something you
+       removed is whether removing it was right. */
+    removed:  [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
+               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],
+               ["target","Target"],["negation","Negation"],
+               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
+               ["","Actions","nosort"]],
   };
   /* The moving-average columns are spliced in after the price block so the
      table reads price, then structure, then the setup's own levels. */
@@ -723,10 +737,17 @@
     const mas = activeMaCols();
     return at < 0 ? base : base.slice(0, at + 1).concat(mas, base.slice(at + 1));
   }
-  const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false], failed: ["when", false] };
+  /* Every section in SECTIONS needs an entry here — buildTable destructures
+     SORT[state], and a missing key throws mid-render, taking the rest of the
+     page down with it silently. Removed sorts by distance to trigger, the same
+     as the watchlist: the question you ask of something you dropped is how
+     close it came. */
+  const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false],
+                 failed: ["when", false], removed: ["gap", true] };
   const FILTERS = {};
   const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
-                   target: "Reached price target", failed: "Failed breakouts" };
+                   target: "Reached price target", failed: "Failed breakouts",
+                   removed: "Removed from watchlist" };
   // Local benchmark index per listing country (Yahoo symbols, all probed live).
   const INDEX_MAP = { US: "^GSPC", Canada: "^GSPTSE", Japan: "^N225", UK: "^FTSE",
     France: "^FCHI", Italy: "FTSEMIB.MI", Spain: "^IBEX", Germany: "^GDAXI",
@@ -808,7 +829,7 @@
     saveOverlay();
   }
 
-  function actionsCell(p, tr) {
+  function actionsCell(p, tr, state) {
     const td = document.createElement("td");
     const box = h("div", "wact");
     const editing = EDITING.has(idOf(p));
@@ -827,7 +848,35 @@
       render();
     });
     box.appendChild(edit);
-    if (p.manualState !== "failed") {
+    const clearManual = () => {
+      if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; saveOverlay(); }
+      else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; saveOverlay(); }
+      render();
+    };
+    const restore = (label, title) => {
+      const b = h("button", null, label);
+      b.title = title;
+      b.addEventListener("click", clearManual);
+      box.appendChild(b);
+    };
+
+    if (p.manualState === "removed") {
+      restore("Restore", "Put this setup back on the watchlist");
+    } else if (p.manualState === "failed") {
+      restore("Restore", "Undo the manual move to Failed breakouts");
+    } else if (state === "watch") {
+      /* A setup still waiting to trigger has not failed at anything — it was
+         never in the trade. Calling that "Fail" put it in with genuine negated
+         breakouts and made the failure record read worse than it was. */
+      const rm = h("button", null, "Remove");
+      rm.title = "Take this off the watchlist. It moves to Removed and can be restored";
+      rm.addEventListener("click", () => {
+        if (!confirm("Remove " + p.sym + " " + p.dir + " from the watchlist? " +
+                     "It moves to Removed and can be restored.")) return;
+        saveEdit(p, { manualState: "removed" }); render();
+      });
+      box.appendChild(rm);
+    } else if (state === "breakout" || state === "target") {
       const f = h("button", null, "Fail");
       f.title = "Move to failed manually";
       f.addEventListener("click", () => {
@@ -835,14 +884,6 @@
         saveEdit(p, { manualState: "failed" }); render();
       });
       box.appendChild(f);
-    } else {
-      const r2 = h("button", null, "Restore");
-      r2.addEventListener("click", () => {
-        if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; saveOverlay(); }
-        else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; saveOverlay(); }
-        render();
-      });
-      box.appendChild(r2);
     }
     if (!p.shared) {
       const del = h("button", null, "Del");
@@ -1133,7 +1174,7 @@
               st.failed ? st.failed.reason + (st.failed.close != null ? " (close " + fmt(st.failed.close) + ")" : "") : "moved manually"));
             tr.appendChild(td);
           } else if (label === "Actions") {
-            tr.appendChild(actionsCell(p, tr));
+            tr.appendChild(actionsCell(p, tr, state));
           }
           continue;
         }
@@ -1259,7 +1300,7 @@
     const TFS = [["m", "monthly", 1, 0], ["w", "weekly", 1, 1], ["d", "daily", 2, 2]];
     const struct = [];
     for (const r of all) {
-      if (r.st.state === "failed") continue;
+      if (r.section === "failed" || r.section === "removed") continue;
       for (const [tf, label, maxAgo, rank] of TFS) {
         const vals = tf === "d" ? r.ma.d : tf === "w" ? r.ma.w : r.ma.m;
         if (!vals) continue;
@@ -1556,16 +1597,21 @@
     }
   }
 
-  const SECTIONS = ["watch", "breakout", "target", "failed"];
+  const SECTIONS = ["watch", "breakout", "target", "failed", "removed"];
   function render() {
     FREEZERS.length = 0;
     SIZERS.length = 0;
     const list = workingList();
-    const items = { watch: [], breakout: [], target: [], failed: [] };
+    const items = { watch: [], breakout: [], target: [], failed: [], removed: [] };
     const all = [];
     for (const p of list) {
       const st = replay(p, HIST[p.sym]);
-      const state = p.manualState === "failed" ? "failed" : st.state;
+      /* Two manual overrides now outrank the replay: failed, and removed.
+         The replay still runs underneath — a removed setup keeps computing its
+         trigger distance, so the section can answer whether dropping it was
+         the right call rather than just hiding the evidence. */
+      const state = (p.manualState === "failed" || p.manualState === "removed")
+        ? p.manualState : st.state;
       const r = rowData(p, st);
       r.section = state;
       items[state].push(r);
@@ -1584,18 +1630,22 @@
       const peers = r.ev.sector ? bySec[r.ev.sector] : null;
       r.rels = (r.dayPct != null && peers && peers.length >= 3) ? pct1(r.dayPct - median(peers)) : null;
     }
-    renderGauge(all.filter(r => r.section !== "failed"));
+    // Removed setups are not part of the tape read, nor of the earnings
+    // detail below it — they are kept for the record, not for the day.
+    const live = all.filter(r => r.section !== "failed" && r.section !== "removed");
+    renderGauge(live);
     renderAlerts(all);
     for (const state of SECTIONS) {
       $("#empty-" + state).hidden = items[state].length > 0;
       buildTable(state, items[state]);
     }
-    renderDetails(all);
+    renderDetails(all.filter(r => r.section !== "removed"));
     const syms = [...new Set(list.map(p => p.sym))];
     const missing = syms.filter(s => !HIST[s]);
     $("#stamp").textContent = list.length + " setups · " + syms.length + " symbols, native currencies · " +
       items.breakout.length + " confirmed · " + items.target.length + " at target · " +
       items.failed.length + " failed" +
+      (items.removed.length ? " · " + items.removed.length + " removed" : "") +
       (missing.length ? " · no quote: " + missing.join(", ") : "") +
       "";
   }
