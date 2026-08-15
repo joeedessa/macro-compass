@@ -620,11 +620,19 @@
     const from = p.confirmed || p.created;
     for (const [date, c] of hist.settled) {
       if (from && date < from) continue;
-      const negHit = p.negation != null && (long ? c < p.negation : c > p.negation);
+      /* Negation belongs to the breakout, not to the watchlist.
+         A setup still waiting has no position to invalidate — it leaves the
+         watchlist by triggering, by being promoted, or by being removed, and
+         nothing else. Evaluating a negation against it would fail a trade that
+         was never entered, and could reach back over bars that predate the
+         entry. Every negation in the shared list today sits on a confirmed
+         breakout, so this changes nothing about what the page currently shows;
+         it stops the rule from firing where it does not belong. */
+      const negHit = st.state !== "watch" && p.negation != null &&
+        (long ? c < p.negation : c > p.negation);
       if (negHit) {
         st.failed = { when: date, close: c,
-          reason: st.state === "watch" ? "negated before trigger" :
-                  st.state === "target" ? "negated after reaching target" : "failed breakout" };
+          reason: st.state === "target" ? "negated after reaching target" : "failed breakout" };
         st.state = "failed";
         break;
       }
@@ -657,6 +665,10 @@
         breakthrough: o.breakthrough !== undefined ? o.breakthrough : p.breakthrough,
         target: o.target !== undefined ? o.target : p.target,
         ex_div: o.ex_div !== undefined ? o.ex_div : p.ex_div,
+        /* A hand-promoted setup needs a start date like an imported one, or
+           the replay walks from `created` and a negation entered afterwards
+           reaches back over bars that predate the promotion. */
+        confirmed: o.confirmed !== undefined ? o.confirmed : p.confirmed,
         manualState: o.manualState || null, shared: true });
     }
     for (const p of OV.added) list.push({ ...p, shared: false });
@@ -901,8 +913,17 @@
     });
     box.appendChild(edit);
     const clearManual = () => {
-      if (p.shared) { const o = OV.over[idOf(p)] || {}; delete o.manualState; OV.over[idOf(p)] = o; saveOverlay(); }
-      else { const mine = OV.added.find(x => idOf(x) === idOf(p)); if (mine) delete mine.manualState; saveOverlay(); }
+      /* Drop the stamped date with the flag — leaving it behind would keep the
+         setup seeded as a breakout after the promotion was undone. */
+      if (p.shared) {
+        const o = OV.over[idOf(p)] || {};
+        delete o.manualState; delete o.confirmed;
+        OV.over[idOf(p)] = o; saveOverlay();
+      } else {
+        const mine = OV.added.find(x => idOf(x) === idOf(p));
+        if (mine) { delete mine.manualState; delete mine.confirmed; }
+        saveOverlay();
+      }
       render();
     };
     const restore = (label, title) => {
@@ -928,7 +949,9 @@
       bo.addEventListener("click", () => {
         if (!confirm("Move " + p.sym + " " + p.dir + " to Confirmed breakouts now? " +
                      "The rules keep running underneath — a negation or a target still wins.")) return;
-        saveEdit(p, { manualState: "breakout" }); render();
+        saveEdit(p, { manualState: "breakout",
+                      confirmed: new Date().toISOString().slice(0, 10) });
+        render();
       });
       box.appendChild(bo);
       const rm = h("button", null, "Remove");
@@ -1128,7 +1151,8 @@
           const td = h("td", null, st.breakout ? fmtD(st.breakout.when)
             : p.manualState === "breakout" ? "by hand" : "–");
           if (st.breakout && st.breakout.close != null) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
-          else if (st.breakout) td.appendChild(h("span", "wname", "as listed by source"));
+          else if (st.breakout) td.appendChild(h("span", "wname",
+            p.manualState === "breakout" ? "promoted by hand" : "as listed by source"));
           return td;
         }
         if (state === "target") {
