@@ -97,6 +97,14 @@
   .alhead { font-size:12px; font-weight:650; text-transform:uppercase; letter-spacing:0.05em;
     color:var(--text-secondary); margin:0 0 6px; }
   .alhead .alcount { font-weight:600; color:var(--text-muted); }
+  /* Which section the setup sits in. Kept monochrome on purpose — the box is
+     already coloured by whether the signal helps or hurts the position, and a
+     second colour scale in the same row would compete with that one. */
+  .albox .sttag { display:inline-block; font-size:10.5px; font-weight:650; letter-spacing:0.03em;
+    text-transform:uppercase; border:1px solid var(--baseline); border-radius:999px;
+    padding:1px 8px; margin-right:8px; color:var(--text-secondary);
+    background:var(--surface-1); vertical-align:1px; white-space:nowrap; }
+  .albox .sttag.st-breakout { border-color:var(--text-secondary); color:var(--text-primary); }
   .alhead .alsub { font-weight:400; text-transform:none; letter-spacing:0;
     color:var(--text-muted); font-size:12px; }
   .albox { border:1px solid var(--border); border-radius:10px; padding:9px 14px; font-size:13px; }
@@ -1269,17 +1277,34 @@
             " (" + fmt(r.prevClose) + " vs " + fmt(m.ma, 2) + ")" +
             (m.crossedAgo === 0 ? " on the latest bar"
               : " " + m.crossedAgo + " bar" + (m.crossedAgo > 1 ? "s" : "") + " ago") +
-            (helps ? " — the setup's way" : " — against the setup")]);
+            (helps ? " — the setup's way" : " — against the setup"),
+            r.st.state]);
         }
       }
     }
-    struct.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    /* Timeframe first, because a monthly cross outranks a daily one whatever
+       state the setup is in. Then, among equals, the setups with money already
+       in them: a name that has confirmed its breakout is a live position, so
+       its structure turning matters more than the same turn on something still
+       waiting to trigger. */
+    const STATE_RANK = { breakout: 0, target: 1, watch: 2 };
+    struct.sort((a, b) => a[0] - b[0] || a[1] - b[1] ||
+      (STATE_RANK[a[4]] ?? 9) - (STATE_RANK[b[4]] ?? 9));
 
+    /* A structure signal says nothing about which section the setup sits in,
+       and the two answers differ in what you would do about it — the tag names
+       the section the row came from, worded exactly as the section heading
+       below so the two read as the same thing. */
     const draw = (target, rows, limit) => {
       target.textContent = "";
-      for (const [cls, msg] of rows.slice(0, limit)) {
+      for (const [cls, msg, state] of rows.slice(0, limit)) {
         const b = h("div", "albox " + cls);
         b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
+        if (state && TITLES[state]) {
+          const tag = h("span", "sttag st-" + state, TITLES[state]);
+          tag.title = "This setup is in the " + TITLES[state] + " section below";
+          b.appendChild(tag);
+        }
         b.appendChild(document.createTextNode(msg));
         target.appendChild(b);
       }
@@ -1287,7 +1312,7 @@
     };
 
     const nSetup = draw(box, items, 12);
-    const nSignal = draw($("#signals"), struct.map(s => [s[2], s[3]]), 10);
+    const nSignal = draw($("#signals"), struct.map(s => [s[2], s[3], s[4]]), 10);
 
     /* Each group carries its own count and hides itself when empty, so a quiet
        day shows nothing rather than a heading over a blank space. */
