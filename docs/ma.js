@@ -488,13 +488,22 @@
     const m = colRead(row, key);
     const td = el("td");
     if (!m) { td.className = "madim"; td.textContent = "–"; return td; }
+    /* Above or below stated, not inferred.
+       A signed percentage in a table full of signed percentages does not read
+       as a position — you have to know that plus means above, and the returns
+       columns beside it use the same sign for something else entirely. The
+       caret says which side of the average price is on; the number says how
+       far. */
     td.className = m.dist >= 0 ? "maup" : "madown";
-    td.textContent = (m.dist > 0 ? "+" : "") + fmt(m.dist, 1) + "%";
+    td.appendChild(el("span", "maside", m.above ? "▲" : "▼"));
+    td.appendChild(document.createTextNode(
+      " " + (m.dist > 0 ? "+" : "") + fmt(m.dist, 1) + "%"));
     /* Only the 150 and 200 carry the level test — those are the two treated as
        support and resistance, and tagging all five would bury them. */
     const n = +key.slice(4);
     if (m.state && (n === 150 || n === 200)) td.appendChild(el("span", "matag " + m.state, m.state));
-    td.title = "SMA " + n + " = " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
+    td.title = (m.above ? "Above" : "Below") + " the " + n + "-period average, "
+      + "which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
     return td;
   }
 
@@ -525,9 +534,10 @@
       sw.appendChild(b);
     }
     sw.appendChild(el("span", "manote",
-      "Distance from each simple moving average. held / rejected / reclaimed / lost mark the " +
-      "150 and 200 where price has been within 2% of them in the last 15 bars. The cross ladder " +
-      "uses exponential averages for its 5 and 21 tiers; these columns are simple throughout."));
+      "▲ means price is above that average and ▼ below it; the number is how far. " +
+      "held / rejected / reclaimed / lost mark the 150 and 200 where price has been within 2% " +
+      "of them in the last 15 bars. The cross ladder uses exponential averages for its 5 and " +
+      "21 tiers; these columns are simple throughout."));
     container.appendChild(sw);
   }
 

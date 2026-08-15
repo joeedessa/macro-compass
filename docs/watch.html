@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260815d">
+<link rel="stylesheet" href="styles.css?v=20260815e">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -305,10 +305,11 @@
     border-radius:4px; padding:0 4px; margin-left:5px; }
   .sigcol .signone { font-size:11.5px; color:var(--text-muted); margin:0; padding:9px 12px 2px; }
   #sigscan .switch .manote { font-size:11.5px; color:var(--text-muted); }
+  .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
 </head>
 <body>
-<script src="ma.js?v=20260815d"></script>
+<script src="ma.js?v=20260815e"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -361,8 +362,7 @@
     <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
     <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
     <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
-    <span class="manote">Distance from each average. <b>held</b> / <b>rejected</b> / <b>reclaimed</b> /
-      <b>lost</b> mark the 150 and 200 when price has been within 2% of them in the last 15 bars.</span>
+    <span class="manote">▲ above that average, ▼ below it; the number is how far.</span>
   </div>
 
   <div id="gauge"></div>
@@ -600,7 +600,9 @@
     for (let k = ma.length - 2; k >= 0; k--) {
       if ((vals[k + off] >= ma[k]) !== isAbove) { crossedAgo = ma.length - 1 - k; break; }
     }
-    return { ma: lastMa, dist, state, crossedAgo };
+    // `above` travels with the rest: the cell renders a caret from it, and
+    // an undefined here reads as "below" beside a positive distance.
+    return { ma: lastMa, dist, state, crossedAgo, above: isAbove };
   }
 
   /* Replay on SETTLED closes only:
@@ -1140,14 +1142,17 @@
       const m = maFromKey(r, key);
       if (!m) return h("td", "dimcell", loading ? "…" : "–");
       const td = h("td", m.dist >= 0 ? "maup" : "madown");
-      td.textContent = (m.dist > 0 ? "+" : "") + fmt(m.dist) + "%";
+      // Caret first: which side of the average, before how far from it.
+      td.appendChild(h("span", "maside", m.above ? "▲" : "▼"));
+      td.appendChild(document.createTextNode(" " + (m.dist > 0 ? "+" : "") + fmt(m.dist) + "%"));
       /* Only the 150 and 200 carry the test state — those are the levels the
          desk actually treats as support and resistance. */
       const n = +key.slice(4);
       if (m.state && (n === 150 || n === 200)) {
         td.appendChild(h("span", "matag " + m.state, m.state));
       }
-      td.title = "SMA " + n + " = " + fmt(m.ma, 2);
+      td.title = (m.above ? "Above" : "Below") + " the " + n +
+        "-period average, which sits at " + fmt(m.ma, 2);
       return td;
     }
     switch (key) {

@@ -408,3 +408,5 @@ td.maup { color:var(--up); } td.madown { color:var(--down); } td.madim { color:v
 .matag { display:block; font-size:9.5px; font-weight:650; text-transform:lowercase; }
 .matag.held, .matag.reclaimed { color:var(--up); }
 .matag.lost, .matag.rejected { color:var(--down); }
+
+.maside { font-size:9px; vertical-align:1px; opacity:0.85; }
