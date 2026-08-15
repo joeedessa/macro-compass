@@ -5,12 +5,24 @@
  * many. Pages differ in what they hold, not in how a 200-week average works.
  *
  * Exposes window.MA:
- *   MA.PERIODS            the four lengths, 21 / 50 / 150 / 200
+ *   MA.PERIODS            21 / 50 / 150 / 200, the lengths the structure block reads
+ *   MA.COL_PERIODS        5 / 21 / 50 / 150 / 200, the lengths the columns show
  *   MA.smaSeries(v, n)    rolling mean, O(n)
+ *   MA.emaSeries(v, n)    exponential mean, seeded from the first value
  *   MA.read(vals, n)      where the last close sits, and the last level test
  *   MA.load(symbols)      weekly and monthly bars, batched and cached
  *   MA.events(rows)       fresh level changes, ranked by timeframe
- *   MA.panel(rows, opts)  the standard Structure block
+ *   MA.panel(rows, opts)  the standard Structure block — breadth plus events
+ *   MA.crosses(vals, n)   sign changes on the five-tier ladder
+ *   MA.scan(rows, opts)   the ladder grid with its daily/weekly/monthly toggle
+ *   MA.colDefs()          active MA columns, daily plus whichever are toggled on
+ *   MA.colCell(row, key)  one distance cell, with the level tag on 150 and 200
+ *   MA.colValue(row, key) the same as a number, for a page's own sort
+ *   MA.colToggles(...)    the + Weekly / + Monthly control
+ *
+ * Three questions, three shapes: where does this sit now (columns), what just
+ * changed (events), and how is the group placed (breadth). The columns exist
+ * because the first of those was answerable on two pages out of eight.
  *
  * Two things about the data, learned the hard way:
  *
@@ -426,6 +438,100 @@
     return st;
   }
 
-  window.MA = { PERIODS, smaSeries, emaSeries, read, load, bars, events, breadth,
-                panel, crosses, scan, TIERS, SCAN_TF, TF };
+
+  /* =====================================================================
+     The moving-average column block
+     =====================================================================
+     Five periods, three timeframes, one implementation.
+
+     The ladder above reports crosses — events. It cannot answer "where does
+     this sit right now", which is a different and more often asked question:
+     a name that reclaimed its 200 six months ago and has held it appears in no
+     cross column at all. Countries, Commodities, AI and Lookup carried a single
+     "vs 200-day"; Themes carried neither. Portfolio and the watchlist had four
+     periods across three timeframes and were the only places you could see it.
+
+     On 5 and 21 being simple averages here while the ladder's "5 × 21" tier
+     uses exponential ones: that split already existed — the watchlist's 21
+     column has always been an SMA beside a ladder tier calling the same number
+     an EMA — and the columns are left simple so no figure anyone has been
+     reading moves. The header says which, rather than leaving it to be assumed.
+     --------------------------------------------------------------------- */
+
+  const COL_PERIODS = [5, 21, 50, 150, 200];
+  const COL_STATE = { w: false, m: false };
+  const TF_OF = { w: "weekly", m: "monthly" };
+
+  /* Active columns, daily always and the higher timeframes when toggled on.
+     Returned as [key, label] so a page can splice them straight into whatever
+     header array it already walks. */
+  function colDefs() {
+    const set = tf => COL_PERIODS.map(n => ["ma_" + tf + n, n + tf]);
+    return set("d")
+      .concat(COL_STATE.w ? set("w") : [])
+      .concat(COL_STATE.m ? set("m") : []);
+  }
+  const isColKey = k => typeof k === "string" && k.startsWith("ma_");
+
+  function colRead(row, key) {
+    const tf = key[3], n = +key.slice(4);
+    const vals = tf === "d" ? row.daily : bars(TF_OF[tf], row.sym);
+    return read(vals, n);
+  }
+  /* Sortable value for a column, so a page's existing comparator keeps working. */
+  const colValue = (row, key) => {
+    const m = colRead(row, key);
+    return m ? m.dist : null;
+  };
+
+  function colCell(row, key) {
+    const m = colRead(row, key);
+    const td = el("td");
+    if (!m) { td.className = "madim"; td.textContent = "–"; return td; }
+    td.className = m.dist >= 0 ? "maup" : "madown";
+    td.textContent = (m.dist > 0 ? "+" : "") + fmt(m.dist, 1) + "%";
+    /* Only the 150 and 200 carry the level test — those are the two treated as
+       support and resistance, and tagging all five would bury them. */
+    const n = +key.slice(4);
+    if (m.state && (n === 150 || n === 200)) td.appendChild(el("span", "matag " + m.state, m.state));
+    td.title = "SMA " + n + " = " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
+    return td;
+  }
+
+  /* The toggle row. Higher timeframes are fetched on first press and cached,
+     so the daily default costs nothing and pressing one is paid for once. */
+  function colToggles(container, symbols, onChange) {
+    container.textContent = "";
+    const sw = el("div", "switch");
+    sw.appendChild(el("span", "slabel", "Moving averages"));
+    sw.appendChild(el("span", "mafixed", COL_PERIODS.join(" · ") + " daily"));
+    for (const [k, label] of [["w", "+ Weekly"], ["m", "+ Monthly"]]) {
+      const b = el("button", "rangebtn", label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(COL_STATE[k]));
+      b.addEventListener("click", async () => {
+        const turningOn = !COL_STATE[k];
+        if (turningOn && !TF[TF_OF[k]].data) {
+          b.textContent = "loading…";
+          b.disabled = true;
+          await load(typeof symbols === "function" ? symbols() : symbols);
+          b.disabled = false;
+          b.textContent = label;
+        }
+        COL_STATE[k] = turningOn;
+        b.setAttribute("aria-pressed", String(COL_STATE[k]));
+        onChange();
+      });
+      sw.appendChild(b);
+    }
+    sw.appendChild(el("span", "manote",
+      "Distance from each simple moving average. held / rejected / reclaimed / lost mark the " +
+      "150 and 200 where price has been within 2% of them in the last 15 bars. The cross ladder " +
+      "uses exponential averages for its 5 and 21 tiers; these columns are simple throughout."));
+    container.appendChild(sw);
+  }
+
+  window.MA = { PERIODS, COL_PERIODS, smaSeries, emaSeries, read, load, bars, events,
+                breadth, panel, crosses, scan, TIERS, SCAN_TF, TF,
+                colDefs, colCell, colValue, colToggles, colRead, isColKey, COL_STATE };
 })();
