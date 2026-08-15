@@ -199,8 +199,15 @@
       list.appendChild(el("p", "manone",
         "Nothing has changed sides on a 150 or 200 recently."));
     }
+    /* When a page is showing one subject beside its peers — Lookup does, and
+       the peers are the point — the subject's own rows have to be findable at a
+       glance, or the reader is scanning nine near-identical lines for the one
+       they asked about. Marked in a channel that is not red or green, since
+       those already mean direction here. */
+    const hl = new Set([].concat(o.highlight || []));
     for (const e of evs.slice(0, o.limit || 12)) {
-      const row = el("div", "marow " + (e.helps ? "good" : "bad"));
+      const row = el("div", "marow " + (e.helps ? "good" : "bad") +
+        (hl.has(e.sym) ? " subj" : ""));
       const a = el("a", null, e.name);
       const href = o.link ? o.link(e.sym) : null;
       if (href) { a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; }
@@ -318,6 +325,8 @@
 
     const valsFor = (r, tf) => tf === "daily" ? r.daily : bars(tf, r.sym);
 
+    const hlSet = new Set([].concat(o.highlight || []));
+
     function draw() {
       container.textContent = "";
       const cfg = SCAN_TF[st.tf];
@@ -384,7 +393,7 @@
             continue;
           }
           for (const f of mine) {
-            const it = el("div", "sigitem");
+            const it = el("div", "sigitem" + (hlSet.has(f.sym) ? " subj" : ""));
             const a = el("a", null, f.name);
             const href = o.link ? o.link(f.sym) : null;
             if (href) { a.href = href; a.target = "_blank"; a.rel = "noopener noreferrer"; }

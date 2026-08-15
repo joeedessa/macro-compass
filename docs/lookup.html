@@ -214,11 +214,21 @@
   .subjhead h3 .kindtag { font-size:10.5px; font-weight:650; text-transform:uppercase;
     letter-spacing:0.05em; color:var(--text-secondary); border:1px solid var(--baseline);
     border-radius:999px; padding:1px 8px; margin-left:9px; vertical-align:3px; }
+  /* The subject itself, wherever it appears among its peers. Amber rather than
+     red or green: those two already mean direction on this page, and a third
+     meaning on the same channel would make all three ambiguous. */
+  .lead td { font-weight:650; }
+  .lead td:first-child { box-shadow:inset 3px 0 0 var(--series-2); }
+  .lead td { background:color-mix(in srgb, var(--surface-1) 88%, var(--series-2)) !important; }
+  .marow.subj, .sigitem.subj, .rrow.subj {
+    background:color-mix(in srgb, var(--surface-1) 88%, var(--series-2));
+    box-shadow:inset 3px 0 0 var(--series-2); }
+  .marow.subj a, .sigitem.subj a, .rrow.subj .rp { font-weight:700; }
 </style>
 </head>
 <body>
 <script src="universe.js?v=20260815a"></script>
-<script src="ma.js?v=20260815a"></script>
+<script src="ma.js?v=20260815b"></script>
 <div class="wrap">
   <header>
     <div>
@@ -245,7 +255,7 @@
     rest of the dashboard knows about it — the instruments that express it, the macro series that
     drive it and whether those relationships are currently behaving, the relative strength inside
     its own complex, any moving-average crosses, and the names on your watchlist that ride on it.
-    Three subjects to start; the page is built so adding more is a data change.</p>
+    Twelve of these are hand-written dossiers with a thesis and drivers; the rest are every country, theme and commodity the dashboard tracks, generated from the same lists those pages use. Whichever you pick is highlighted wherever it appears among its peers.</p>
 
   <div class="picker" id="picker">
     <label for="q">Subject</label>
@@ -1227,7 +1237,11 @@
       const ch = ratioChange(SERIES[a], SERIES[b], 63);
       if (ch == null) continue;
       anyRatio = true;
-      const row = h("div", "rrow");
+      /* Every ratio on a generated subject has the subject on one side, but on
+         a curated dossier most do not — GDXJ over GDX says nothing about gold
+         directly. Marking the ones it appears in makes that distinction
+         visible instead of implied. */
+      const row = h("div", "rrow" + (a === S.lead || b === S.lead ? " subj" : ""));
       row.appendChild(h("span", "rp", a + " / " + b));
       row.appendChild(h("span", "rv " + cls(ch), pct(ch)));
       row.appendChild(h("span", "rt", question + " — " + (ch >= 0 ? upTxt : downTxt)));
@@ -1248,8 +1262,9 @@
       const rows = S.complex.filter(c => SERIES[c[0]])
         .map(c => ({ sym: c[0], name: c[1], daily: SERIES[c[0]].map(p => p[1]) }));
       if (!rows.length) { sbox.appendChild(h("p", "lede", "No price history for this complex.")); return; }
-      MA.panel(sbox, rows, { link: s => YQ(s) });
-      MA.load(rows.map(r => r.sym)).then(() => MA.panel(sbox, rows, { link: s => YQ(s) }));
+      MA.panel(sbox, rows, { link: s => YQ(s), highlight: S.lead });
+      MA.load(rows.map(r => r.sym)).then(() =>
+        MA.panel(sbox, rows, { link: s => YQ(s), highlight: S.lead }));
     })();
 
     // ---- signals ----
@@ -1279,7 +1294,7 @@
         sigbox.appendChild(h("p", "lede", "No price history for this complex."));
         return;
       }
-      MA.scan(sigbox, rows, { link: s => YQ(s) });
+      MA.scan(sigbox, rows, { link: s => YQ(s), highlight: S.lead });
     })();
 
     /* ---- futures positioning ----
