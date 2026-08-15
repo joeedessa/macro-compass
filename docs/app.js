@@ -540,6 +540,13 @@ async function load() {
   }
   CHARTS_BUILT = false;
   renderStamp(live);
+  /* Mounted once; the toggles re-render the tables themselves. */
+  if (live && $("#matoggles") && typeof MA !== "undefined" && !$("#matoggles").dataset.ready) {
+    $("#matoggles").dataset.ready = "1";
+    MA.colToggles($("#matoggles"),
+      () => UNIVERSE.filter(u => SERIES[u[0]] && u[3] !== "yield").map(u => u[0]),
+      renderTables);
+  }
   if (live) { renderRegime(); renderMovers(); renderFamily(); renderInternals(); renderCross(); renderStructure(); renderRatios(); renderTables(); renderGroupJump(); renderRotationSnapshot(); renderSignals(); }
   renderMacro();
   renderOfficial();
@@ -1216,8 +1223,14 @@ function renderTables() {
     const wrap = h("div", "tablewrap");
     const table = h("table", "mkt");
     const thead = h("thead"), hr = h("tr");
-    ["Instrument", "Last", "1d", "1w", "1m", "3m", "YTD", "vs 200d", "52w range", "1y"].forEach((c, i) =>
-      hr.appendChild(h("th", i === 0 ? "left" : null, c)));
+    /* Moving-average columns from ma.js in place of the single "vs 200d".
+       Yields keep a dash: a bond yield's distance from its own average is a
+       real number but not the same statement as a price's, and mixing them in
+       one column would invite reading them the same way. */
+    ["Instrument", "Last", "1d", "1w", "1m", "3m", "YTD"]
+      .concat(MA.colDefs().map(([, lab]) => lab))
+      .concat(["52w range", "1y"]).forEach((c, i) =>
+        hr.appendChild(h("th", i === 0 ? "left" : null, c)));
     thead.appendChild(hr); table.appendChild(thead);
     const tb = h("tbody");
     for (const [sym, name] of rows) {
@@ -1233,11 +1246,12 @@ function renderTables() {
       [m.d1, m.w1, m.m1, m.m3, m.ytd].forEach(v => {
         const td = h("td", "num"); td.appendChild(deltaEl(v, m.isYield)); tr.appendChild(td);
       });
-      const ma = h("td", "num");
-      if (m.aboveMa == null) ma.textContent = "–";
-      else ma.appendChild(h("span", "trend " + (m.aboveMa ? "up" : "down"),
-        (m.aboveMa ? "above " : "below ") + pct(m.maGap).replace("+", "")));
-      tr.appendChild(ma);
+      for (const [key] of MA.colDefs()) {
+        if (m.isYield) { tr.appendChild(h("td", "num madim", "–")); continue; }
+        const cell = MA.colCell({ sym, daily: (SERIES[sym] || []).map(p => p[1]) }, key);
+        cell.className += " num";
+        tr.appendChild(cell);
+      }
       const rng = h("td", "num"); rng.appendChild(rangeBar(m)); tr.appendChild(rng);
       const sp = h("td", "num");
       sp.appendChild(sparkline(SERIES[sym], 70, 22, m.aboveMa ? "--series-1" : "--text-muted"));

@@ -396,3 +396,15 @@
 .marow .madist { color:var(--text-muted); font-variant-numeric:tabular-nums;
   font-size:11.5px; white-space:nowrap; }
 .malist .manone { font-size:12.5px; color:var(--text-muted); padding:10px 13px; margin:0; }
+
+/* ---- moving-average columns (ma.js) ---- */
+.switch { display:flex; gap:5px; align-items:center; margin:0 0 10px; flex-wrap:wrap; }
+.switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+.switch .mafixed { font-size:12px; color:var(--text-secondary); background:var(--surface-2);
+  border:1px solid var(--border); border-radius:8px; padding:4px 11px; }
+.rangebtn[disabled] { opacity:0.6; cursor:default; }
+.switch .manote { font-size:11.5px; color:var(--text-muted); max-width:70ch; }
+td.maup { color:var(--up); } td.madown { color:var(--down); } td.madim { color:var(--text-muted); }
+.matag { display:block; font-size:9.5px; font-weight:650; text-transform:lowercase; }
+.matag.held, .matag.reclaimed { color:var(--up); }
+.matag.lost, .matag.rejected { color:var(--down); }

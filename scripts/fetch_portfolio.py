@@ -276,7 +276,7 @@ def sma_last(vals, n):
     return sum(vals[-n:]) / n if len(vals) >= n else None
 
 
-MA_PERIODS = (21, 50, 150, 200)
+MA_PERIODS = (5, 21, 50, 150, 200)
 
 
 def ma_structure(closes):

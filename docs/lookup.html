@@ -224,11 +224,21 @@
     background:color-mix(in srgb, var(--surface-1) 88%, var(--series-2));
     box-shadow:inset 3px 0 0 var(--series-2); }
   .marow.subj a, .sigitem.subj a, .rrow.subj .rp { font-weight:700; }
+  .switch { display:flex; gap:5px; align-items:center; margin:0 0 10px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); margin-right:3px; }
+  .switch .mafixed { font-size:12px; color:var(--text-secondary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:8px; padding:4px 11px; }
+  .rangebtn[disabled] { opacity:0.6; cursor:default; }
+  .switch .manote { font-size:11.5px; color:var(--text-muted); max-width:70ch; }
+  td.maup { color:var(--up); } td.madown { color:var(--down); } td.madim { color:var(--text-muted); }
+  .matag { display:block; font-size:9.5px; font-weight:650; text-transform:lowercase; }
+  .matag.held, .matag.reclaimed { color:var(--up); }
+  .matag.lost, .matag.rejected { color:var(--down); }
 </style>
 </head>
 <body>
 <script src="universe.js?v=20260815a"></script>
-<script src="ma.js?v=20260815c"></script>
+<script src="ma.js?v=20260815d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -1109,11 +1119,20 @@
     box.appendChild(h("h2", null, "The complex"));
     box.appendChild(h("p", "lede", "Every instrument that expresses this subject, from the " +
       "underlying to the levered equity leg. The lead instrument is the first row."));
+    const matog = h("div", "switch");
+    box.appendChild(matog);
+    MA.colToggles(matog, () => S.complex.map(c => c[0]), () => renderSubject(key));
     const tw = h("div", "tablewrap");
     const tbl = h("table");
     const thead = h("thead"), hr = h("tr");
+    /* Moving-average columns from ma.js in place of the single "vs 200-day".
+       On this page they matter twice over: the subject and its peers are shown
+       together, so where each sits against its own averages is the comparison. */
+    const MA_ROW = sym => ({ sym, daily: (SERIES[sym] || []).map(p => p[1]) });
+    const maCols = MA.colDefs();
     for (const [lab, c] of [["Instrument", "left"], ["Last", ""], ["Today", ""], ["1W", ""],
-                            ["1M", ""], ["3M", ""], ["YTD", ""], ["vs 200-day", ""]]) {
+                            ["1M", ""], ["3M", ""], ["YTD", ""]]
+                           .concat(maCols.map(([, l]) => [l, ""]))) {
       const th = h("th", c); th.textContent = lab; hr.appendChild(th);
     }
     thead.appendChild(hr); tbl.appendChild(thead);
@@ -1128,13 +1147,14 @@
       td0.appendChild(h("span", "isym", sym));
       tr.appendChild(td0);
       if (!st) {
-        const td = h("td"); td.colSpan = 7; td.textContent = "no data";
+        const td = h("td"); td.colSpan = 6 + maCols.length; td.textContent = "no data";
         tr.appendChild(td); tb.appendChild(tr); continue;
       }
       tr.appendChild(h("td", null, fmt(st.last, 2)));
-      for (const k of ["d1", "w1", "m1", "m3", "ytd", "maGap"]) {
+      for (const k of ["d1", "w1", "m1", "m3", "ytd"]) {
         tr.appendChild(h("td", cls(st[k]), pct(st[k])));
       }
+      for (const [key] of maCols) tr.appendChild(MA.colCell(MA_ROW(sym), key));
       tb.appendChild(tr);
     }
     tbl.appendChild(tb); tw.appendChild(tbl); box.appendChild(tw);

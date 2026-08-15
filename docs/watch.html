@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260814d">
+<link rel="stylesheet" href="styles.css?v=20260815d">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -308,7 +308,7 @@
 </style>
 </head>
 <body>
-<script src="ma.js?v=20260815c"></script>
+<script src="ma.js?v=20260815d"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -358,7 +358,7 @@
 
   <div class="switch" id="matoggles" role="group" aria-label="Moving average timeframes">
     <span class="slabel">Moving averages</span>
-    <span class="mafixed">21 · 50 · 150 · 200 daily</span>
+    <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
     <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
     <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
     <span class="manote">Distance from each average. <b>held</b> / <b>rejected</b> / <b>reclaimed</b> /
@@ -518,7 +518,7 @@
      every page load. Spark honours the interval on a bounded range but silently
      ignores it on range=max, returning a fixed ~168 downsampled bars whatever
      you ask for — hence the explicit 5y and 25y windows. */
-  const MA_PERIODS = [21, 50, 150, 200];
+  const MA_PERIODS = [5, 21, 50, 150, 200];
   const smaLast = (vals, n) => {
     if (vals.length < n) return null;
     let s = 0;
