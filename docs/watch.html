@@ -1394,6 +1394,18 @@
           " its trigger intraday (" + fmt(r.live) + " vs " + fmt(p.breakthrough) +
           "); a close " + side + " confirms the breakout"]);
       }
+      /* The same warning on the other side of the trade, which matters more.
+         A waiting setup trading through its trigger is an opportunity; a live
+         position trading through its negation is money going wrong, and until
+         now the page said nothing about it until the close sealed it. */
+      if ((st.state === "breakout" || st.state === "target") &&
+          r.live != null && p.negation != null && r.liveDate !== r.prevDate &&
+          (p.dir === "long" ? r.live < p.negation : r.live > p.negation)) {
+        const side = p.dir === "long" ? "below" : "above";
+        items.push(["bad", p.sym + " " + p.dir + " — trading " + side +
+          " its negation intraday (" + fmt(r.live) + " vs " + fmt(p.negation) +
+          "); a close " + side + " fails the trade"]);
+      }
     }
     /* Structure: a close that has just changed sides on the 150 or 200. Ranked
        monthly first — a monthly 200 changes hands a handful of times in a
