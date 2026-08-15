@@ -920,6 +920,17 @@
       /* A setup still waiting to trigger has not failed at anything — it was
          never in the trade. Calling that "Fail" put it in with genuine negated
          breakouts and made the failure record read worse than it was. */
+      /* Promote by hand. The rules confirm on a close beyond the trigger and
+         that stays exactly as it was — this is for the times you have decided
+         the setup is live before the close agrees. */
+      const bo = h("button", null, "Breakout");
+      bo.title = "Move to Confirmed breakouts now, without waiting for a close beyond the trigger";
+      bo.addEventListener("click", () => {
+        if (!confirm("Move " + p.sym + " " + p.dir + " to Confirmed breakouts now? " +
+                     "The rules keep running underneath — a negation or a target still wins.")) return;
+        saveEdit(p, { manualState: "breakout" }); render();
+      });
+      box.appendChild(bo);
       const rm = h("button", null, "Remove");
       rm.title = "Take this off the watchlist. It moves to Removed and can be restored";
       rm.addEventListener("click", () => {
@@ -929,6 +940,12 @@
       });
       box.appendChild(rm);
     } else if (state === "breakout" || state === "target") {
+      /* Undo only where the promotion was yours to undo. A breakout the rules
+         confirmed has no manual flag to clear, so it keeps Fail alone — the
+         same as before. */
+      if (p.manualState === "breakout") {
+        restore("Undo", "Send this back to the watchlist — it was promoted by hand");
+      }
       const f = h("button", null, "Fail");
       f.title = "Move to failed manually";
       f.addEventListener("click", () => {
@@ -1108,7 +1125,8 @@
         r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
       case "when": {
         if (state === "breakout") {
-          const td = h("td", null, st.breakout ? fmtD(st.breakout.when) : "–");
+          const td = h("td", null, st.breakout ? fmtD(st.breakout.when)
+            : p.manualState === "breakout" ? "by hand" : "–");
           if (st.breakout && st.breakout.close != null) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
           else if (st.breakout) td.appendChild(h("span", "wname", "as listed by source"));
           return td;
@@ -1722,12 +1740,18 @@
     const all = [];
     for (const p of list) {
       const st = replay(p, HIST[p.sym]);
-      /* Two manual overrides now outrank the replay: failed, and removed.
-         The replay still runs underneath — a removed setup keeps computing its
-         trigger distance, so the section can answer whether dropping it was
-         the right call rather than just hiding the evidence. */
+      /* Three manual overrides, and they do not all work the same way.
+         Failed and removed outrank the replay outright — you have decided the
+         setup is done and the page should say so. A manual breakout does not:
+         it only lifts a setup out of "waiting", and the moment the replay has
+         something real to say — a genuine breakout close, a target reached, a
+         negation hit — the replay wins. Letting a manual promotion suppress a
+         later failure would leave a negated trade sitting in Confirmed
+         breakouts, which is the one outcome this page must never show. */
       const state = (p.manualState === "failed" || p.manualState === "removed")
-        ? p.manualState : st.state;
+        ? p.manualState
+        : (p.manualState === "breakout" && st.state === "watch") ? "breakout"
+        : st.state;
       const r = rowData(p, st);
       r.section = state;
       items[state].push(r);
