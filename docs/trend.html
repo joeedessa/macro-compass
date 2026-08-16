@@ -249,12 +249,11 @@
 
     <h2>The alignment read</h2>
     <p class="lede">One sentence per instrument, from three timeframes at once. Daily 50 for the
-      swing trader, a weekly line for the intermediate trend, a monthly line for the primary. The
-      eight combinations are not eight equal boxes — they are the stages a trend passes through,
+      swing trader, the 30-week for the intermediate trend, the 10-month for the primary — Weinstein's
+      stage line and the 200-day expressed in months, and fixed. The eight combinations are not
+      eight equal boxes — they are the stages a trend passes through,
       and each has a name a trader would use and a thing they would do about it. Click a state to
       filter everything below to it.</p>
-    <div class="switch" id="periodsw" role="group" aria-label="Average lengths"></div>
-    <p class="note" id="periodnote"></p>
     <div class="acards" id="acards"></div>
     <p class="note" id="anote"></p>
 
@@ -263,10 +262,12 @@
       monthly one up. The two lengths are set separately because the axes ask different
       questions — the weekly carries the intermediate trend, the monthly the primary one — and
       the same number on both would pair a year against four years and call it a comparison.
-      The lengths are the ones chosen above, shared with the alignment read, so the two sections
-      always describe the same lines. The quadrant a thing lands in is the reading: agreement in
-      the corners, disagreement in the off-diagonals, and the off-diagonals are where trends
-      turn.</p>
+      Change the lengths to look at the same instruments on different lines — a swing trader's
+      30-week, a position trader's 40, the 200-week cycle floor. This re-scales the map and the
+      table only; the alignment read above is pinned to its own lines and does not move. The
+      quadrant a thing lands in is the reading: agreement in the corners, disagreement in the
+      off-diagonals, and the off-diagonals are where trends turn.</p>
+    <div class="switch" id="periodsw" role="group" aria-label="Average lengths"></div>
     <div class="quadwrap">
       <svg class="quad" id="quad" viewBox="0 0 1000 620" role="img"
            aria-label="Weekly against monthly position"></svg>
@@ -480,12 +481,25 @@
   const alignOf = (d, w, m) => (!d || !w || !m) ? null
     : String(+d.above) + String(+w.above) + String(+m.above);
 
+  /* The alignment read is a statement of fact about the instrument — below
+     its daily 50, above its 30-week, above its 10-month — and a fact does not
+     move when a button is pressed. It is therefore pinned to one canonical set
+     of lines and does not follow the map's period buttons. The first version
+     let it follow them, so "pullback in uptrend" meant one thing at 30 weeks
+     and another at 40, and the counts drifted every time the map was
+     re-scaled. That is a moving target, not a read.
+
+     The map is a different tool. It is for LOOKING at different lines, and
+     the buttons belong to it alone. */
+  const A_W = 30, A_M = 10;
   function build() {
     return ROWS.map(r => {
-      const d = MA.read(DAILY[r.sym], DAILY_N);
-      const w = readAt(r.sym, "weekly", WK);
-      const m = readAt(r.sym, "monthly", MO);
-      return { ...r, d, w, m, q: quadOf(w, m), a: alignOf(d, w, m) };
+      const d  = MA.read(DAILY[r.sym], DAILY_N);
+      const aw = readAt(r.sym, "weekly", A_W);
+      const am = readAt(r.sym, "monthly", A_M);
+      const w  = readAt(r.sym, "weekly", WK);
+      const m  = readAt(r.sym, "monthly", MO);
+      return { ...r, d, aw, am, w, m, q: quadOf(w, m), a: alignOf(d, aw, am) };
     });
   }
   let DATA = build();
@@ -521,24 +535,6 @@
     group("Weekly", WEEKLY_LENGTHS, () => WK, n => { WK = n; });
     group("Monthly", MONTHLY_LENGTHS, () => MO, n => { MO = n; });
     sw.appendChild(h("span", "manote", "")).id = "covnote";
-    /* The buttons drive both this section and the map below, and that has to
-       be said — a control sitting under one heading and quietly moving the
-       counts under another reads as a bug. */
-    const pn = $("#periodnote");
-    /* Re-run from redraw, which every button reaches, rather than from a
-       click listener that can fire before the button's own handler has set
-       the new length. */
-    redraw._period = () => {
-      pn.textContent = "These two lengths set the weekly and monthly legs everywhere on this " +
-        "page — the alignment counts above and the map below move together when you change " +
-        "them. 30-week and 10-month are the canonical pair (Weinstein's stage line; the " +
-        "200-day expressed in months) and the read at those lengths is the one to quote. The " +
-        "others exist so a shorter- or longer-horizon trader can see the same instruments on " +
-        "their own lines" +
-        ((WK !== 30 || MO !== 10) ? " — you are currently off the canonical pair, on the " +
-          WK + "-week and " + MO + "-month." : ".");
-    };
-    redraw._period();
   })();
 
   /* ---- alignment cards ---- */
@@ -570,7 +566,7 @@
       for (let i = 0; i < 3; i++) bar.appendChild(h("i", code[i] === "1" ? "on" : "off"));
       bar.appendChild(h("span", null, "daily · weekly · monthly"));
       c.appendChild(bar);
-      const sent = sentence(WK, MO);
+      const sent = sentence(A_W, A_M);
       c.appendChild(h("div", "as", sent.charAt(0).toUpperCase() + sent.slice(1)));
       if (mine.length) {
         c.appendChild(h("div", "an", mine.slice(0, 6).map(d => d.sym).join(" · ") +
@@ -585,8 +581,9 @@
     }
     const withAll = DATA.filter(d => d.a).length;
     $("#anote").textContent =
-      withAll + " of " + DATA.length + " carry all three legs — a daily 50, a " + WK +
-      "-week and a " + MO + "-month. The bar under each name reads daily · weekly · monthly, green " +
+      withAll + " of " + DATA.length + " carry all three legs — a daily 50, a " + A_W +
+      "-week and a " + A_M + "-month. These three lines are fixed; the period buttons further down " +
+      "re-scale the map and nothing here. The bar under each name reads daily · weekly · monthly, green " +
       "above and red below. The daily leg is the running session while the market is open; the " +
       "weekly and monthly are settled bars. A state is a description of where price sits, not a " +
       "forecast — the sentence says what a trader would typically do there, and the trader still " +
@@ -893,7 +890,7 @@
       if (d.a) {
         const [label, tone] = ALIGN[d.a];
         const tag = h("span", "atag t-" + tone, label);
-        tag.title = ALIGN[d.a][2](WK, MO);
+        tag.title = ALIGN[d.a][2](A_W, A_M);
         ac.appendChild(tag);
         ac.appendChild(dwmBar(d.a));
       } else ac.appendChild(h("span", "cls", "–"));
@@ -965,7 +962,6 @@
 
   function redraw() {
     if (redraw._sync) redraw._sync();
-    if (redraw._period) redraw._period();
     drawAlign(); drawQuad(); drawCards(); drawScan(); drawTable();
   }
   redraw();
