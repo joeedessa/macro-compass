@@ -235,10 +235,12 @@
   .matag.held, .matag.reclaimed { color:var(--up); }
   .matag.lost, .matag.rejected { color:var(--down); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
+  .note { font-size:11.5px; color:var(--text-muted); margin-top:7px; max-width:88ch;
+    line-height:1.45; }
 </style>
 </head>
 <body>
-<script src="universe.js?v=20260815a"></script>
+<script src="universe.js?v=20260815b"></script>
 <script src="ma.js?v=20260815e"></script>
 <div class="wrap">
   <header>
@@ -832,6 +834,36 @@
          "Lagging the world index"],
         [etf, "SPY", "vs the US", "Leading the US", "Lagging the US"],
       ];
+      /* The attribution ladder. One number cannot say whether a country is up
+         because of itself, its region or its bloc, so each rung isolates a
+         layer and the rungs are read together. */
+      const lad = (UNIVERSE.COUNTRY_LADDER || {})[etf] || [null, null];
+      const [regionEtf, blocEtf] = lad;
+      const bm = UNIVERSE.BENCH_META || {};
+      const ladder = [];
+      if (regionEtf) ladder.push([etf, regionEtf, "vs " + (bm[regionEtf] || regionEtf),
+        name + " leading its region — the move is local",
+        name + " lagging its region — the region is doing the work"]);
+      if (regionEtf && blocEtf && regionEtf !== blocEtf)
+        ladder.push([regionEtf, blocEtf, (bm[regionEtf] || regionEtf) + " vs " + (bm[blocEtf] || blocEtf),
+          "The region is leading its bloc",
+          "The region is lagging its bloc — the move is broader than the region"]);
+      if (blocEtf) ladder.push([blocEtf, "ACWI", (bm[blocEtf] || blocEtf) + " vs the world",
+        "The bloc is leading the world — this is a bloc-wide bid",
+        "The bloc is lagging the world"]);
+      /* Emerging markets is concentrated enough that "EM is up" often means one
+         constituent is. There is no free EM ex-Korea instrument, so Korea and
+         China are shown against EM directly rather than synthesised out of it. */
+      if (blocEtf === "EEM") {
+        ladder.push(["EEM", "EMXC", "How much of EM is China",
+          "EM leading its own ex-China version — China is carrying the index",
+          "EM lagging ex-China — China is a drag on the index"]);
+        ladder.push(["EWY", "EEM", "How much of EM is Korea",
+          "Korea leading EM — a large slice of the aggregate is Korean",
+          "Korea lagging EM — the aggregate is being led elsewhere"]);
+        ladder.push(["MCHI", "EEM", "How much of EM is China, directly",
+          "China leading EM", "China lagging EM"]);
+      }
       /* The dollar ETF against the same market in its own currency: the gap
          between them IS the currency effect, which is the one comparison this
          pairing can make that neither line makes alone. */
@@ -847,7 +879,7 @@
           (local ? " The local index is shown in local currency, so the gap between the two is " +
             "the currency effect." : " No local index the feed serves usably, so this one is " +
             "dollar-only."),
-        lead: etf, complex, ratios, drivers: [],
+        lead: etf, complex, ratios, ladder, drivers: [],
         links: [["Countries — the full table", "countries.html"],
                 ["Countries — yearly returns", "countries.html"]],
       };
@@ -865,6 +897,23 @@
           lead: etf,
           complex: [[etf, name], ...peers.map(x => [x[0], x[1]]), ["SPY", "S&P 500"]],
           ratios: [[etf, "SPY", "vs the S&P 500", "Leading the index", "Lagging the index"]],
+          /* Same question one level in: is this leading because of itself,
+             because its sector is bid, or because the index is up. Only where a
+             genuine parent exists — Water and Shipping answer to no sector ETF
+             and step straight to the market. */
+          ladder: (() => {
+            const par = (UNIVERSE.THEME_PARENT || {})[etf];
+            const pm = UNIVERSE.PARENT_META || {};
+            if (!par) return [];
+            return [
+              [etf, par, "vs " + (pm[par] || par),
+               name + " leading its sector — the move is specific to it",
+               name + " lagging its sector — the sector is doing the work"],
+              [par, "SPY", (pm[par] || par) + " vs the S&P 500",
+               "The sector is leading the index",
+               "The sector is lagging the index"],
+            ];
+          })(),
           drivers: [],
           links: [["Themes — the full ranking", "themes.html"]],
         };
@@ -1008,6 +1057,7 @@
   const symbolsFor = keys => [...new Set(keys.flatMap(k =>
     SUBJECTS[k].complex.map(c => c[0])
       .concat((SUBJECTS[k].ratios || []).flatMap(r => [r[0], r[1]]))
+      .concat((SUBJECTS[k].ladder || []).flatMap(r => [r[0], r[1]]))
       .concat([SUBJECTS[k].lead])).concat(["SPY"]))];
 
   /* Pull anything this subject needs that is not already cached. Returns only
@@ -1271,6 +1321,37 @@
     if (!anyRatio) rbox.appendChild(h("div", "rrow", "No overlapping history for these pairs."));
     box.appendChild(rbox);
     }   // end ratios section
+
+    /* ---- where the move is coming from ----
+       Read top to bottom: each rung strips one layer off the return above it.
+       A country leading its region while the region lags its bloc means the
+       name is doing the work and the neighbourhood is not. */
+    if (S.ladder && S.ladder.length) {
+      const rungs = S.ladder
+        .map(([a, b, q, up, dn]) => ({ a, b, q, up, dn, ch: ratioChange(SERIES[a], SERIES[b], 63) }))
+        .filter(x => x.ch != null);
+      if (rungs.length) {
+        box.appendChild(h("h2", null, "Where the move is coming from"));
+        box.appendChild(h("p", "lede", "The same three months, walked outward from the " +
+          "instrument to the world. Each line is one layer of the move on its own, so a name " +
+          "leading its region while the region lags its bloc says the work is being done by the " +
+          "name and not the neighbourhood."));
+        const lb = h("div", "ratios");
+        for (const r of rungs) {
+          const row = h("div", "rrow" + (r.a === S.lead ? " subj" : ""));
+          row.appendChild(h("span", "rp", r.a + " / " + r.b));
+          row.appendChild(h("span", "rv " + cls(r.ch), pct(r.ch)));
+          row.appendChild(h("span", "rt", r.q + " — " + (r.ch >= 0 ? r.up : r.dn)));
+          lb.appendChild(row);
+        }
+        box.appendChild(lb);
+        box.appendChild(h("p", "note",
+          "Emerging markets is concentrated, so the last rungs ask how much of it is one " +
+          "country. EM against its own ex-China index is a real pair; there is no free EM " +
+          "ex-Korea instrument, so Korea is shown against EM directly rather than being " +
+          "synthesised out of it."));
+      }
+    }
 
     // ---- higher-timeframe structure for this subject's complex ----
     box.appendChild(h("h2", null, "Structure"));

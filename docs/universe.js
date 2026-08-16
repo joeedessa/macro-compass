@@ -218,5 +218,76 @@
     ]],
   ];
 
-  window.UNIVERSE = { COUNTRIES, BENCH, BANDS, COMPLEXES };
+
+  /* ---- benchmark ladders -------------------------------------------------
+     A country's return is three questions stacked, and one number cannot
+     separate them: is Brazil up because of Brazil, because of Latin America,
+     or because emerging markets are up? The ladder walks outward — the name
+     against its region, the region against its bloc, the bloc against the
+     world — so each rung isolates one layer of the move.
+
+     Two more rungs exist only for emerging markets, because the aggregate is
+     dominated by a couple of constituents and "EM is up" often means one of
+     them is. EM against EM-ex-China is a real index pair. There is no EM
+     ex-Korea instrument that a free feed will serve — EMXK, EMKX, XKEM and
+     EMXCK are not tradeable symbols — so rather than synthesising one from
+     weights nobody can check, Korea is shown against EM directly, which
+     answers the same question with an instrument that exists.
+
+     `region` is the nearest regional aggregate, or null where no usable fund
+     exists: the Gulf ETF returns no series and the frontier one has not
+     printed since January 2025, so the Middle East steps straight to its bloc
+     rather than being given a benchmark that does not trade.
+     --------------------------------------------------------------------- */
+  const BENCH_META = {
+    ILF:  "Latin America 40",
+    VGK:  "Developed Europe",
+    AAXJ: "Asia ex-Japan",
+    VPL:  "Developed Pacific",
+    AFK:  "Africa",
+    EEM:  "Emerging markets",
+    EFA:  "Developed ex-US",
+    EMXC: "Emerging markets ex-China",
+    ACWI: "All-country world",
+    SPY:  "S&P 500",
+    EWY:  "South Korea",
+    MCHI: "China",
+  };
+
+  /* etf -> [region aggregate or null, bloc] */
+  const COUNTRY_LADDER = {
+    SPY:["EFA","EFA"], EWC:["EFA","EFA"],
+    EWW:["ILF","EEM"], EWZ:["ILF","EEM"], ECH:["ILF","EEM"], ARGT:["ILF","EEM"],
+    GXG:["ILF","EEM"], EPU:["ILF","EEM"],
+    EWU:["VGK","EFA"], EWG:["VGK","EFA"], EWQ:["VGK","EFA"], EWI:["VGK","EFA"],
+    EWP:["VGK","EFA"], EWN:["VGK","EFA"], EWL:["VGK","EFA"], EWD:["VGK","EFA"],
+    EWK:["VGK","EFA"], EWO:["VGK","EFA"], EIRL:["VGK","EFA"], ENOR:["VGK","EFA"],
+    EDEN:["VGK","EFA"], EFNL:["VGK","EFA"], PGAL:["VGK","EFA"],
+    GREK:["VGK","EEM"], EPOL:["VGK","EEM"],
+    EWJ:["VPL","EFA"], EWA:["VPL","EFA"], ENZL:["VPL","EFA"], EWS:["VPL","EFA"],
+    EWH:["AAXJ","EEM"], MCHI:["AAXJ","EEM"], EWT:["AAXJ","EEM"], EWY:["AAXJ","EEM"],
+    INDA:["AAXJ","EEM"], EIDO:["AAXJ","EEM"], EWM:["AAXJ","EEM"], THD:["AAXJ","EEM"],
+    EPHE:["AAXJ","EEM"], VNM:["AAXJ","EEM"],
+    EZA:["AFK","EEM"],
+    TUR:[null,"EEM"], KSA:[null,"EEM"], QAT:[null,"EEM"], EIS:[null,"EFA"],
+    EGPT:[null,"EEM"], UAE:[null,"EEM"],
+  };
+
+  /* Narrow exposure -> the sector it lives inside. Same question one level in:
+     is Semiconductors leading because of semis, because technology is bid, or
+     because the index is up. Only where a genuine parent exists — Water and
+     Shipping answer to no sector ETF and go straight to the market. */
+  const THEME_PARENT = {
+    SMH:"XLK", XBI:"XLV", OIH:"XLE", KBE:"XLF", ITB:"XLY", XRT:"XLY",
+    JETS:"XLI", TAN:"ICLN", GRID:"XLU", PAVE:"XLI", LIT:"XLB", IHI:"XLV",
+    CIBR:"XLK", AIQ:"XLK", BOTZ:"XLI", ARKX:"XLI", ITA:"XLI", NLR:"XLU",
+  };
+  const PARENT_META = {
+    XLK:"Technology", XLV:"Healthcare", XLE:"Energy", XLF:"Financials",
+    XLY:"Consumer discretionary", XLI:"Industrials", XLB:"Materials",
+    XLU:"Utilities", ICLN:"Clean energy",
+  };
+
+  window.UNIVERSE = { COUNTRIES, BENCH, BANDS, COMPLEXES,
+                      COUNTRY_LADDER, THEME_PARENT, BENCH_META, PARENT_META };
 })();
