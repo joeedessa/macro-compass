@@ -100,6 +100,35 @@
   .qcard.q-bl { border-left:3px solid var(--down); }
   .qcard.q-tl, .qcard.q-br { border-left:3px solid var(--warn); }
 
+  /* alignment read */
+  .acards { display:grid; grid-template-columns:repeat(auto-fit,minmax(255px,1fr)); gap:9px; }
+  .acard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:10px 13px; cursor:pointer; }
+  .acard[aria-pressed="true"] { border-color:var(--baseline); background:var(--surface-2); }
+  .acard .ah { display:flex; align-items:baseline; gap:8px; }
+  .acard .al { font-size:12.5px; font-weight:680; }
+  .acard .av { font-size:20px; font-weight:690; font-variant-numeric:tabular-nums; margin-left:auto; }
+  .acard .ac { display:flex; gap:3px; margin:3px 0 5px; }
+  .acard .ac i { display:inline-block; width:22px; height:6px; border-radius:2px;
+    background:var(--grid); }
+  .acard .ac i.on { background:var(--up); }
+  .acard .ac i.off { background:var(--down); }
+  .acard .ac span { font-size:9px; color:var(--text-muted); margin-left:4px; }
+  .acard .as { font-size:11.5px; color:var(--text-secondary); line-height:1.4; }
+  .acard .an { font-size:11px; color:var(--text-muted); margin-top:5px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+  .acard.t-up { border-left:3px solid var(--up); }
+  .acard.t-down { border-left:3px solid var(--down); }
+  .acard.t-warn { border-left:3px solid var(--warn); }
+  .atag { display:inline-block; font-size:9.5px; font-weight:650; border-radius:999px;
+    padding:1px 7px; white-space:nowrap; }
+  .atag.t-up { background:var(--on-bg); color:var(--up); }
+  .atag.t-down { background:var(--off-bg); color:var(--down); }
+  .atag.t-warn { background:var(--mixed-bg); color:var(--warn); }
+  .abar { display:inline-flex; gap:2px; margin-left:6px; vertical-align:middle; }
+  .abar i { display:inline-block; width:9px; height:5px; border-radius:1px; background:var(--grid); }
+  .abar i.on { background:var(--up); } .abar i.off { background:var(--down); }
+
   /* table */
   .toolbar { display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin-bottom:9px; }
   .toolbar input[type="text"], .toolbar select { font:inherit; font-size:12.5px;
@@ -210,12 +239,22 @@
   <p id="status">Fetching weekly and monthly bars…</p>
 
   <div id="content" hidden>
-    <p class="lede">Weekly and monthly only. The daily chart is noise at this horizon — what this
-      page asks is where something sits on the timeframes that take quarters to change their mind.
-      Indices, country and sector funds, themes and commodity contracts; no individual companies,
-      because a single name's trend is a different question from a market's. Yields are excluded
-      too: the distance between a bond yield and its own average is a real number but not the same
+    <p class="lede">The slow timeframes, and where the daily sits inside them. What this page asks
+      is where something stands on the averages that take quarters to change their mind — the
+      weekly and monthly — and then, in the alignment read, whether the daily agrees. Indices,
+      country and sector funds, themes and commodity contracts; no individual companies, because
+      a single name's trend is a different question from a market's. Yields are excluded too: the
+      distance between a bond yield and its own average is a real number but not the same
       statement as a price's.</p>
+
+    <h2>The alignment read</h2>
+    <p class="lede">One sentence per instrument, from three timeframes at once. Daily 50 for the
+      swing trader, the weekly line for the intermediate trend, the monthly for the primary. The
+      eight combinations are not eight equal boxes — they are the stages a trend passes through,
+      and each has a name a trader would use and a thing they would do about it. Click a state to
+      filter everything below to it.</p>
+    <div class="acards" id="acards"></div>
+    <p class="note" id="anote"></p>
 
     <h2>Where everything sits</h2>
     <p class="lede">Each instrument placed by its distance from a weekly average across and a
@@ -323,7 +362,35 @@
      Only the higher timeframes: this page never draws a daily figure, so the
      daily fetch every other page makes is simply skipped. */
   const status = $("#status");
-  await MA.load(ROWS.map(r => r.sym));
+  /* The alignment read needs a daily leg the rest of this page does not.
+     One batched pass through spark, closes only, kept in a plain map. Two
+     years is enough for a 50-day with room to spare. */
+  const DAILY = {};
+  async function loadDaily(symbols) {
+    const PROXIES = [
+      u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+      u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    ];
+    for (let i = 0; i < symbols.length; i += 10) {
+      const chunk = symbols.slice(i, i + 10);
+      const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+        chunk.map(encodeURIComponent).join(",") + "&range=2y&interval=1d";
+      for (const wrap of PROXIES) {
+        try {
+          const r = await fetch(wrap(url), { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          for (const row of (j.spark?.result || [])) {
+            const closes = (row.response?.[0]?.indicators?.quote?.[0]?.close || [])
+              .filter(c => c != null);
+            if (closes.length) DAILY[row.symbol] = closes;
+          }
+          break;
+        } catch { /* next proxy */ }
+      }
+    }
+  }
+  await Promise.all([MA.load(ROWS.map(r => r.sym)), loadDaily(ROWS.map(r => r.sym))]);
   const haveAny = ROWS.filter(r => MA.bars("weekly", r.sym) || MA.bars("monthly", r.sym));
   if (!haveAny.length) {
     status.textContent = "Could not reach the price feed. Reload in a moment.";
@@ -358,7 +425,7 @@
     [20, "20mo", "~2 years"],
   ];
   let WK = 30, MO = 10;
-  const FILTER = { q: "", cls: "", quad: "" };
+  const FILTER = { q: "", cls: "", quad: "", align: "" };
   let sortKey = "name", sortAsc = true;
 
   const readAt = (sym, tf, n) => MA.read(MA.bars(tf, sym), n);
@@ -376,18 +443,52 @@
     : m.above ? (w.above ? "tr" : "tl")
               : (w.above ? "br" : "bl");
 
+  /* ---- the alignment read --------------------------------------------
+     Three timeframes, one sentence. Each instrument sits above or below its
+     daily 50, its weekly line and its monthly line, and the eight combinations
+     are not eight equal states — they are the stages a trend passes through,
+     and each has a name a trader would use and a thing they would do about
+     it. The daily 50 is fixed: it is the swing trader's line and the one all
+     three roles agree on. Weekly and monthly follow the axes above.
+
+     Coded d/w/m as 1 above, 0 below, read primary-first: */
+  const DAILY_N = 50;
+  const ALIGN = {
+    "111": ["Full uptrend", "up",
+      "above the daily, weekly and monthly. Every timeframe agrees. Buy dips, do not chase — the daily is where the entry is."],
+    "011": ["Pullback in uptrend", "up",
+      "below the daily 50 but above the weekly and monthly. The long trend is intact and price is resting inside it. This is the swing trader's setup: the dip to buy, with the weekly line as the stop."],
+    "001": ["Deep pullback", "warn",
+      "below the daily and weekly, above the monthly only. The intermediate trend has broken while the primary holds. Either the buy of the cycle or the first leg of a top — the monthly line decides, and it is the level to watch."],
+    "101": ["Bounce inside a weekly break", "warn",
+      "above the daily, below the weekly, above the monthly. A short-term bounce inside a broken intermediate trend. Not a base until the weekly is reclaimed."],
+    "110": ["Recovery", "warn",
+      "above the daily and weekly, below the monthly only. Turning up before the primary trend has. Where new uptrends come from — and where bear-market rallies die."],
+    "010": ["Early turn", "warn",
+      "above the weekly only. An intermediate uptrend fighting a primary downtrend, with the daily already fading. Fragile."],
+    "100": ["Bounce in downtrend", "down",
+      "above the daily 50 only. A short-term bounce inside a broken trend on both higher timeframes. Sell the rally, or wait for the weekly."],
+    "000": ["Full downtrend", "down",
+      "below the daily, weekly and monthly. Every timeframe agrees. Do not buy the dip; the first thing to reclaim is the daily 50."],
+  };
+  const ALIGN_ORDER = ["111", "011", "001", "101", "110", "010", "100", "000"];
+  const alignOf = (d, w, m) => (!d || !w || !m) ? null
+    : String(+d.above) + String(+w.above) + String(+m.above);
+
   function build() {
     return ROWS.map(r => {
+      const d = MA.read(DAILY[r.sym], DAILY_N);
       const w = readAt(r.sym, "weekly", WK);
       const m = readAt(r.sym, "monthly", MO);
-      return { ...r, w, m, q: quadOf(w, m) };
+      return { ...r, d, w, m, q: quadOf(w, m), a: alignOf(d, w, m) };
     });
   }
   let DATA = build();
   const passes = d =>
     (!FILTER.q || (d.sym + " " + d.name).toLowerCase().includes(FILTER.q.toLowerCase())) &&
     (!FILTER.cls || d.cls === FILTER.cls) &&
-    (!FILTER.quad || d.q === FILTER.quad);
+    (!FILTER.quad || d.q === FILTER.quad) &&
+    (!FILTER.align || d.a === FILTER.align);
 
   /* ---- period switch ---- */
   (function periods() {
@@ -416,6 +517,57 @@
     group("Monthly", MONTHLY_LENGTHS, () => MO, n => { MO = n; });
     sw.appendChild(h("span", "manote", "")).id = "covnote";
   })();
+
+  /* ---- alignment cards ---- */
+  const dwmBar = code => {
+    const bar = h("span", "abar");
+    for (let i = 0; i < 3; i++) bar.appendChild(h("i", code[i] === "1" ? "on" : "off"));
+    bar.title = "daily · weekly · monthly — green above, red below";
+    return bar;
+  };
+  function drawAlign() {
+    const box = $("#acards");
+    box.textContent = "";
+    /* Cards respect the search and class filters but not the alignment filter
+       itself, or the other seven would vanish the moment one is chosen. */
+    const pool = DATA.filter(d => d.a &&
+      (!FILTER.q || (d.sym + " " + d.name).toLowerCase().includes(FILTER.q.toLowerCase())) &&
+      (!FILTER.cls || d.cls === FILTER.cls));
+    let placed = 0;
+    for (const code of ALIGN_ORDER) {
+      const mine = pool.filter(d => d.a === code);
+      const [label, tone, sentence] = ALIGN[code];
+      const c = h("div", "acard t-" + tone);
+      c.setAttribute("aria-pressed", String(FILTER.align === code));
+      const head = h("div", "ah");
+      head.appendChild(h("span", "al", label));
+      head.appendChild(h("span", "av", String(mine.length)));
+      c.appendChild(head);
+      const bar = h("div", "ac");
+      for (let i = 0; i < 3; i++) bar.appendChild(h("i", code[i] === "1" ? "on" : "off"));
+      bar.appendChild(h("span", null, "daily · weekly · monthly"));
+      c.appendChild(bar);
+      c.appendChild(h("div", "as", sentence.charAt(0).toUpperCase() + sentence.slice(1)));
+      if (mine.length) {
+        c.appendChild(h("div", "an", mine.slice(0, 6).map(d => d.sym).join(" · ") +
+          (mine.length > 6 ? " · +" + (mine.length - 6) : "")));
+      }
+      c.addEventListener("click", () => {
+        FILTER.align = FILTER.align === code ? "" : code;
+        redraw();
+      });
+      box.appendChild(c);
+      placed += mine.length;
+    }
+    const withAll = DATA.filter(d => d.a).length;
+    $("#anote").textContent =
+      withAll + " of " + DATA.length + " carry all three legs — a daily 50, a " + WK +
+      "-week and a " + MO + "-month. The bar under each name reads daily · weekly · monthly, green " +
+      "above and red below. The daily leg is the running session while the market is open; the " +
+      "weekly and monthly are settled bars. A state is a description of where price sits, not a " +
+      "forecast — the sentence says what a trader would typically do there, and the trader still " +
+      "has to decide.";
+  }
 
   /* ---- quadrant ---- */
   function drawQuad() {
@@ -667,6 +819,8 @@
     ["name", "Instrument", 1, d => d.name],
     ["cls", "Class", 1, d => d.cls],
     ["quad", "Where it sits", 1, d => d.q ? QUADS[d.q][0] : ""],
+    ["align", "Alignment", 1, d => d.a ? ALIGN_ORDER.indexOf(d.a) : 99],
+    ["dd", "Daily 50", 0, d => d.d ? d.d.dist : null],
     ["w", "Weekly " + "", 0, d => d.w ? d.w.dist : null],
     ["m", "Monthly " + "", 0, d => d.m ? d.m.dist : null],
   ];
@@ -685,12 +839,13 @@
     const t = h("table");
     const th = h("thead"), hr = h("tr");
     for (const [key, label, left] of COLS) {
-      const lab = key === "w" ? "Weekly " + WK : key === "m" ? "Monthly " + MO : label;
+      const lab = key === "w" ? "Weekly " + WK : key === "m" ? "Monthly " + MO
+        : key === "dd" ? "Daily " + DAILY_N : label;
       const c = h("th", (left ? "left " : "") + (sortKey === key ? "active " : "") +
         (sortKey === key && sortAsc ? "asc" : ""), lab);
       c.addEventListener("click", () => {
         if (sortKey === key) sortAsc = !sortAsc;
-        else { sortKey = key; sortAsc = ["name", "cls", "quad"].includes(key); }
+        else { sortKey = key; sortAsc = ["name", "cls", "quad", "align"].includes(key); }
         drawTable();
       });
       hr.appendChild(c);
@@ -710,6 +865,24 @@
       if (d.q) qc.appendChild(h("span", "qtag q-" + d.q, QUADS[d.q][0]));
       else qc.appendChild(h("span", "cls", "not enough history"));
       tr.appendChild(qc);
+      const ac = h("td", "left");
+      if (d.a) {
+        const [label, tone] = ALIGN[d.a];
+        const tag = h("span", "atag t-" + tone, label);
+        tag.title = ALIGN[d.a][2];
+        ac.appendChild(tag);
+        ac.appendChild(dwmBar(d.a));
+      } else ac.appendChild(h("span", "cls", "–"));
+      tr.appendChild(ac);
+      if (!d.d) tr.appendChild(h("td", "madim", "–"));
+      else {
+        const td = h("td", d.d.above ? "maup" : "madown");
+        td.appendChild(h("span", "maside", d.d.above ? "▲" : "▼"));
+        td.appendChild(document.createTextNode(" " + pct(d.d.dist)));
+        td.title = (d.d.above ? "Above" : "Below") + " the daily 50, which sits at " +
+          fmt(d.d.ma, Math.abs(d.d.ma) >= 100 ? 1 : 3);
+        tr.appendChild(td);
+      }
       for (const [m, tf] of [[d.w, "weekly"], [d.m, "monthly"]]) {
         if (!m) { tr.appendChild(h("td", "madim", "–")); continue; }
         const td = h("td", m.above ? "maup" : "madown");
@@ -740,6 +913,13 @@
     }
     cs.addEventListener("change", () => { FILTER.cls = cs.value; redraw(); });
     bar.appendChild(cs);
+    const as = h("select");
+    const aall = h("option", null, "All alignments"); aall.value = ""; as.appendChild(aall);
+    for (const code of ALIGN_ORDER) {
+      const o = h("option", null, ALIGN[code][0]); o.value = code; as.appendChild(o);
+    }
+    as.addEventListener("change", () => { FILTER.align = as.value; redraw(); });
+    bar.appendChild(as);
     const qs = h("select");
     const qall = h("option", null, "All quadrants"); qall.value = ""; qs.appendChild(qall);
     for (const key of ["tr", "tl", "br", "bl"]) {
@@ -750,18 +930,18 @@
     const reset = h("button", null, "Reset");
     reset.type = "button";
     reset.addEventListener("click", () => {
-      FILTER.q = ""; FILTER.cls = ""; FILTER.quad = "";
-      q.value = ""; cs.value = ""; qs.value = "";
+      FILTER.q = ""; FILTER.cls = ""; FILTER.quad = ""; FILTER.align = "";
+      q.value = ""; cs.value = ""; qs.value = ""; as.value = "";
       redraw();
     });
     bar.appendChild(reset);
     bar.appendChild(h("span", "cnt"));
-    redraw._sync = () => { cs.value = FILTER.cls; qs.value = FILTER.quad; };
+    redraw._sync = () => { cs.value = FILTER.cls; qs.value = FILTER.quad; as.value = FILTER.align; };
   })();
 
   function redraw() {
     if (redraw._sync) redraw._sync();
-    drawQuad(); drawCards(); drawScan(); drawTable();
+    drawAlign(); drawQuad(); drawCards(); drawScan(); drawTable();
   }
   redraw();
 
@@ -779,7 +959,7 @@
 
   $("#stamp").textContent = "Live prices " +
     new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
-    " · " + DATA.length + " instruments, no single stocks · weekly and monthly closes";
+    " · " + DATA.length + " instruments, no single stocks · daily, weekly and monthly";
 
   const totop = $("#totop");
   addEventListener("scroll", () => totop.classList.toggle("show", scrollY > 600), { passive: true });
