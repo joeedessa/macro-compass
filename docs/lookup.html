@@ -241,7 +241,7 @@
 </head>
 <body>
 <script src="universe.js?v=20260815b"></script>
-<script src="ma.js?v=20260815e"></script>
+<script src="ma.js?v=20260815f"></script>
 <div class="wrap">
   <header>
     <div>
@@ -1173,6 +1173,18 @@
     const matog = h("div", "switch");
     box.appendChild(matog);
     MA.colToggles(matog, () => S.complex.map(c => c[0]), () => renderSubject(key));
+    /* Switching subject with a higher timeframe already switched on lands on a
+       complex whose bars are not cached yet. The toggle only fetches when it is
+       pressed, so the fill has to happen here too — and only while something is
+       actually missing, which is what stops the redraw from looping (load
+       records misses, so the second pass finds nothing to do). */
+    (function fillTimeframes() {
+      const need = S.complex.map(c => c[0]);
+      const short = tf => need.some(x => !(MA.TF[tf].data && x in MA.TF[tf].data));
+      if ((MA.COL_STATE.w && short("weekly")) || (MA.COL_STATE.m && short("monthly"))) {
+        MA.load(need).then(() => { if (current === key) renderSubject(key); });
+      }
+    })();
     const tw = h("div", "tablewrap");
     const tbl = h("table");
     const thead = h("thead"), hr = h("tr");

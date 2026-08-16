@@ -114,15 +114,30 @@
     return out;
   }
 
-  /* Both higher timeframes for a universe. Cached, so a page can call this
-     without worrying about repeat renders. */
+  /* Both higher timeframes for a universe, fetching only what is missing.
+     The first version skipped the whole call once any data had been cached,
+     which is right for a page holding one fixed universe and wrong for Lookup,
+     where the universe changes with every subject. Opening Gold cached Gold's
+     symbols; every country selected afterwards then found the cache non-empty,
+     fetched nothing, and rendered a row of dashes under the weekly and monthly
+     columns. Missing symbols are now fetched and merged, so the cache grows
+     across subjects instead of freezing on the first one.
+
+     Symbols that come back with nothing are recorded as null rather than left
+     absent, or every visit would re-request the ones that have no bars. */
   async function load(symbols) {
     const syms = [...new Set(symbols)].filter(Boolean);
     await Promise.all(Object.keys(TF).map(async key => {
       const tf = TF[key];
-      if (tf.data || tf.loading) return;
-      tf.loading = true;
-      tf.data = await fetchBars(syms, tf.range, tf.interval);
+      if (tf.loading) await tf.loading;              // let an in-flight pass land first
+      const missing = syms.filter(s => !tf.data || !(s in tf.data));
+      if (!missing.length) return;
+      tf.loading = (async () => {
+        const got = await fetchBars(missing, tf.range, tf.interval);
+        tf.data = Object.assign(tf.data || {}, got);
+        for (const s of missing) if (!(s in tf.data)) tf.data[s] = null;
+      })();
+      await tf.loading;
       tf.loading = false;
     }));
     return TF;
@@ -425,7 +440,9 @@
     function select(tf) {
       if (tf === st.tf) return;
       st.tf = tf;
-      if (tf !== "daily" && !TF[tf].data) {
+      /* Always ask — load is cheap when nothing is missing, and gating on
+         "is the cache non-empty" is what broke this across subjects. */
+      if (tf !== "daily") {
         st.loading = true;
         draw();
         load(rows.map(r => r.sym)).then(() => { st.loading = false; draw(); });
@@ -520,7 +537,7 @@
       b.setAttribute("aria-pressed", String(COL_STATE[k]));
       b.addEventListener("click", async () => {
         const turningOn = !COL_STATE[k];
-        if (turningOn && !TF[TF_OF[k]].data) {
+        if (turningOn) {
           b.textContent = "loading…";
           b.disabled = true;
           await load(typeof symbols === "function" ? symbols() : symbols);
