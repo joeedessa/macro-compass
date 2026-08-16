@@ -249,10 +249,12 @@
 
     <h2>The alignment read</h2>
     <p class="lede">One sentence per instrument, from three timeframes at once. Daily 50 for the
-      swing trader, the weekly line for the intermediate trend, the monthly for the primary. The
+      swing trader, a weekly line for the intermediate trend, a monthly line for the primary. The
       eight combinations are not eight equal boxes — they are the stages a trend passes through,
       and each has a name a trader would use and a thing they would do about it. Click a state to
       filter everything below to it.</p>
+    <div class="switch" id="periodsw" role="group" aria-label="Average lengths"></div>
+    <p class="note" id="periodnote"></p>
     <div class="acards" id="acards"></div>
     <p class="note" id="anote"></p>
 
@@ -261,11 +263,10 @@
       monthly one up. The two lengths are set separately because the axes ask different
       questions — the weekly carries the intermediate trend, the monthly the primary one — and
       the same number on both would pair a year against four years and call it a comparison.
-      Defaults are the lengths the discipline actually uses: the 30-week stage line against the
-      10-month, which is the 200-day expressed in months. The quadrant a thing lands in is the
-      reading: agreement in the corners, disagreement in the off-diagonals, and the off-diagonals
-      are where trends turn.</p>
-    <div class="switch" id="periodsw" role="group" aria-label="Average lengths"></div>
+      The lengths are the ones chosen above, shared with the alignment read, so the two sections
+      always describe the same lines. The quadrant a thing lands in is the reading: agreement in
+      the corners, disagreement in the off-diagonals, and the off-diagonals are where trends
+      turn.</p>
     <div class="quadwrap">
       <svg class="quad" id="quad" viewBox="0 0 1000 620" role="img"
            aria-label="Weekly against monthly position"></svg>
@@ -453,23 +454,27 @@
 
      Coded d/w/m as 1 above, 0 below, read primary-first: */
   const DAILY_N = 50;
+  /* The sentences name the lines by role — "the weekly line" — and the
+     specific lengths are filled in at render time from the buttons, so a card
+     always says which average it means rather than leaving the reader to
+     assume it is the default. Written as functions of (w, m) for that reason. */
   const ALIGN = {
-    "111": ["Full uptrend", "up",
-      "above the daily, weekly and monthly. Every timeframe agrees. Buy dips, do not chase — the daily is where the entry is."],
-    "011": ["Pullback in uptrend", "up",
-      "below the daily 50 but above the weekly and monthly. The long trend is intact and price is resting inside it. This is the swing trader's setup: the dip to buy, with the weekly line as the stop."],
-    "001": ["Deep pullback", "warn",
-      "below the daily and weekly, above the monthly only. The intermediate trend has broken while the primary holds. Either the buy of the cycle or the first leg of a top — the monthly line decides, and it is the level to watch."],
-    "101": ["Bounce inside a weekly break", "warn",
-      "above the daily, below the weekly, above the monthly. A short-term bounce inside a broken intermediate trend. Not a base until the weekly is reclaimed."],
-    "110": ["Recovery", "warn",
-      "above the daily and weekly, below the monthly only. Turning up before the primary trend has. Where new uptrends come from — and where bear-market rallies die."],
-    "010": ["Early turn", "warn",
-      "above the weekly only. An intermediate uptrend fighting a primary downtrend, with the daily already fading. Fragile."],
-    "100": ["Bounce in downtrend", "down",
-      "above the daily 50 only. A short-term bounce inside a broken trend on both higher timeframes. Sell the rally, or wait for the weekly."],
-    "000": ["Full downtrend", "down",
-      "below the daily, weekly and monthly. Every timeframe agrees. Do not buy the dip; the first thing to reclaim is the daily 50."],
+    "111": ["Full uptrend", "up", (w, m) =>
+      "above the daily 50, the " + w + "-week and the " + m + "-month. Every timeframe agrees. Buy dips, do not chase — the daily is where the entry is."],
+    "011": ["Pullback in uptrend", "up", (w, m) =>
+      "below the daily 50 but above the " + w + "-week and " + m + "-month. The long trend is intact and price is resting inside it. This is the swing trader's setup: the dip to buy, with the " + w + "-week as the stop."],
+    "001": ["Deep pullback", "warn", (w, m) =>
+      "below the daily 50 and the " + w + "-week, above the " + m + "-month only. The intermediate trend has broken while the primary holds. Either the buy of the cycle or the first leg of a top — the " + m + "-month decides, and it is the level to watch."],
+    "101": ["Bounce inside a weekly break", "warn", (w, m) =>
+      "above the daily 50, below the " + w + "-week, above the " + m + "-month. A short-term bounce inside a broken intermediate trend. Not a base until the " + w + "-week is reclaimed."],
+    "110": ["Recovery", "warn", (w, m) =>
+      "above the daily 50 and the " + w + "-week, below the " + m + "-month only. Turning up before the primary trend has. Where new uptrends come from — and where bear-market rallies die."],
+    "010": ["Early turn", "warn", (w, m) =>
+      "above the " + w + "-week only. An intermediate uptrend fighting a primary downtrend, with the daily already fading. Fragile."],
+    "100": ["Bounce in downtrend", "down", (w, m) =>
+      "above the daily 50 only. A short-term bounce inside a broken trend on the " + w + "-week and " + m + "-month. Sell the rally, or wait for the " + w + "-week."],
+    "000": ["Full downtrend", "down", (w, m) =>
+      "below the daily 50, the " + w + "-week and the " + m + "-month. Every timeframe agrees. Do not buy the dip; the first thing to reclaim is the daily 50."],
   };
   const ALIGN_ORDER = ["111", "011", "001", "101", "110", "010", "100", "000"];
   const alignOf = (d, w, m) => (!d || !w || !m) ? null
@@ -516,6 +521,24 @@
     group("Weekly", WEEKLY_LENGTHS, () => WK, n => { WK = n; });
     group("Monthly", MONTHLY_LENGTHS, () => MO, n => { MO = n; });
     sw.appendChild(h("span", "manote", "")).id = "covnote";
+    /* The buttons drive both this section and the map below, and that has to
+       be said — a control sitting under one heading and quietly moving the
+       counts under another reads as a bug. */
+    const pn = $("#periodnote");
+    /* Re-run from redraw, which every button reaches, rather than from a
+       click listener that can fire before the button's own handler has set
+       the new length. */
+    redraw._period = () => {
+      pn.textContent = "These two lengths set the weekly and monthly legs everywhere on this " +
+        "page — the alignment counts above and the map below move together when you change " +
+        "them. 30-week and 10-month are the canonical pair (Weinstein's stage line; the " +
+        "200-day expressed in months) and the read at those lengths is the one to quote. The " +
+        "others exist so a shorter- or longer-horizon trader can see the same instruments on " +
+        "their own lines" +
+        ((WK !== 30 || MO !== 10) ? " — you are currently off the canonical pair, on the " +
+          WK + "-week and " + MO + "-month." : ".");
+    };
+    redraw._period();
   })();
 
   /* ---- alignment cards ---- */
@@ -547,7 +570,8 @@
       for (let i = 0; i < 3; i++) bar.appendChild(h("i", code[i] === "1" ? "on" : "off"));
       bar.appendChild(h("span", null, "daily · weekly · monthly"));
       c.appendChild(bar);
-      c.appendChild(h("div", "as", sentence.charAt(0).toUpperCase() + sentence.slice(1)));
+      const sent = sentence(WK, MO);
+      c.appendChild(h("div", "as", sent.charAt(0).toUpperCase() + sent.slice(1)));
       if (mine.length) {
         c.appendChild(h("div", "an", mine.slice(0, 6).map(d => d.sym).join(" · ") +
           (mine.length > 6 ? " · +" + (mine.length - 6) : "")));
@@ -869,7 +893,7 @@
       if (d.a) {
         const [label, tone] = ALIGN[d.a];
         const tag = h("span", "atag t-" + tone, label);
-        tag.title = ALIGN[d.a][2];
+        tag.title = ALIGN[d.a][2](WK, MO);
         ac.appendChild(tag);
         ac.appendChild(dwmBar(d.a));
       } else ac.appendChild(h("span", "cls", "–"));
@@ -941,6 +965,7 @@
 
   function redraw() {
     if (redraw._sync) redraw._sync();
+    if (redraw._period) redraw._period();
     drawAlign(); drawQuad(); drawCards(); drawScan(); drawTable();
   }
   redraw();
