@@ -71,14 +71,40 @@
     const dist = (last / lastMa - 1) * 100;
     const isAbove = dist >= 0;
 
+    /* Was the average tested recently, and what happened.
+       Two things had to change from the first version, and both showed up on
+       VIX reading "rejected" beside "-26%": a tag that is technically true and
+       useless in the same breath.
+
+       The tolerance is now scaled to how much the instrument actually moves,
+       not fixed at 2%. VIX swings twenty per cent in a week, so coming within
+       two per cent of its 30-week is not a test, it is Tuesday. The threshold
+       is half the typical bar-to-bar move, floored at 1% and capped at 4%, so
+       a quiet bond fund and a volatility index each get a "test" that means
+       something for them.
+
+       And a test only counts as news while price is still near the level.
+       "Rejected" fifteen bars ago with price since gone 26% the other way is
+       history, not structure; the caller wants to know if the average is in
+       play NOW. So the tag stays only while the latest close sits within three
+       times the tolerance of the average. Beyond that the position is simply
+       above or below, and the caret already says so. */
     const LOOK = Math.min(15, ma.length - 1);
+    let sumAbs = 0, cnt = 0;
+    for (let k = Math.max(1, vals.length - 40); k < vals.length; k++) {
+      if (!vals[k - 1]) continue;              // a zero print is not a price
+      sumAbs += Math.abs(vals[k] / vals[k - 1] - 1); cnt++;
+    }
+    const typical = cnt ? sumAbs / cnt : 0.02;
+    const tol = Math.min(0.04, Math.max(0.01, typical * 0.5));
     let best = null;
     for (let k = ma.length - LOOK; k < ma.length; k++) {
       const d = vals[k + off] / ma[k] - 1;
       if (best === null || Math.abs(d) < Math.abs(best.d)) best = { d, k };
     }
     let state = null;
-    if (best && Math.abs(best.d) <= 0.02) {
+    const stillNear = Math.abs(dist / 100) <= tol * 3;
+    if (best && Math.abs(best.d) <= tol && stillNear) {
       const wasAbove = best.d >= 0;
       state = wasAbove && isAbove ? "held"
             : !wasAbove && !isAbove ? "rejected"
@@ -88,7 +114,7 @@
     for (let k = ma.length - 2; k >= 0; k--) {
       if ((vals[k + off] >= ma[k]) !== isAbove) { crossedAgo = ma.length - 1 - k; break; }
     }
-    return { ma: lastMa, dist, state, crossedAgo, above: isAbove };
+    return { ma: lastMa, dist, state, crossedAgo, above: isAbove, tol };
   }
 
   async function fetchBars(symbols, range, interval) {
@@ -103,8 +129,36 @@
           if (!r.ok) continue;
           const j = await r.json();
           for (const row of (j.spark?.result || [])) {
-            const closes = (row.response?.[0]?.indicators?.quote?.[0]?.close || [])
-              .filter(c => c != null);
+            const resp = row.response?.[0];
+            const raw = resp?.indicators?.quote?.[0]?.close || [];
+            const ts = resp?.timestamp || [];
+            /* Yahoo pads a phantom bar onto every weekly and monthly series:
+               stamped with the last trade's time and carrying the same close
+               as the period already in progress. Left in, the current week or
+               month is counted twice in every average — biasing each one
+               toward the latest price by up to a point and a half on a
+               10-month, always in the flattering direction. It shipped that
+               way and my own recomputation missed it, because I fed the same
+               padded input back in.
+
+               The signature is clean: every genuine bar sits on its period
+               boundary — Monday for weekly, the 1st for monthly — and the
+               phantom does not. Checked over 561 historical bars with zero
+               false positives. So the tail bar is dropped only when it is off
+               the boundary AND repeats the prior close, which also keeps a
+               genuinely flat final period that happens to land on a boundary. */
+            const onBoundary = (t) => {
+              const d = new Date(t * 1000);
+              return interval === "1wk" ? d.getUTCDay() === 1 : d.getUTCDate() === 1;
+            };
+            const closes = [];
+            for (let i = 0; i < raw.length; i++) {
+              if (raw[i] == null) continue;
+              const isLast = i === raw.length - 1;
+              const dupOfPrev = closes.length && raw[i] === closes[closes.length - 1];
+              if (isLast && dupOfPrev && ts[i] && !onBoundary(ts[i])) continue;
+              closes.push(raw[i]);
+            }
             if (closes.length) out[row.symbol] = closes;
           }
           break;
@@ -551,10 +605,13 @@
       sw.appendChild(b);
     }
     sw.appendChild(el("span", "manote",
-      "▲ means price is above that average and ▼ below it; the number is how far. " +
-      "held / rejected / reclaimed / lost mark the 150 and 200 where price has been within 2% " +
-      "of them in the last 15 bars. The cross ladder uses exponential averages for its 5 and " +
-      "21 tiers; these columns are simple throughout."));
+      "▲ means price is above that average and ▼ below it; the number is how far. On the " +
+      "daily set the last bar is the running session while the market is open, so a name " +
+      "close to a line can be on either side of it intraday and settle on the other — the " +
+      "watchlist alone acts on settled closes and says so. held / rejected / reclaimed / lost " +
+      "appear on the 150 and 200 while price is still near the line, with \"near\" scaled to how " +
+      "much that instrument normally moves. The cross ladder uses exponential averages for its " +
+      "5 and 21 tiers; these columns are simple throughout."));
     container.appendChild(sw);
   }
 

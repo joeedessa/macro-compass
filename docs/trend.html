@@ -183,7 +183,7 @@
 </head>
 <body>
 <script src="universe.js?v=20260815c"></script>
-<script src="ma.js?v=20260815f"></script>
+<script src="ma.js?v=20260816a"></script>
 <div class="wrap">
   <header>
     <div>
@@ -236,9 +236,13 @@
     <p class="note" id="quadnote"></p>
 
     <h2>Major crosses</h2>
-    <p class="lede">Weekly and monthly only. A 200 on weekly bars is close to four years and on
-      monthly bars about seventeen, so these change hands rarely enough that each one is an
-      event rather than a data point.</p>
+    <p class="lede">The crosses a chartist would mark on the chart, and nothing faster. On weekly
+      bars: price through the 30-week stage line, through the 40-week, the 10-by-40 golden or
+      death cross, and the 200-week cycle floor. On monthly: price through the 10-month tactical
+      line and the 20-month, and the 10-by-20. Only crosses that have held are shown — one that
+      was given back inside the window is chop, not a change of trend — and the window is short,
+      the last four weeks and three months, so this reads as what just changed rather than a
+      year's history.</p>
     <div id="scan"></div>
 
     <h2>Every instrument</h2>
@@ -542,34 +546,102 @@
     }
   }
 
-  /* ---- crosses, weekly and monthly only ---- */
+  /* ---- crosses, weekly and monthly only ----
+     "Major" has to mean something. The shared ladder's five tiers include a
+     5-by-21 that fires a hundred-plus times a quarter on weekly bars, which is
+     a scan for swing entries, not a record of trend change. Here the crosses
+     are restricted to the ones a chartist would mark on the chart, built from
+     the same lengths the axes use:
+
+       weekly   price × 30w    the stage line — Weinstein's primary test
+                price × 40w    the 200-day in weeks
+                10w × 40w      the weekly golden / death cross
+                price × 200w   the cycle floor
+       monthly  price × 10mo   Faber's tactical line, the 200-day in months
+                price × 20mo
+                10mo × 20mo    the monthly golden / death cross
+
+     Each row says which way and how long ago, and the section counts how many
+     names had enough history to be tested — a 200-week needs four years, and
+     the young funds sit that one out. */
+  const MAJOR = {
+    weekly: [
+      ["p30",  "price × 30w",  "the stage line",         (P, S) => [P, S.s30]],
+      ["p40",  "price × 40w",  "the 200-day in weeks",   (P, S) => [P, S.s40]],
+      ["x1040","10w × 40w",    "weekly golden / death",  (P, S) => [S.s10, S.s40]],
+      ["p200", "price × 200w", "the cycle floor",        (P, S) => [P, S.s200]],
+    ],
+    monthly: [
+      ["p10",  "price × 10mo", "the tactical line",      (P, S) => [P, S.s10]],
+      ["p20",  "price × 20mo", "the two-year line",      (P, S) => [P, S.s20]],
+      ["x1020","10mo × 20mo",  "monthly golden / death", (P, S) => [S.s10, S.s20]],
+    ],
+  };
+  const NEED = { weekly: 202, monthly: 22 };   // bars for the slowest tier plus a window
+
+  function majorCrosses(vals, tf, lookback) {
+    if (!vals || vals.length < NEED[tf]) return null;
+    const S = { s10: MA.smaSeries(vals, 10), s20: MA.smaSeries(vals, 20),
+                s30: MA.smaSeries(vals, 30), s40: MA.smaSeries(vals, 40),
+                s200: MA.smaSeries(vals, 200) };
+    const out = [];
+    for (const [key, label, sub, pick] of MAJOR[tf]) {
+      const [fast, slow] = pick(vals, S);
+      if (!fast.length || !slow.length) continue;
+      const span = Math.min(fast.length, slow.length, lookback + 1);
+      if (span < 2) continue;
+      const d = [];
+      for (let i = span - 1; i >= 0; i--) d.push(fast[fast.length - 1 - i] - slow[slow.length - 1 - i]);
+      for (let i = 1; i < d.length; i++) {
+        if (d[i - 1] === 0 || d[i] === 0 || (d[i - 1] < 0) === (d[i] < 0)) continue;
+        let whip = false;
+        for (let k = i + 1; k < d.length; k++) if ((d[k] < 0) !== (d[i] < 0)) { whip = true; break; }
+        out.push({ key, label, sub, bullish: d[i] > 0, ago: d.length - 1 - i, whip });
+      }
+    }
+    return out;
+  }
+
   function drawScan() {
     const box = $("#scan");
     box.textContent = "";
     const rows = DATA.filter(passes);
     let any = 0;
+    /* Short windows, and whipsaws excluded. The first pass used a full year on
+       monthly and a quarter on weekly and turned up 226 price-through-10-month
+       events across 142 names — arithmetically right and useless, because a
+       price line crosses a 10-month average four times in a choppy year and
+       more than half of those reversed within the window. A chartist marks
+       the cross that HELD. So: last three months and last four weeks, and a
+       cross that has already been given back does not appear. The whipsaws
+       are still counted in the heading, so you can see how much chop was
+       filtered rather than wondering where it went. */
     for (const [tf, label, lookback, unit] of
-         [["monthly", "Monthly", 12, "mo"], ["weekly", "Weekly", 13, "w"]]) {
+         [["monthly", "Monthly", 3, "mo"], ["weekly", "Weekly", 4, "w"]]) {
       const found = [];
-      let covered = 0;
+      let covered = 0, whipped = 0;
       for (const d of rows) {
-        const vals = MA.bars(tf, d.sym);
-        if (!vals || vals.length < 220) continue;
+        const evs = majorCrosses(MA.bars(tf, d.sym), tf, lookback);
+        if (!evs) continue;
         covered++;
-        for (const ev of MA.crosses(vals, lookback)) found.push({ ...ev, d });
+        for (const ev of evs) {
+          if (ev.whip) { whipped++; continue; }
+          found.push({ ...ev, d });
+        }
       }
-      const head = h("h3", null, label + " crosses");
+      const head = h("h3", null, label + " crosses that held");
       head.appendChild(h("span", "ladder", " · last " + lookback + " " +
         (tf === "monthly" ? "months" : "weeks") + " · " + covered + " of " + rows.length +
-        " with enough history"));
+        " with enough history" + (whipped ? " · " + whipped + " whipsawed and left out" : "")));
       const blockWrap = h("div", "sigblock bull");
       blockWrap.appendChild(head);
       const grid = h("div", "sigcols");
-      for (const t of MA.TIERS) {
+      grid.style.gridTemplateColumns = "repeat(" + MAJOR[tf].length + ",minmax(0,1fr))";
+      for (const [key, tlabel, sub] of MAJOR[tf]) {
         const col = h("div", "sigcol bull");
-        col.appendChild(h("p", "tierhead", t.label));
-        col.appendChild(h("p", "sigsub", t.sub));
-        const mine = found.filter(f => f.key === t.key).sort((a, b) => a.ago - b.ago);
+        col.appendChild(h("p", "tierhead", tlabel));
+        col.appendChild(h("p", "sigsub", sub));
+        const mine = found.filter(f => f.key === key).sort((a, b) => a.ago - b.ago);
         if (!mine.length) { col.appendChild(h("p", "signone", "none")); grid.appendChild(col); continue; }
         for (const f of mine) {
           any++;
@@ -577,7 +649,6 @@
           const a = h("a", null, f.d.name);
           a.href = YQ(f.d.sym); a.target = "_blank"; a.rel = "noopener noreferrer";
           it.appendChild(a);
-          if (f.whip) it.appendChild(h("span", "whiptag", "whipsawed"));
           it.appendChild(h("span", "sighint",
             (f.bullish ? "▲ up · " : "▼ down · ") + f.d.sym + " · " +
             (f.ago === 0 ? "latest bar" : f.ago + unit + " ago")));
@@ -588,7 +659,7 @@
       blockWrap.appendChild(grid);
       box.appendChild(blockWrap);
     }
-    if (!any) box.appendChild(h("p", "lede", "No weekly or monthly crosses in the window."));
+    if (!any) box.appendChild(h("p", "lede", "No major weekly or monthly crosses in the window."));
   }
 
   /* ---- table ---- */

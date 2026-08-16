@@ -305,14 +305,24 @@ def ma_structure(closes):
         last, last_ma = closes[-1], ma[-1]
         dist = (last / last_ma - 1) * 100
         above = dist >= 0
+        # Tolerance scaled to the instrument's own volatility, and the tag kept
+        # only while price is still near the level. Mirrors docs/ma.js exactly.
         look = min(15, len(ma) - 1)
+        # A zero close is a bad print, not a price; skip the pair rather than
+        # divide by it. (One position in the book carries such a bar.)
+        moves = [abs(closes[k] / closes[k - 1] - 1)
+                 for k in range(max(1, len(closes) - 40), len(closes))
+                 if closes[k - 1]]
+        typical = sum(moves) / len(moves) if moves else 0.02
+        tol = min(0.04, max(0.01, typical * 0.5))
         best = None
         for k in range(len(ma) - look, len(ma)):
             d = closes[k + off] / ma[k] - 1
             if best is None or abs(d) < abs(best[0]):
                 best = (d, k)
         state = None
-        if best and abs(best[0]) <= 0.02:
+        still_near = abs(dist / 100) <= tol * 3
+        if best and abs(best[0]) <= tol and still_near:
             was = best[0] >= 0
             state = ("held" if (was and above) else "rejected" if (not was and not above)
                      else "reclaimed" if (not was and above) else "lost")
@@ -351,8 +361,27 @@ def timeframe_bars(symbols, rng, interval):
         except json.JSONDecodeError:
             continue
         for row in data.get("spark", {}).get("result", []):
-            closes = [c for c in row["response"][0]["indicators"]["quote"][0].get("close", [])
-                      if c is not None]
+            resp = row["response"][0]
+            raw = resp["indicators"]["quote"][0].get("close", []) or []
+            ts = resp.get("timestamp", []) or []
+            # Yahoo pads a phantom bar onto weekly and monthly series, stamped
+            # with the last trade and repeating the running period's close, so
+            # the current week or month is counted twice in every average. Real
+            # bars sit on the period boundary — Monday, or the 1st — and the
+            # phantom does not; drop the tail only when it is off the boundary
+            # AND repeats the prior close. Mirrors docs/ma.js exactly.
+            def on_boundary(t):
+                d = datetime.fromtimestamp(t, tz=timezone.utc)
+                return d.weekday() == 0 if interval == "1wk" else d.day == 1
+            closes = []
+            for i, c in enumerate(raw):
+                if c is None:
+                    continue
+                is_last = i == len(raw) - 1
+                dup = bool(closes) and c == closes[-1]
+                if is_last and dup and i < len(ts) and not on_boundary(ts[i]):
+                    continue
+                closes.append(c)
             if closes:
                 out[row["symbol"]] = closes
         time.sleep(0.15)
