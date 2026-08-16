@@ -218,14 +218,15 @@
       statement as a price's.</p>
 
     <h2>Where everything sits</h2>
-    <p class="lede">Each instrument placed by its distance from the chosen average on both
-      timeframes — weekly across, monthly up. The quadrant a thing lands in is the reading:
-      agreement in the corners, disagreement in the off-diagonals, and the off-diagonals are
-      where trends turn.</p>
-    <div class="switch" id="periodsw" role="group" aria-label="Average length">
-      <span class="slabel">Average</span>
-      <span class="manote" id="covnote"></span>
-    </div>
+    <p class="lede">Each instrument placed by its distance from a weekly average across and a
+      monthly one up. The two lengths are set separately because the axes ask different
+      questions — the weekly carries the intermediate trend, the monthly the primary one — and
+      the same number on both would pair a year against four years and call it a comparison.
+      Defaults are the lengths the discipline actually uses: the 30-week stage line against the
+      10-month, which is the 200-day expressed in months. The quadrant a thing lands in is the
+      reading: agreement in the corners, disagreement in the off-diagonals, and the off-diagonals
+      are where trends turn.</p>
+    <div class="switch" id="periodsw" role="group" aria-label="Average lengths"></div>
     <div class="quadwrap">
       <svg class="quad" id="quad" viewBox="0 0 1000 620" role="img"
            aria-label="Weekly against monthly position"></svg>
@@ -328,7 +329,31 @@
   $("#content").hidden = false;
 
   /* ---- state ---- */
-  let PERIOD = 50;
+  /* One length per timeframe, because the two axes are asking different
+     questions and the same number means different things on each. The old
+     shared control paired a 50-week average (a year) with a 50-month one
+     (four years) and called that a comparison.
+
+     The lengths are the ones the discipline actually uses rather than the
+     daily set transplanted onto slower bars. On weekly, 30 is Weinstein's
+     stage line and 40 is the 200-day equivalent — 200 divided by five
+     sessions. On monthly, 10 is the length Faber's tactical work is built on
+     and is also the 200-day in months. A 200-period monthly average, which is
+     what this page shipped with, spans nearly seventeen years: that is
+     economic history rather than a trend line, and only 71% of this universe
+     has enough data to compute one. */
+  const WEEKLY_LENGTHS = [
+    [10, "10w", "~2 months · the fast weekly line"],
+    [30, "30w", "~7 months · the stage line"],
+    [40, "40w", "~9 months · the 200-day in weeks"],
+    [200, "200w", "~4 years · the cycle floor"],
+  ];
+  const MONTHLY_LENGTHS = [
+    [10, "10mo", "~10 months · the 200-day in months"],
+    [12, "12mo", "one year"],
+    [20, "20mo", "~2 years"],
+  ];
+  let WK = 30, MO = 10;
   const FILTER = { q: "", cls: "", quad: "" };
   let sortKey = "name", sortAsc = true;
 
@@ -349,8 +374,8 @@
 
   function build() {
     return ROWS.map(r => {
-      const w = readAt(r.sym, "weekly", PERIOD);
-      const m = readAt(r.sym, "monthly", PERIOD);
+      const w = readAt(r.sym, "weekly", WK);
+      const m = readAt(r.sym, "monthly", MO);
       return { ...r, w, m, q: quadOf(w, m) };
     });
   }
@@ -363,20 +388,29 @@
   /* ---- period switch ---- */
   (function periods() {
     const sw = $("#periodsw");
-    for (const n of MA.COL_PERIODS) {
-      if (n === 5) continue;                     // a 5-period weekly is barely a trend
-      const b = h("button", "rangebtn", String(n));
-      b.type = "button";
-      b.setAttribute("aria-pressed", String(n === PERIOD));
-      b.addEventListener("click", () => {
-        PERIOD = n;
-        sw.querySelectorAll(".rangebtn").forEach(x =>
-          x.setAttribute("aria-pressed", String(+x.textContent === PERIOD)));
-        DATA = build();
-        redraw();
-      });
-      sw.insertBefore(b, $("#covnote"));
-    }
+    sw.textContent = "";
+    const group = (label, lengths, get, set) => {
+      sw.appendChild(h("span", "slabel", label));
+      for (const [n, short, why] of lengths) {
+        const b = h("button", "rangebtn", short);
+        b.type = "button";
+        b.title = why;
+        b.dataset.n = n;
+        b.dataset.axis = label;
+        b.setAttribute("aria-pressed", String(n === get()));
+        b.addEventListener("click", () => {
+          set(n);
+          sw.querySelectorAll('[data-axis="' + label + '"]').forEach(x =>
+            x.setAttribute("aria-pressed", String(+x.dataset.n === get())));
+          DATA = build();
+          redraw();
+        });
+        sw.appendChild(b);
+      }
+    };
+    group("Weekly", WEEKLY_LENGTHS, () => WK, n => { WK = n; });
+    group("Monthly", MONTHLY_LENGTHS, () => MO, n => { MO = n; });
+    sw.appendChild(h("span", "manote", "")).id = "covnote";
   })();
 
   /* ---- quadrant ---- */
@@ -441,11 +475,11 @@
     corner("bl", PAD + 6, H - PAD - 18, "start");
 
     const ax = svgEl("text", { x: W / 2, y: H - 8, class: "qsub", "text-anchor": "middle" });
-    ax.textContent = "weekly " + PERIOD + " — distance from it";
+    ax.textContent = "weekly " + WK + " — distance from it";
     svg.appendChild(ax);
     const ay = svgEl("text", { x: 12, y: H / 2, class: "qsub", "text-anchor": "middle",
       transform: "rotate(-90 12 " + H / 2 + ")" });
-    ay.textContent = "monthly " + PERIOD + " — distance from it";
+    ay.textContent = "monthly " + MO + " — distance from it";
     svg.appendChild(ay);
 
     /* Labels only where they will not pile up: the dot is the datum and the
@@ -455,8 +489,8 @@
       const cx = sx(d.w.dist), cy = sy(d.m.dist);
       const dot = svgEl("circle", { cx, cy, r: 4.5, class: "dot c-" + d.cls });
       const ttl = svgEl("title");
-      ttl.textContent = d.name + " (" + d.sym + ")\nweekly " + PERIOD + ": " + pct(d.w.dist) +
-        "\nmonthly " + PERIOD + ": " + pct(d.m.dist) + "\n" + QUADS[d.q][0];
+      ttl.textContent = d.name + " (" + d.sym + ")\nweekly " + WK + ": " + pct(d.w.dist) +
+        "\nmonthly " + MO + ": " + pct(d.m.dist) + "\n" + QUADS[d.q][0];
       dot.appendChild(ttl);
       dot.addEventListener("click", () => window.open(YQ(d.sym), "_blank", "noopener"));
       svg.appendChild(dot);
@@ -481,7 +515,7 @@
 
     const withBoth = DATA.filter(d => d.q).length;
     $("#covnote").textContent = withBoth + " of " + DATA.length +
-      " carry both a weekly and a monthly " + PERIOD +
+      " carry both a " + WK + "-week and a " + MO + "-month average" +
       (withBoth < DATA.length
         ? " — the rest are too young for one and sit out the plot rather than being placed at zero"
         : "");
@@ -580,7 +614,7 @@
     const t = h("table");
     const th = h("thead"), hr = h("tr");
     for (const [key, label, left] of COLS) {
-      const lab = key === "w" ? "Weekly " + PERIOD : key === "m" ? "Monthly " + PERIOD : label;
+      const lab = key === "w" ? "Weekly " + WK : key === "m" ? "Monthly " + MO : label;
       const c = h("th", (left ? "left " : "") + (sortKey === key ? "active " : "") +
         (sortKey === key && sortAsc ? "asc" : ""), lab);
       c.addEventListener("click", () => {
@@ -610,9 +644,9 @@
         const td = h("td", m.above ? "maup" : "madown");
         td.appendChild(h("span", "maside", m.above ? "▲" : "▼"));
         td.appendChild(document.createTextNode(" " + pct(m.dist)));
-        if (m.state && (PERIOD === 150 || PERIOD === 200))
-          td.appendChild(h("span", "matag " + m.state, m.state));
-        td.title = (m.above ? "Above" : "Below") + " the " + tf + " " + PERIOD +
+        const n = tf === "weekly" ? WK : MO;
+        if (m.state && n >= 30) td.appendChild(h("span", "matag " + m.state, m.state));
+        td.title = (m.above ? "Above" : "Below") + " the " + tf + " " + n +
           ", which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
         tr.appendChild(td);
       }
