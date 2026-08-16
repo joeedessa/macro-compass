@@ -288,6 +288,83 @@
     XLU:"Utilities", ICLN:"Clean energy",
   };
 
+
+  /* The cross-asset universe the Markets page renders: indices, styles, rates,
+     currencies, the global aggregates and the sector set. Shape is
+     [symbol, name, group, kind] where kind is absent for a price and "yield"
+     for the two rate series, which are levels rather than prices and are
+     treated differently wherever distance from an average is computed.
+
+     Lifted here verbatim from app.js so the trend map can read the same list
+     rather than keeping a fourth copy of it. */
+const MARKETS = [
+  ["^GSPC", "S&P 500", "us"],
+  ["^IXIC", "Nasdaq Composite", "us"],
+  ["^RUT", "Russell 2000", "us"],
+  ["DIA", "Dow Jones (DIA)", "us"],
+  ["SPY", "S&P 500 (SPY)", "us"],
+  ["QQQ", "Nasdaq 100 (QQQ)", "us"],
+  ["IWM", "Russell 2000 (IWM)", "us"],
+  ["RSP", "S&P 500 equal weight", "us"],
+  ["MAGS", "Magnificent 7 (MAGS)", "mag7"],
+  ["AAPL", "Apple", "mag7"],
+  ["MSFT", "Microsoft", "mag7"],
+  ["GOOGL", "Alphabet", "mag7"],
+  ["AMZN", "Amazon", "mag7"],
+  ["NVDA", "Nvidia", "mag7"],
+  ["META", "Meta", "mag7"],
+  ["TSLA", "Tesla", "mag7"],
+  ["XRT", "Retail", "family"],
+  ["KRE", "Regional banks", "family"],
+  ["IYT", "Transportation", "family"],
+  ["IBB", "Biotech", "family"],
+  ["BTC-USD", "Bitcoin", "family"],
+  ["IVV", "S&P 500 large blend", "style"],
+  ["IVE", "S&P 500 large value", "style"],
+  ["IVW", "S&P 500 large growth", "style"],
+  ["IJH", "S&P 400 mid blend", "style"],
+  ["IJJ", "S&P 400 mid value", "style"],
+  ["IJK", "S&P 400 mid growth", "style"],
+  ["IJR", "S&P 600 small blend", "style"],
+  ["IJS", "S&P 600 small value", "style"],
+  ["IJT", "S&P 600 small growth", "style"],
+  ["ACWI", "MSCI ACWI", "global"],
+  ["GVAL", "Global value (GVAL)", "global"],
+  ["EEM", "Emerging markets", "global"],
+  ["EFA", "Developed ex-US", "global"],
+  ["XLK", "Technology", "sector"],
+  ["SMH", "Semiconductors", "sector"],
+  ["XLF", "Financials", "sector"],
+  ["XLY", "Consumer discretionary", "sector"],
+  ["XLI", "Industrials", "sector"],
+  ["XLE", "Energy", "sector"],
+  ["XLB", "Materials", "sector"],
+  ["XLC", "Communication services", "sector"],
+  ["XLV", "Health care", "sector"],
+  ["XLP", "Consumer staples", "sector"],
+  ["XLU", "Utilities", "sector"],
+  ["XLRE", "Real estate", "sector"],
+  ["GC=F", "Gold", "commodities"],
+  ["CL=F", "WTI crude", "commodities"],
+  ["HG=F", "Copper", "commodities"],
+  ["BCI", "Broad commodities", "commodities"],
+  ["GLTR", "Precious metals basket", "commodities"],
+  ["DBE", "Energy basket", "commodities"],
+  ["DBB", "Base metals basket", "commodities"],
+  ["^TNX", "US 10-year yield", "rates", "yield"],
+  ["^TYX", "US 30-year yield", "rates", "yield"],
+  ["TLT", "20y+ Treasuries", "rates"],
+  ["IEF", "7-10y Treasuries", "rates"],
+  ["STIP", "0-5y TIPS", "rates"],
+  ["HYG", "High yield credit", "rates"],
+  ["LQD", "Investment grade", "rates"],
+  ["DX-Y.NYB", "US dollar index", "fx"],
+  ["JPY=X", "USD/JPY", "fx"],
+  ["EURUSD=X", "EUR/USD", "fx"],
+  ["^VIX", "VIX", "fx"],
+  ["^VIX3M", "VIX 3-month", "fx"],
+];
+
   window.UNIVERSE = { COUNTRIES, BENCH, BANDS, COMPLEXES,
-                      COUNTRY_LADDER, THEME_PARENT, BENCH_META, PARENT_META };
+                      COUNTRY_LADDER, THEME_PARENT, BENCH_META, PARENT_META, MARKETS };
 })();
