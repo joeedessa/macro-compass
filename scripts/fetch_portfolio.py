@@ -276,10 +276,13 @@ def sma_last(vals, n):
     return sum(vals[-n:]) / n if len(vals) >= n else None
 
 
-MA_PERIODS = (5, 21, 50, 150, 200)
+MA_PERIODS = (5, 21, 50, 150, 200)          # daily
+# Weekly and monthly use chartist lengths, not the daily set transplanted:
+# a 200-period monthly is seventeen years, not a trend line. Mirrors ma.js.
+MA_PERIODS_TF = {"d": MA_PERIODS, "w": (10, 30, 40, 200), "m": (10, 12, 20)}
 
 
-def ma_structure(closes):
+def ma_structure(closes, tf="d"):
     """Distance from each average, and the last level test, for one bar series.
 
     Mirrors docs/ma.js so the Portfolio page reads the same as every other
@@ -291,7 +294,7 @@ def ma_structure(closes):
     a level that closed back above it counts as held.
     """
     out = {}
-    for n in MA_PERIODS:
+    for n in MA_PERIODS_TF[tf]:
         if len(closes) < n + 2:
             continue
         ma, s = [], 0.0
@@ -558,14 +561,14 @@ def main():
     for key, rng, interval in (("w", "5y", "1wk"), ("m", "25y", "1mo")):
         bars = timeframe_bars(sorted(ys), rng, interval)
         for sym, closes in bars.items():
-            st = ma_structure(closes)
+            st = ma_structure(closes, key)
             if st:
                 ys[sym].setdefault("ma", {})[key] = st
     # daily comes from the same 3-month window used for the earnings reaction,
     # which is too short for a 200-day average, so pull a year for the dailies
     daily = timeframe_bars(sorted(ys), "1y", "1d")
     for sym, closes in daily.items():
-        st = ma_structure(closes)
+        st = ma_structure(closes, "d")
         if st:
             ys[sym].setdefault("ma", {})["d"] = st
     withma = sum(1 for r in out["positions"] if r.get("ma"))

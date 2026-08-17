@@ -309,7 +309,7 @@
 </style>
 </head>
 <body>
-<script src="ma.js?v=20260816a"></script>
+<script src="ma.js?v=20260817a"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -331,6 +331,7 @@
       <a href="letters.html">Letters &amp; 13F</a>
       <a href="watch.html" class="here">Watchlist</a>
       <a href="lookup.html">Lookup</a>
+      <a href="method.html">Method</a>
     </nav>
     <span class="spacer"></span>
     <button id="exportbtn" type="button" class="chip">Export</button>
@@ -361,6 +362,7 @@
   <div class="switch" id="matoggles" role="group" aria-label="Moving average timeframes">
     <span class="slabel">Moving averages</span>
     <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
+    <span class="mafixed">10 · 30 · 40 · 200 weekly · 10 · 12 · 20 monthly</span>
     <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
     <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
     <span class="manote">▲ above that average, ▼ below it; the number is how far.</span>
@@ -837,7 +839,8 @@
   /* Column order per the desk's reading flow: identity, price, trigger
      distance, payoff, calendar, then classification. Each key maps to one
      cell builder below, so reordering is a data change. */
-  const MA_COLS = tf => MA_PERIODS.map(n => ["ma_" + tf + n, n + (tf === "d" ? "d" : tf)]);
+  const MA_PERIODS_TF = { d: MA_PERIODS, w: [10, 30, 40, 200], m: [10, 12, 20] };
+  const MA_COLS = tf => MA_PERIODS_TF[tf].map(n => ["ma_" + tf + n, n + (tf === "d" ? "d" : tf)]);
   const activeMaCols = () => MA_COLS("d")
     .concat(TF.weekly.on ? MA_COLS("w") : [])
     .concat(TF.monthly.on ? MA_COLS("m") : []);
@@ -1158,8 +1161,9 @@
       td.appendChild(document.createTextNode(" " + (m.dist > 0 ? "+" : "") + fmt(m.dist) + "%"));
       /* Only the 150 and 200 carry the test state — those are the levels the
          desk actually treats as support and resistance. */
-      const n = +key.slice(4);
-      if (m.state && (n === 150 || n === 200)) {
+      const n = +key.slice(4), tfk = key[3];
+      const TAGGED = { d: [150, 200], w: [30, 40, 200], m: [10, 20] };
+      if (m.state && TAGGED[tfk].includes(n)) {
         td.appendChild(h("span", "matag " + m.state, m.state));
       }
       td.title = (m.above ? "Above" : "Below") + " the " + n +

@@ -529,7 +529,14 @@
      reading moves. The header says which, rather than leaving it to be assumed.
      --------------------------------------------------------------------- */
 
+  /* One period set per timeframe. Daily lengths do not transplant onto
+     slower bars — a 200-period monthly is seventeen years, not a trend line —
+     so weekly and monthly use the lengths chartists actually read. Weekly: 10,
+     30 (Weinstein's stage line), 40 (the 200-day in weeks), 200 (the cycle
+     floor). Monthly: 10 (Faber's line, the 200-day in months), 12, 20. The
+     trend map settled these; this makes every other page agree with it. */
   const COL_PERIODS = [5, 21, 50, 150, 200];
+  const PERIODS_BY_TF = { d: COL_PERIODS, w: [10, 30, 40, 200], m: [10, 12, 20] };
   const COL_STATE = { w: false, m: false };
   const TF_OF = { w: "weekly", m: "monthly" };
 
@@ -537,7 +544,7 @@
      Returned as [key, label] so a page can splice them straight into whatever
      header array it already walks. */
   function colDefs() {
-    const set = tf => COL_PERIODS.map(n => ["ma_" + tf + n, n + tf]);
+    const set = tf => PERIODS_BY_TF[tf].map(n => ["ma_" + tf + n, n + tf]);
     return set("d")
       .concat(COL_STATE.w ? set("w") : [])
       .concat(COL_STATE.m ? set("m") : []);
@@ -569,10 +576,12 @@
     td.appendChild(el("span", "maside", m.above ? "▲" : "▼"));
     td.appendChild(document.createTextNode(
       " " + (m.dist > 0 ? "+" : "") + fmt(m.dist, 1) + "%"));
-    /* Only the 150 and 200 carry the level test — those are the two treated as
-       support and resistance, and tagging all five would bury them. */
-    const n = +key.slice(4);
-    if (m.state && (n === 150 || n === 200)) td.appendChild(el("span", "matag " + m.state, m.state));
+    /* The level test is shown only on the lines a chartist treats as support
+       and resistance on that timeframe — daily 150/200, weekly 30/40/200,
+       monthly 10/20. Tagging every column would bury them. */
+    const n = +key.slice(4), tfk = key[3];
+    const TAGGED = { d: [150, 200], w: [30, 40, 200], m: [10, 20] };
+    if (m.state && TAGGED[tfk].includes(n)) td.appendChild(el("span", "matag " + m.state, m.state));
     td.title = (m.above ? "Above" : "Below") + " the " + n + "-period average, "
       + "which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
     return td;
@@ -585,6 +594,7 @@
     const sw = el("div", "switch");
     sw.appendChild(el("span", "slabel", "Moving averages"));
     sw.appendChild(el("span", "mafixed", COL_PERIODS.join(" · ") + " daily"));
+    sw.appendChild(el("span", "mafixed", "10 · 30 · 40 · 200 weekly · 10 · 12 · 20 monthly"));
     for (const [k, label] of [["w", "+ Weekly"], ["m", "+ Monthly"]]) {
       const b = el("button", "rangebtn", label);
       b.type = "button";
@@ -615,7 +625,7 @@
     container.appendChild(sw);
   }
 
-  window.MA = { PERIODS, COL_PERIODS, smaSeries, emaSeries, read, load, bars, events,
+  window.MA = { PERIODS, COL_PERIODS, PERIODS_BY_TF, smaSeries, emaSeries, read, load, bars, events,
                 breadth, panel, crosses, scan, TIERS, SCAN_TF, TF,
                 colDefs, colCell, colValue, colToggles, colRead, isColKey, COL_STATE };
 })();

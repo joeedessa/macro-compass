@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<style>
+  :root {
+    color-scheme: light dark;
+    --page:#f9f9f7; --surface-1:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834;
+    --up:#006300; --down:#d03b3b; --warn:#8a6100;
+    --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
+    --mixed-bg:rgba(237,161,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --page:#0d0d0d; --surface-1:#1a1a19; --surface-2:#232322;
+      --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926;
+      --up:#0ca30c; --down:#e66767; --warn:#eda100;
+      --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
+      --mixed-bg:rgba(237,161,0,0.16);
+    }
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--page); color:var(--text-primary); font-size:15px; line-height:1.55;
+    font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1000px; margin:0 auto; padding:26px 22px 70px; }
+  h1 { font-size:26px; letter-spacing:-0.02em; }
+  h2 { font-size:18px; margin:38px 0 8px; letter-spacing:-0.01em; padding-top:8px;
+    border-top:1px solid var(--grid); }
+  h3 { font-size:14.5px; margin:20px 0 6px; }
+  p { color:var(--text-secondary); font-size:14px; max-width:86ch; margin-bottom:10px; }
+  p b, li b { color:var(--text-primary); font-weight:640; }
+  .stamp { color:var(--text-muted); font-size:13px; margin-top:3px; }
+  nav.pages { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  nav.pages a { font-size:13px; color:var(--text-secondary); text-decoration:none;
+    border:1px solid var(--border); border-radius:999px; padding:5px 13px; }
+  nav.pages a:hover { color:var(--text-primary); border-color:var(--baseline); }
+  nav.pages a.here { color:var(--text-primary); border-color:var(--baseline);
+    background:var(--surface-1); font-weight:600; }
+  ul, ol { color:var(--text-secondary); font-size:14px; max-width:86ch; margin:0 0 10px 20px; }
+  li { margin-bottom:4px; }
+  code { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; background:var(--surface-2);
+    padding:1px 5px; border-radius:4px; color:var(--text-primary); }
+  .tablewrap { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; margin:10px 0 14px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th { font-size:10.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:left; padding:8px 12px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; }
+  td { padding:7px 12px; border-bottom:1px solid var(--grid); vertical-align:top;
+    color:var(--text-secondary); }
+  td:first-child { color:var(--text-primary); font-weight:600; white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  .callout { background:var(--surface-1); border:1px solid var(--border); border-left:3px solid var(--warn);
+    border-radius:10px; padding:11px 14px; margin:12px 0 14px; }
+  .callout p { margin-bottom:6px; } .callout p:last-child { margin-bottom:0; }
+  .toc { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 16px; margin:16px 0 8px; font-size:13px; }
+  .toc a { color:var(--text-primary); text-decoration:none; margin-right:14px; white-space:nowrap; }
+  .toc a:hover { text-decoration:underline; }
+  .abar { display:inline-flex; gap:2px; vertical-align:middle; margin-right:5px; }
+  .abar i { display:inline-block; width:10px; height:6px; border-radius:1px; background:var(--grid); }
+  .abar i.on { background:var(--up); } .abar i.off { background:var(--down); }
+  footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
+  footer a { color:var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Method</h1>
+    <p class="stamp">How the moving averages on this site are defined, computed and read — and why.
+      Settled 16 August 2026 after a full review. This is the reference; the pages implement it.</p>
+  </header>
+  <nav class="pages">
+    <a href="./">Overview</a>
+    <a href="tape.html">Today</a>
+    <a href="portfolio.html">Portfolio</a>
+    <a href="markets.html">Markets</a>
+    <a href="trend.html">Trend map</a>
+    <a href="ai.html">AI</a>
+    <a href="commodities.html">Commodities</a>
+    <a href="countries.html">Countries</a>
+    <a href="themes.html">Themes</a>
+    <a href="macro.html">Macro &amp; flows</a>
+    <a href="letters.html">Letters &amp; 13F</a>
+    <a href="watch.html">Watchlist</a>
+    <a href="lookup.html">Lookup</a>
+    <a href="method.html" class="here">Method</a>
+  </nav>
+
+  <div class="toc">
+    <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a>
+    <a href="#read">Above / below</a> <a href="#level">Level test</a> <a href="#crosses">Crosses</a>
+    <a href="#align">Alignment read</a> <a href="#pages">Which page shows what</a>
+    <a href="#data">Data rules</a> <a href="#log">Change log</a>
+  </div>
+
+  <h2 id="tf">1. Three timeframes, three questions</h2>
+  <p>Every moving average here is a simple average of closes over a fixed number of <b>bars</b>,
+    and the bar is what changes between timeframes — not the arithmetic.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Timeframe</th><th>One bar is</th><th>Bar boundary</th><th>History fetched</th><th>Question it answers</th></tr></thead>
+    <tbody>
+      <tr><td>Daily</td><td>one session's close</td><td>each trading day</td><td>2 years (~500 bars)</td>
+        <td>Where is price against the swing-trading lines. Entries and stops live here.</td></tr>
+      <tr><td>Weekly</td><td>Friday's close for the week</td><td>Monday 00:00 UTC</td><td>5 years (~262 bars)</td>
+        <td>The intermediate trend. Whether a daily move is a dip inside a trend or the start of a break.</td></tr>
+      <tr><td>Monthly</td><td>the last close of the month</td><td>the 1st, 00:00 UTC</td><td>25 years (~300 bars)</td>
+        <td>The primary trend. Whether the intermediate trend is a phase or a regime.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The windows are deliberate. Yahoo honours the interval on a bounded range but silently ignores it
+    on <code>range=max</code>, returning the same ~168 downsampled bars whatever you ask for — so the
+    weekly and monthly series are requested at exactly 5 and 25 years.</p>
+
+  <h2 id="lengths">2. The lengths, and why they differ by timeframe</h2>
+  <p>The daily set does <b>not</b> transplant onto slower bars. A 200-period average on daily bars is
+    forty weeks; on monthly bars it is <b>seventeen years</b>, which is economic history rather than
+    a trend line. Each timeframe uses the lengths practitioners actually read on it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Timeframe</th><th>Lengths</th><th>What each one is</th></tr></thead>
+    <tbody>
+      <tr><td>Daily</td><td>5 · 21 · 50 · 150 · 200</td>
+        <td><b>5</b> a week · <b>21</b> a month, the fast swing line · <b>50</b> the swing trader's
+        trend line · <b>150</b> and <b>200</b> the levels treated as support and resistance. The 200
+        is the one the whole industry watches.</td></tr>
+      <tr><td>Weekly</td><td>10 · 30 · 40 · 200</td>
+        <td><b>10</b> ~2 months, the fast weekly line · <b>30</b> Weinstein's stage line, the backbone
+        of stage analysis · <b>40</b> the 200-day expressed in weeks (200 ÷ 5) · <b>200</b> ~4 years,
+        the cycle floor, heavily used in crypto and long-cycle assets.</td></tr>
+      <tr><td>Monthly</td><td>10 · 12 · 20</td>
+        <td><b>10</b> the 200-day expressed in months and the length Faber's tactical work is built on
+        · <b>12</b> one year · <b>20</b> ~two years. Nothing longer: a 50-month is four years and no
+        longer describes a trend anyone trades.</td></tr>
+    </tbody>
+  </table></div>
+  <p>These are the same everywhere on the site. The trend map settled them first; the toggle columns
+    on every other page and the portfolio pipeline were then brought into line, so a "weekly 30" means
+    the same thing on the Watchlist as it does on Countries.</p>
+
+  <h2 id="compare">3. Daily versus weekly versus monthly — how they compare</h2>
+  <p>They are the same calculation on different bars, so the honest comparison is about what each
+    can and cannot tell you.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>Daily</th><th>Weekly</th><th>Monthly</th></tr></thead>
+    <tbody>
+      <tr><td>Speed</td><td>reacts within days; whipsaws often</td><td>reacts within weeks; a break is meaningful</td><td>reacts within months; a break is rare and heavy</td></tr>
+      <tr><td>Last bar</td><td>the <b>running session</b> while the market is open — the distance moves ~1:1 with the day</td><td>settled Friday close (the in-progress week's phantom bar is dropped)</td><td>settled month-end close (same phantom rule)</td></tr>
+      <tr><td>Who acts on it</td><td>swing traders — entries, stops, the 50 as the line in the sand</td><td>position traders — the 30-week is the trend; below it you are not long</td><td>allocators — the 10-month is in or out</td></tr>
+      <tr><td>Coverage</td><td>~100% of the universe</td><td>~98% at the 200-week (needs 4 years)</td><td>100% at 10/12/20 (needs under 2 years)</td></tr>
+      <tr><td>What a cross means</td><td>a swing setup, or noise</td><td>the intermediate trend has changed</td><td>the primary trend has changed — rare enough to be a headline</td></tr>
+      <tr><td>Best single line</td><td>50</td><td>30</td><td>10</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <p><b>The one thing to internalise:</b> the three timeframes are not three opinions about the same
+      trend, they are three different trends. A name can be below its daily 50, above its 30-week
+      and above its 10-month at the same time — and that specific combination is a <em>pullback in an
+      uptrend</em>, the swing trader's setup, not a contradiction. Reading them together is the point,
+      and section 7 does exactly that.</p>
+  </div>
+
+  <h2 id="read">4. Above or below: how a cell reads</h2>
+  <p>Every moving-average cell on the site says three things: <b>▲ or ▼</b> for which side of the
+    average price is on, the <b>distance</b> as a percentage, and on the slow lines a <b>level tag</b>
+    when the average is being tested. The caret is there because a signed percentage in a table full
+    of signed percentages does not read as a position — you would have to know that plus means above,
+    and the returns columns beside it use the same sign for something else entirely.</p>
+  <p>Distance is <code>close / average − 1</code>. Hover any cell for the average's actual level.</p>
+
+  <h2 id="level">5. The level test — held · rejected · reclaimed · lost</h2>
+  <p>Shown only on the lines a chartist treats as support and resistance: <b>daily 150 and 200</b>,
+    <b>weekly 30, 40 and 200</b>, <b>monthly 10 and 20</b>. Tagging every column would bury them.</p>
+  <ul>
+    <li><b>held</b> — price came down to the line from above and stayed above it</li>
+    <li><b>rejected</b> — price came up to the line from below and turned back down</li>
+    <li><b>reclaimed</b> — price crossed the line from below to above</li>
+    <li><b>lost</b> — price crossed the line from above to below</li>
+  </ul>
+  <p>Two rules make the tag mean something. <b>The tolerance for "near" is scaled to the
+    instrument</b> — half its typical bar-to-bar move, floored at 1% and capped at 4% — so a quiet
+    bond fund and a volatility index each get a "test" that means something for them. And <b>the tag
+    stays only while price is still near the line</b> — within three times that tolerance. Beyond
+    that the position is simply above or below, and the caret already says so.</p>
+  <p>Both rules exist because the first version, a fixed 2% held for fifteen bars, put "rejected"
+    beside VIX at −26%: technically true, since VIX had come within 1.9% four weeks earlier, and
+    useless, since VIX moves twenty per cent in a week.</p>
+
+  <h2 id="crosses">6. Crosses</h2>
+  <p>A cross is a sign change in <code>fast − slow</code> between two consecutive bars. Two ladders exist
+    and they answer different questions.</p>
+  <h3>The scan ladder (Markets, Themes, Countries, Watchlist, Lookup)</h3>
+  <p>Five tiers, fast to slow, on whichever timeframe is selected. Read left to right as escalation:
+    each step costs time and buys confidence, and price leads its own averages arithmetically, so a
+    name normally lights up on the left first and works rightward.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Tier</th><th>Legs</th><th>Reads as</th></tr></thead>
+    <tbody>
+      <tr><td>5 × 21</td><td>EMA 5 vs EMA 21</td><td>timing trigger — earliest and noisiest</td></tr>
+      <tr><td>price × 50</td><td>close vs SMA 50</td><td>swing trend break</td></tr>
+      <tr><td>21 × 50</td><td>EMA 21 vs SMA 50</td><td>intermediate turn</td></tr>
+      <tr><td>price × 200</td><td>close vs SMA 200</td><td>regime change</td></tr>
+      <tr><td>50 × 200</td><td>SMA 50 vs SMA 200</td><td>golden / death cross — latest and most reliable</td></tr>
+    </tbody>
+  </table></div>
+  <p>Note the 5 and 21 in this ladder are <b>exponential</b>; the 5 and 21 columns elsewhere are
+    <b>simple</b>. That split predates the review and the columns were left simple so no figure anyone
+    had been reading moved. Every page that shows both says so.</p>
+  <h3>Major crosses (Trend map)</h3>
+  <p>Only the crosses a chartist would mark on the chart, on the chartist lengths — <b>weekly:</b> price
+    × 30w, price × 40w, 10w × 40w, price × 200w · <b>monthly:</b> price × 10mo, price × 20mo,
+    10mo × 20mo — over short windows (last 4 weeks, last 3 months), and <b>only crosses that
+    held</b>. A cross that reversed inside the window is chop, not a change of trend; those are
+    counted in the heading rather than listed, so you can see how much was filtered.</p>
+  <p>Why: a first pass over a full year turned up 226 price-through-10-month crosses across 142
+    names, more than half of them whipsawed. Arithmetically right, useless to read.</p>
+
+  <h2 id="align">7. The alignment read — three timeframes, one sentence</h2>
+  <p>On the trend map. Each instrument sits above or below its <b>daily 50</b>, its <b>30-week</b>
+    and its <b>10-month</b>, and the eight combinations are the stages a trend passes through. The
+    lines are <b>fixed</b> — this is a statement of fact about the instrument and it does not move
+    when the map's period buttons are pressed.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>d · w · m</th><th>State</th><th>What it is, and what a trader typically does there</th></tr></thead>
+    <tbody>
+      <tr><td><span class="abar"><i class="on"></i><i class="on"></i><i class="on"></i></span>111</td><td>Full uptrend</td><td>every timeframe agrees. Buy dips, do not chase — the daily is where the entry is.</td></tr>
+      <tr><td><span class="abar"><i class="off"></i><i class="on"></i><i class="on"></i></span>011</td><td>Pullback in uptrend</td><td>the long trend is intact and price is resting inside it. The swing trader's setup: the dip to buy, with the 30-week as the stop.</td></tr>
+      <tr><td><span class="abar"><i class="off"></i><i class="off"></i><i class="on"></i></span>001</td><td>Deep pullback</td><td>the intermediate trend has broken while the primary holds. Either the buy of the cycle or the first leg of a top — the 10-month decides.</td></tr>
+      <tr><td><span class="abar"><i class="on"></i><i class="off"></i><i class="on"></i></span>101</td><td>Bounce inside a weekly break</td><td>a short-term bounce inside a broken intermediate trend. Not a base until the 30-week is reclaimed.</td></tr>
+      <tr><td><span class="abar"><i class="on"></i><i class="on"></i><i class="off"></i></span>110</td><td>Recovery</td><td>turning up before the primary trend has. Where new uptrends come from — and where bear-market rallies die.</td></tr>
+      <tr><td><span class="abar"><i class="off"></i><i class="on"></i><i class="off"></i></span>010</td><td>Early turn</td><td>an intermediate uptrend fighting a primary downtrend, with the daily already fading. Fragile.</td></tr>
+      <tr><td><span class="abar"><i class="on"></i><i class="off"></i><i class="off"></i></span>100</td><td>Bounce in downtrend</td><td>a short-term bounce inside a broken trend on both higher timeframes. Sell the rally, or wait for the 30-week.</td></tr>
+      <tr><td><span class="abar"><i class="off"></i><i class="off"></i><i class="off"></i></span>000</td><td>Full downtrend</td><td>every timeframe agrees. Do not buy the dip; the first thing to reclaim is the daily 50.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The states are descriptions of where price sits, not forecasts. The sentence says what a trader
+    typically does there; the trader still decides.</p>
+
+  <h2 id="pages">8. Which page shows what</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Page</th><th>Daily columns</th><th>Weekly / monthly</th><th>Crosses</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Watchlist</td><td>always</td><td>toggles</td><td>scan ladder, filterable by section</td><td>the only page whose rules run on <b>settled</b> closes; the trigger needs a close, the negation fires on an intraday touch</td></tr>
+      <tr><td>Portfolio</td><td>always</td><td>toggles</td><td>—</td><td>computed hourly in CI for all 405 names; toggles are free</td></tr>
+      <tr><td>Markets, Countries, Themes, Commodities, AI</td><td>always</td><td>toggles</td><td>scan ladder (not Commodities/AI)</td><td>plus the Structure block: breadth and fresh level changes</td></tr>
+      <tr><td>Lookup</td><td>always</td><td>toggles</td><td>scan ladder</td><td>subject highlighted among its peers</td></tr>
+      <tr><td>Trend map</td><td>50 only, in the alignment read</td><td>quadrant + table on chartist lengths</td><td>major crosses that held</td><td>no single stocks, no yields; the alignment read is pinned to d50 / 30w / 10mo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="data">9. Data rules that took a bug to learn</h2>
+  <ul>
+    <li><b>The phantom bar.</b> Yahoo pads a trailing bar onto every weekly and monthly series, stamped
+      with the last trade and repeating the close of the period in progress. Left in, the current
+      week or month is counted twice in every average — biased toward the latest price by up to
+      1.4 points on a 10-month, always in the flattering direction. Real bars sit on the period
+      boundary (Monday, the 1st); the phantom does not. It is dropped at the source, client and
+      server, when it is off-boundary and repeats the prior close. Zero false positives over 561
+      historical bars.</li>
+    <li><b>Live tick versus settled close.</b> On the daily set the last bar is the running session while
+      the market is open, so a name near a line can sit either side of it intraday and settle on the
+      other. Only the Watchlist acts on settled closes; every other daily read is the live tick, and
+      the note under the toggles says so.</li>
+    <li><b>Delisted instruments do not leave the feed.</b> Yahoo keeps serving old history and pads a
+      null bar at today's timestamp, so the last row looks current. Staleness is measured from the last
+      non-null close, and anything more than ten days old is dropped and named.</li>
+    <li><b>Symbols can resolve with no usable history.</b> Depth is checked, not just existence. Anything
+      without enough bars for the average reads as a dash, never as zero.</li>
+    <li><b>Native currency, always.</b> Prices are never converted. The one exception is a column that
+      ranks the whole universe against itself, which is converted once and labelled (USD).</li>
+  </ul>
+
+  <h2 id="log">10. Change log</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Date</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td>2026-08-17</td><td>Weekly and monthly lengths made consistent site-wide (10/30/40/200 · 10/12/20). This page written.</td></tr>
+      <tr><td>2026-08-16</td><td>Alignment read pinned to fixed lines. Trend map: chartist lengths per axis; major crosses restricted to those that held. Phantom bar removed. Level-test tolerance scaled to volatility.</td></tr>
+      <tr><td>2026-08-15</td><td>Five daily periods on every page with ▲/▼. Trend map built. Attribution ladder on Lookup. Watchlist: negation fails on intraday touch.</td></tr>
+      <tr><td>2026-08-14</td><td>Shared <code>ma.js</code>; structure block on six pages; cross scan consolidated from four copies.</td></tr>
+    </tbody>
+  </table></div>
+
+  <footer>
+    <p>All averages are simple, on closes, in each instrument's own listing currency. Prices from
+      Yahoo Finance, delayed. Where a figure cannot be made trustworthy it is removed or labelled rather
+      than shipped with a caveat nobody will read. Part of <a href="./">Macro Compass</a>. Not
+      investment advice.</p>
+  </footer>
+</div>
+</body>
+</html>
