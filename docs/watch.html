@@ -401,6 +401,35 @@
     was right.</p>
   <div class="tablewrap wl" id="sec-removed"></div>
 
+  <h2 class="secline" id="s-log">Trade log</h2>
+  <p class="lede tight">An independent journal of actual entries and exits. Logging here never
+    moves a setup between the tables above and the tables never write here — the Log button on any
+    row only pre-fills this form. Price defaults to the settled close of the trade date and follows
+    the date until you type a price yourself; after that the date leaves it alone. The shared log
+    lives in the repo (<code>data/tradelog.json</code>); fills you add here are kept in this
+    browser and included in Export, so committing the exported file publishes them.</p>
+  <form class="add" id="logform">
+    <label>Symbol<input id="l-sym" required placeholder="e.g. HWX.TO" autocomplete="off"></label>
+    <label>Side
+      <select id="l-side"><option value="buy">Buy</option><option value="sell">Sell</option></select>
+    </label>
+    <label>Date<input id="l-date" type="date" required></label>
+    <label>Price<input id="l-price" type="number" step="any" required placeholder="auto from date">
+    </label>
+    <label>Breakout type<input id="l-pattern" list="l-patterns" placeholder="e.g. Rectangle"></label>
+    <datalist id="l-patterns"></datalist>
+    <label>Breakout duration (m)<input id="l-dur" type="number" step="1" min="0" placeholder="months"></label>
+    <label>Market<input id="l-market" list="l-markets" placeholder="e.g. Canada"></label>
+    <datalist id="l-markets"></datalist>
+    <label>Note<input id="l-note" placeholder="optional"></label>
+    <button type="submit">Log it</button>
+    <span class="manote" id="l-pricenote"></span>
+  </form>
+  <div id="logsummary" class="lede tight"></div>
+  <div class="tablewrap wl" id="sec-logopen"></div>
+  <div class="tablewrap wl" id="sec-logclosed"></div>
+  <div class="tablewrap wl" id="sec-logfills"></div>
+
   <h2 class="secline" id="s-scan">Cross scan</h2>
   <p class="lede tight">The same moving-average ladder used on Markets, Themes and Countries, run
     over the setups on this list. Left to right is the escalation order — each step costs time and
@@ -997,6 +1026,24 @@
       render();
     });
     box.appendChild(edit);
+    /* Quick capture into the trade log. Deliberately does NOT change any
+       state here — it only pre-fills the journal form with what this row
+       already knows: symbol, pattern, duration, market, and a side matching
+       the setup's direction. */
+    const lg = h("button", null, "Log");
+    lg.title = "Log a fill for " + p.sym + " in the trade journal below";
+    lg.addEventListener("click", () => {
+      $("#l-sym").value = p.sym;
+      $("#l-side").value = p.dir === "short" ? "sell" : "buy";
+      $("#l-pattern").value = p.pattern || "";
+      $("#l-dur").value = p.duration_m ?? "";
+      $("#l-market").value = p.country || "";
+      $("#l-date").value = new Date().toISOString().slice(0, 10);
+      PRICE_TOUCHED = false;
+      autoPrice();
+      $("#s-log").scrollIntoView({ behavior: "smooth" });
+    });
+    box.appendChild(lg);
     const clearManual = () => {
       /* Drop the stamped date with the flag — leaving it behind would keep the
          setup seeded as a breakout after the promotion was undone. */
@@ -1978,11 +2025,339 @@
   }
 
   $("#refresh").addEventListener("click", refresh);
+
+  /* =====================================================================
+     Trade log — an independent journal of actual fills.
+     =====================================================================
+     Deliberately disconnected from the state machine: logging a buy on a
+     name that sits in "watch" does not promote it, and a setup failing does
+     not touch the log. The tables answer "what is the market doing to my
+     setups"; the log answers "what did I actually do", and conflating the
+     two is how a journal quietly becomes fiction.
+
+     Storage follows the watchlist pattern: the shared log ships in the repo
+     (data/tradelog.json), fills added here live in localStorage, and Export
+     merges the two — committing the exported file publishes them. No
+     quantities by design: this is a price-and-date journal, and each fill
+     pairs one-for-one, first in first out, to make round trips.
+
+     The price rule, exactly as specified: price defaults to the settled
+     close of the TRADE date, not the day it was logged, and re-follows the
+     date whenever the date changes — until a price is typed by hand, which
+     sets priceManual and the date stops touching it. */
+  const LOGKEY = "macro-compass-tradelog-v1";
+  let LOGSHARED = [];
+  const loadLogOv = () => {
+    try { return JSON.parse(localStorage.getItem(LOGKEY)) || { added: [], over: {}, deleted: [] }; }
+    catch { return { added: [], over: {}, deleted: [] }; }
+  };
+  let LOGOV = loadLogOv();
+  const saveLogOv = () => localStorage.setItem(LOGKEY, JSON.stringify(LOGOV));
+  const logRows = () => {
+    const rows = [];
+    for (const f of LOGSHARED) {
+      if (LOGOV.deleted.includes(f.id)) continue;
+      rows.push({ ...f, ...(LOGOV.over[f.id] || {}), shared: true });
+    }
+    for (const f of LOGOV.added) {
+      if (LOGOV.deleted.includes(f.id)) continue;
+      rows.push({ ...f, shared: false });
+    }
+    rows.sort((a, b) => (a.date + a.logged_at).localeCompare(b.date + b.logged_at));
+    return rows;
+  };
+
+  /* Settled close on or before a date. Watchlist symbols read from the
+     already-fetched history; anything else gets one spark call, cached. */
+  const CLOSE_CACHE = {};
+  async function closeOn(sym, dateISO) {
+    let pts = HIST[sym] ? HIST[sym].settled : CLOSE_CACHE[sym];
+    if (!pts) {
+      try {
+        const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+          encodeURIComponent(sym) + "&range=2y&interval=1d";
+        let j = null;
+        for (const w of PROXIES) {
+          try { const r = await fetch(w(url), { cache: "no-store" }); if (r.ok) { j = await r.json(); break; } }
+          catch { /* next */ }
+        }
+        const resp = j && j.spark && j.spark.result && j.spark.result[0] && j.spark.result[0].response[0];
+        if (resp) {
+          const ts = resp.timestamp || [], cl = (resp.indicators.quote[0] || {}).close || [];
+          pts = [];
+          for (let i = 0; i < ts.length; i++) if (cl[i] != null)
+            pts.push([new Date(ts[i] * 1000).toISOString().slice(0, 10), cl[i]]);
+          CLOSE_CACHE[sym] = pts;
+        }
+      } catch { /* leave undefined */ }
+    }
+    if (!pts || !pts.length) return null;
+    let best = null;
+    for (const [d, c] of pts) { if (d <= dateISO) best = { date: d, close: c }; else break; }
+    return best;
+  }
+
+  /* FIFO pairing without quantities: each fill is one unit. A sell with no
+     open buy opens a short and pairs against the next buy, symmetrically. */
+  function pairFills(rows) {
+    const open = {}, closed = [];
+    for (const f of rows) {
+      const q = open[f.sym] = open[f.sym] || [];
+      if (q.length && q[0].side !== f.side) {
+        const e = q.shift();
+        const long = e.side === "buy";
+        const pnl = long ? (f.price / e.price - 1) * 100 : (e.price / f.price - 1) * 100;
+        closed.push({ sym: f.sym, dir: long ? "long" : "short",
+          entry: e, exit: f, pnl,
+          days: Math.round((new Date(f.date) - new Date(e.date)) / 864e5),
+          pattern: e.pattern || f.pattern || "", duration_m: e.duration_m ?? null,
+          market: e.market || f.market || "" });
+      } else q.push(f);
+    }
+    const opens = [];
+    for (const sym in open) for (const e of open[sym]) opens.push(e);
+    return { opens, closed };
+  }
+
+  function renderLog() {
+    const rows = logRows();
+    const { opens, closed } = pairFills(rows);
+
+    const sum = $("#logsummary");
+    if (!rows.length) {
+      sum.textContent = "Nothing logged yet.";
+      $("#sec-logopen").textContent = ""; $("#sec-logclosed").textContent = "";
+      $("#sec-logfills").textContent = "";
+      return;
+    }
+    const wins = closed.filter(c => c.pnl > 0);
+    const losses = closed.filter(c => c.pnl <= 0);
+    const avg = a => a.length ? a.reduce((x, y) => x + y.pnl, 0) / a.length : null;
+    sum.textContent = opens.length + " open · " + closed.length + " closed" +
+      (closed.length ? " · " + wins.length + " winners (" +
+        Math.round(wins.length / closed.length * 100) + "%)" +
+        (avg(wins) != null ? " · avg win +" + avg(wins).toFixed(1) + "%" : "") +
+        (avg(losses) != null ? " · avg loss " + avg(losses).toFixed(1) + "%" : "") : "") +
+      " — P&L in each instrument's own currency, price-based, no sizes.";
+
+    const buildLogTable = (host, title, cols, rowsArr, rowFn) => {
+      const wrap = $(host);
+      wrap.textContent = "";
+      const pill = h("div", "secpill");
+      pill.appendChild(document.createTextNode(title));
+      pill.appendChild(h("span", "cnt", "(" + rowsArr.length + ")"));
+      wrap.appendChild(pill);
+      if (!rowsArr.length) return;
+      const table = h("table", "wl");
+      const thead = h("thead"), hr = h("tr");
+      for (const [lab, cls] of cols) hr.appendChild(h("th", cls || null, lab));
+      thead.appendChild(hr); table.appendChild(thead);
+      const tb = h("tbody");
+      for (const r of rowsArr) tb.appendChild(rowFn(r));
+      table.appendChild(tb); wrap.appendChild(table);
+    };
+
+    const live = sym => {
+      const hrow = HIST[sym];
+      return hrow ? hrow.live : (CLOSE_CACHE[sym] && CLOSE_CACHE[sym].length
+        ? CLOSE_CACHE[sym][CLOSE_CACHE[sym].length - 1][1] : null);
+    };
+
+    buildLogTable("#sec-logopen", "Open positions",
+      [["Symbol", "left"], ["Side", "left"], ["Entry date"], ["Entry price"], ["Now"],
+       ["Unrealised"], ["Breakout", "left"], ["Dur"], ["Market", "left"], ["Note", "left"]],
+      opens, e => {
+        const tr = h("tr");
+        const td0 = h("td", "left");
+        const a = h("a", "wsym", e.sym); a.href = YQ(e.sym) + "/chart";
+        a.target = "_blank"; a.rel = "noopener noreferrer";
+        td0.appendChild(a); tr.appendChild(td0);
+        tr.appendChild(h("td", "left", e.side === "buy" ? "long" : "short"));
+        tr.appendChild(h("td", null, fmtD(e.date)));
+        tr.appendChild(h("td", null, fmt(e.price)));
+        const lv = live(e.sym);
+        tr.appendChild(h("td", null, lv != null ? fmt(lv) : "–"));
+        if (lv != null) {
+          const pnl = e.side === "buy" ? (lv / e.price - 1) * 100 : (e.price / lv - 1) * 100;
+          tr.appendChild(h("td", pnl >= 0 ? "up" : "down", (pnl > 0 ? "+" : "") + pnl.toFixed(1) + "%"));
+        } else tr.appendChild(h("td", null, "–"));
+        tr.appendChild(h("td", "left", e.pattern || "–"));
+        tr.appendChild(h("td", null, e.duration_m != null ? e.duration_m + "m" : "–"));
+        tr.appendChild(h("td", "left", e.market || "–"));
+        tr.appendChild(h("td", "left", e.note || ""));
+        return tr;
+      });
+
+    buildLogTable("#sec-logclosed", "Closed trades",
+      [["Symbol", "left"], ["Dir", "left"], ["In"], ["Out"], ["Entry"], ["Exit"],
+       ["P&L"], ["Held"], ["Breakout", "left"], ["Market", "left"]],
+      closed.slice().reverse(), c => {
+        const tr = h("tr");
+        const td0 = h("td", "left");
+        const a = h("a", "wsym", c.sym); a.href = YQ(c.sym) + "/chart";
+        a.target = "_blank"; a.rel = "noopener noreferrer";
+        td0.appendChild(a); tr.appendChild(td0);
+        tr.appendChild(h("td", "left", c.dir));
+        tr.appendChild(h("td", null, fmtD(c.entry.date)));
+        tr.appendChild(h("td", null, fmtD(c.exit.date)));
+        tr.appendChild(h("td", null, fmt(c.entry.price)));
+        tr.appendChild(h("td", null, fmt(c.exit.price)));
+        tr.appendChild(h("td", c.pnl >= 0 ? "up" : "down", (c.pnl > 0 ? "+" : "") + c.pnl.toFixed(1) + "%"));
+        tr.appendChild(h("td", null, c.days + "d"));
+        tr.appendChild(h("td", "left", (c.pattern || "–") +
+          (c.duration_m != null ? " · " + c.duration_m + "m" : "")));
+        tr.appendChild(h("td", "left", c.market || "–"));
+        return tr;
+      });
+
+    buildLogTable("#sec-logfills", "Every fill",
+      [["Symbol", "left"], ["Side", "left"], ["Date"], ["Price"], ["Breakout", "left"],
+       ["Dur"], ["Market", "left"], ["Note", "left"], ["", "nosort"]],
+      rows.slice().reverse(), f => {
+        const tr = h("tr");
+        tr.appendChild(h("td", "left", f.sym));
+        tr.appendChild(h("td", "left " + (f.side === "buy" ? "up" : "down"), f.side));
+        tr.appendChild(h("td", null, fmtD(f.date)));
+        const tdp = h("td", null, fmt(f.price));
+        tdp.title = f.priceManual ? "Price entered by hand — the date no longer sets it"
+          : "Settled close of " + fmtD(f.date);
+        tr.appendChild(tdp);
+        tr.appendChild(h("td", "left", f.pattern || "–"));
+        tr.appendChild(h("td", null, f.duration_m != null ? f.duration_m + "m" : "–"));
+        tr.appendChild(h("td", "left", f.market || "–"));
+        tr.appendChild(h("td", "left", f.note || ""));
+        const ta = h("td");
+        const box = h("div", "wact");
+        const ed = h("button", null, "Edit");
+        ed.addEventListener("click", () => editFill(f));
+        box.appendChild(ed);
+        const del = h("button", null, "Del");
+        del.addEventListener("click", () => {
+          if (!confirm("Delete this " + f.side + " of " + f.sym + " on " + fmtD(f.date) + "?")) return;
+          if (f.shared) LOGOV.deleted.push(f.id);
+          else LOGOV.added = LOGOV.added.filter(x => x.id !== f.id);
+          saveLogOv(); renderLog();
+        });
+        box.appendChild(del);
+        ta.appendChild(box); tr.appendChild(ta);
+        return tr;
+      });
+  }
+
+  /* Edit via the capture form: load the fill into it, and on save either
+     update in place (shared fills get an override, local ones are replaced).
+     The date-vs-price rule is enforced on save: a changed price sets
+     priceManual; a changed date with priceManual unset re-derives the price. */
+  let EDITING_FILL = null;
+  function editFill(f) {
+    EDITING_FILL = f;
+    $("#l-sym").value = f.sym; $("#l-side").value = f.side;
+    $("#l-date").value = f.date; $("#l-price").value = f.price;
+    $("#l-pattern").value = f.pattern || ""; $("#l-dur").value = f.duration_m ?? "";
+    $("#l-market").value = f.market || ""; $("#l-note").value = f.note || "";
+    PRICE_TOUCHED = false;
+    $("#l-pricenote").textContent = "Editing the " + f.side + " of " + f.sym + " on " +
+      fmtD(f.date) + " — saving replaces it.";
+    $("#logform").querySelector("button[type=submit]").textContent = "Save fill";
+    $("#s-log").scrollIntoView({ behavior: "smooth" });
+  }
+
+  /* ---- capture form wiring ---- */
+  let PRICE_TOUCHED = false;
+  async function autoPrice() {
+    if (PRICE_TOUCHED) return;
+    const sym = $("#l-sym").value.trim().toUpperCase();
+    const date = $("#l-date").value;
+    if (!sym || !date) return;
+    $("#l-pricenote").textContent = "fetching the close of " + fmtD(date) + "…";
+    const got = await closeOn(sym, date);
+    if (PRICE_TOUCHED) return;             // user typed while we fetched
+    if (got) {
+      $("#l-price").value = Math.round(got.close * 10000) / 10000;
+      $("#l-pricenote").textContent = "settled close of " + fmtD(got.date) +
+        (got.date !== date ? " (last trading day before your date)" : "") +
+        " — type a price to override";
+    } else {
+      $("#l-pricenote").textContent = "no history found for " + sym + " — enter the price by hand";
+    }
+  }
+  function prefillFromWatchlist(sym) {
+    const p = workingList().find(x => x.sym === sym);
+    if (!p) return;
+    if (!$("#l-pattern").value) $("#l-pattern").value = p.pattern || "";
+    if (!$("#l-dur").value && p.duration_m != null) $("#l-dur").value = p.duration_m;
+    if (!$("#l-market").value) $("#l-market").value = p.country || "";
+  }
+  function initLog() {
+    $("#l-date").value = new Date().toISOString().slice(0, 10);
+    const pats = [...new Set(workingList().map(p => p.pattern).filter(Boolean))].sort();
+    for (const v of pats) { const o = h("option"); o.value = v; $("#l-patterns").appendChild(o); }
+    const mkts = [...new Set(workingList().map(p => p.country).filter(Boolean))].sort();
+    for (const v of mkts) { const o = h("option"); o.value = v; $("#l-markets").appendChild(o); }
+    $("#l-sym").addEventListener("change", () => {
+      const sym = $("#l-sym").value.trim().toUpperCase();
+      $("#l-sym").value = sym;
+      prefillFromWatchlist(sym);
+      autoPrice();
+    });
+    $("#l-date").addEventListener("change", autoPrice);
+    $("#l-price").addEventListener("input", () => {
+      PRICE_TOUCHED = true;
+      $("#l-pricenote").textContent = "price entered by hand — the date will not change it";
+    });
+    $("#logform").addEventListener("submit", e => {
+      e.preventDefault();
+      const sym = $("#l-sym").value.trim().toUpperCase();
+      const price = parseFloat($("#l-price").value);
+      if (!sym || !isFinite(price)) return;
+      const fill = {
+        id: EDITING_FILL ? EDITING_FILL.id
+          : "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        sym, side: $("#l-side").value, date: $("#l-date").value, price,
+        priceManual: EDITING_FILL
+          ? (PRICE_TOUCHED || (EDITING_FILL.priceManual && price === EDITING_FILL.price))
+          : PRICE_TOUCHED,
+        pattern: $("#l-pattern").value.trim() || null,
+        duration_m: $("#l-dur").value === "" ? null : +$("#l-dur").value,
+        market: $("#l-market").value.trim() || null,
+        note: $("#l-note").value.trim() || null,
+        logged_at: EDITING_FILL ? EDITING_FILL.logged_at : new Date().toISOString(),
+      };
+      if (EDITING_FILL) {
+        if (EDITING_FILL.shared) LOGOV.over[fill.id] = fill;
+        else LOGOV.added = LOGOV.added.map(x => x.id === fill.id ? fill : x);
+        EDITING_FILL = null;
+        $("#logform").querySelector("button[type=submit]").textContent = "Log it";
+      } else {
+        LOGOV.added.push(fill);
+      }
+      saveLogOv();
+      $("#logform").reset();
+      $("#l-date").value = new Date().toISOString().slice(0, 10);
+      PRICE_TOUCHED = false;
+      $("#l-pricenote").textContent = "logged " + fill.side + " " + fill.sym + " @ " + fmt(fill.price);
+      renderLog();
+    });
+  }
+
+  async function bootLog() {
+    try {
+      const r = await fetch("data/tradelog.json?t=" + Date.now(), { cache: "no-store" });
+      LOGSHARED = r.ok ? await r.json() : [];
+    } catch { LOGSHARED = []; }
+    initLog();
+    renderLog();
+  }
+
   $("#exportbtn").addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(workingList(), null, 2)], { type: "application/json" });
+    /* Two files in one export: the setups, and the trade log with local
+       fills merged — the second is what gets committed as tradelog.json. */
+    const payload = { watchlist: workingList(),
+                      tradelog: logRows().map(({ shared, ...f }) => f) };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "macro-compass-watchlist.json";
+    a.download = "macro-compass-export.json";
     a.click();
     URL.revokeObjectURL(a.href);
   });
@@ -2025,6 +2400,7 @@
     /* Extremes first: they can change a row's state, which the higher
        timeframes cannot, so they are the more urgent of the two refills. */
     setTimeout(() => { loadExtremes(); }, 200);
+    bootLog();
     setTimeout(() => { loadTimeframe("weekly"); loadTimeframe("monthly"); }, 600);
   });
 })();
