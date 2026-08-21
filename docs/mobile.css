@@ -1,0 +1,173 @@
+/* Mobile and landscape behaviour, shared by every page.
+ *
+ * The site was built at desktop width and the phone was an afterthought: the
+ * page navigation is fourteen chips in a row that does not wrap, so on a 390px
+ * screen it pushed the whole document wider than the viewport and every line of
+ * text was clipped at the right edge. Fixing the nav fixes the page.
+ *
+ * Loaded last in every head so these rules win over each page's own <style>
+ * without needing !important — media queries add no specificity, so source
+ * order is what decides.
+ *
+ * Three problems, three sections below:
+ *   1. the navigation strip          — scrolls sideways instead of overflowing
+ *   2. the first column              — capped, so the table is not all symbol
+ *   3. width, portrait and landscape — gutters reclaimed, tables full-bleed
+ */
+
+/* ============================================================
+   1. Page navigation
+   ============================================================
+   Fourteen destinations do not fit on a phone and never will, so the row
+   becomes a horizontal scroller — one tap to any nearby page, which beats a
+   dropdown's two. nowrap on the links is what stops "Trend map" and "Macro &
+   flows" breaking over two lines and making every chip in the row twice as
+   tall as it needs to be. mobile.js scrolls the current page into view and
+   marks the strip scrollable so the edge fade only appears when there is
+   something past the edge. */
+@media (max-width: 900px) {
+  nav.pages {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  nav.pages::-webkit-scrollbar { display: none; }
+  nav.pages a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    scroll-snap-align: start;
+    scroll-margin-left: 12px;
+  }
+  /* Only faded once JS confirms there is more to reach. */
+  nav.pages.scrollable {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+  }
+  nav.pages.scrollable.atend {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px);
+    mask-image: linear-gradient(to right, transparent 0, #000 26px);
+  }
+  nav.pages.scrollable.mid {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 26px,
+      #000 calc(100% - 26px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 26px,
+      #000 calc(100% - 26px), transparent 100%);
+  }
+
+  /* The rows that sit beside the nav on desktop stack under it instead of
+     competing for width. */
+  .navrow { flex-wrap: wrap; }
+  .navrow nav.pages { flex: 1 1 100%; min-width: 0; }
+}
+
+/* ============================================================
+   2. The first column
+   ============================================================
+   Every data table leads with a name and a secondary line under it — the
+   company under the symbol, or the symbol under the instrument. At desktop
+   width that is free; on a phone "Southern Cross Gold Consolidated Ltd."
+   sets the column to half the screen and, because the column is sticky, it
+   keeps that half no matter how far you scroll sideways.
+
+   So the cell is capped and the lines inside it ellipsis. Reference tables
+   (.tablewrap.ref, the Method page) opt out: their first column carries prose
+   that has to be read in full, not identifiers you recognise from a prefix. */
+@media (max-width: 720px) {
+  .tablewrap:not(.ref) table th:first-child,
+  .tablewrap:not(.ref) table td:first-child,
+  table.wl th.left:first-child,
+  table.wl td.left:first-child {
+    max-width: 38vw;
+  }
+  .wsym, .wname, .iname, .isym, .psub, .cname {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* .wname carries a desktop cap of its own that would otherwise win on width. */
+  .wname { max-width: 100%; }
+
+  /* Tighter cells: the padding was tuned for a mouse, and eight pixels a side
+     across six columns is a column's worth of screen. */
+  .tablewrap:not(.ref) table th,
+  .tablewrap:not(.ref) table td,
+  table.wl th, table.wl td {
+    padding: 6px 8px;
+  }
+  .tablewrap:not(.ref) table { font-size: 12.5px; }
+
+  /* The in-header search boxes set their own generous minimum. */
+  table.wl th.left input[type="text"],
+  .tablewrap th input[type="text"] { min-width: 0; width: 100%; }
+}
+
+/* ============================================================
+   3. Width — portrait and landscape
+   ============================================================ */
+@media (max-width: 720px) {
+  .wrap { padding: 16px 12px 56px; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 16px; }
+  .stamp, .lede { font-size: 12.5px; }
+
+  /* Tables run to the screen edge rather than sitting inside the page
+     gutters. On a table that scrolls sideways anyway, twenty-four pixels of
+     margin buys nothing and costs a column.
+
+     Only the outermost box moves. The watchlist nests .topscroll and
+     .scrollbody inside .tablewrap, and pulling all three out by twelve
+     pixels applied the offset three times over — the document ended up wider
+     than the screen and every line of prose was clipped at the right edge,
+     which was the original complaint, reintroduced by its own fix. */
+  .tablewrap:not(.ref) {
+    margin-left: -12px;
+    margin-right: -12px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    width: auto;
+  }
+  .scrollbody { border-radius: 0; border-left: 0; border-right: 0; }
+
+  /* Controls wrap instead of overflowing. */
+  .toolbar, .switch, .navrow { flex-wrap: wrap; }
+  .toolbar input[type="text"] { min-width: 0; flex: 1 1 140px; }
+
+  /* The add-a-setup and trade-log forms are grids whose tracks are sized by
+     their inputs, and the inputs carry a 240px minimum from the desktop
+     layout. A grid track cannot shrink below its content's minimum, so
+     1fr alone does not help — the minimum has to go first. */
+  form.add { grid-template-columns: minmax(0, 1fr); }
+  form.add label { min-width: 0; }
+  form.add input, form.add select { min-width: 0; width: 100%; }
+}
+
+/* Landscape on a phone. The screen is wide but short, so the vertical chrome
+   is what to cut — the reader rotated the device to see more rows, not a
+   larger heading. Text goes up a step because the extra width can carry it. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .wrap { padding: 10px 10px 40px; }
+  header, .navrow { margin-bottom: 6px; }
+  h1 { font-size: 19px; }
+  h2 { margin: 16px 0 4px; }
+  .lede { margin-bottom: 6px; }
+  .tablewrap:not(.ref) table { font-size: 13.5px; }
+  .tablewrap:not(.ref) table th,
+  .tablewrap:not(.ref) table td,
+  table.wl th, table.wl td { padding: 7px 10px; }
+  .tablewrap:not(.ref) table th:first-child,
+  .tablewrap:not(.ref) table td:first-child,
+  table.wl th.left:first-child,
+  table.wl td.left:first-child { max-width: 30vw; }
+  .tablewrap:not(.ref) { margin-left: -10px; margin-right: -10px; }
+}
+
+/* Nothing here should stop the reader pinching to zoom; the viewport meta
+   allows it on every page and this only guards against iOS inflating text on
+   rotation, which desynchronises a sticky column from its own header. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

@@ -75,6 +75,8 @@
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
   footer a { color:var(--text-secondary); }
 </style>
+<link rel="stylesheet" href="mobile.css?v=20260821a">
+<script src="mobile.js?v=20260821a" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -110,7 +112,7 @@
   <h2 id="tf">1. Three timeframes, three questions</h2>
   <p>Every moving average here is a simple average of closes over a fixed number of <b>bars</b>,
     and the bar is what changes between timeframes — not the arithmetic.</p>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>Timeframe</th><th>One bar is</th><th>Bar boundary</th><th>History fetched</th><th>Question it answers</th></tr></thead>
     <tbody>
       <tr><td>Daily</td><td>one session's close</td><td>each trading day</td><td>2 years (~500 bars)</td>
@@ -129,7 +131,7 @@
   <p>The daily set does <b>not</b> transplant onto slower bars. A 200-period average on daily bars is
     forty weeks; on monthly bars it is <b>seventeen years</b>, which is economic history rather than
     a trend line. Each timeframe uses the lengths practitioners actually read on it.</p>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>Timeframe</th><th>Lengths</th><th>What each one is</th></tr></thead>
     <tbody>
       <tr><td>Daily</td><td>5 · 21 · 50 · 150 · 200</td>
@@ -153,7 +155,7 @@
   <h2 id="compare">3. Daily versus weekly versus monthly — how they compare</h2>
   <p>They are the same calculation on different bars, so the honest comparison is about what each
     can and cannot tell you.</p>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th></th><th>Daily</th><th>Weekly</th><th>Monthly</th></tr></thead>
     <tbody>
       <tr><td>Speed</td><td>reacts within days; whipsaws often</td><td>reacts within weeks; a break is meaningful</td><td>reacts within months; a break is rare and heavy</td></tr>
@@ -205,7 +207,7 @@
   <p>Five tiers, fast to slow, on whichever timeframe is selected. Read left to right as escalation:
     each step costs time and buys confidence, and price leads its own averages arithmetically, so a
     name normally lights up on the left first and works rightward.</p>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>Tier</th><th>Legs</th><th>Reads as</th></tr></thead>
     <tbody>
       <tr><td>5 × 21</td><td>EMA 5 vs EMA 21</td><td>timing trigger — earliest and noisiest</td></tr>
@@ -232,7 +234,7 @@
     and its <b>10-month</b>, and the eight combinations are the stages a trend passes through. The
     lines are <b>fixed</b> — this is a statement of fact about the instrument and it does not move
     when the map's period buttons are pressed.</p>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>d · w · m</th><th>State</th><th>What it is, and what a trader typically does there</th></tr></thead>
     <tbody>
       <tr><td><span class="abar"><i class="on"></i><i class="on"></i><i class="on"></i></span>111</td><td>Full uptrend</td><td>every timeframe agrees. Buy dips, do not chase — the daily is where the entry is.</td></tr>
@@ -249,7 +251,7 @@
     typically does there; the trader still decides.</p>
 
   <h2 id="pages">8. Which page shows what</h2>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>Page</th><th>Daily columns</th><th>Weekly / monthly</th><th>Crosses</th><th>Notes</th></tr></thead>
     <tbody>
       <tr><td>Watchlist</td><td>always</td><td>toggles</td><td>scan ladder, filterable by section</td><td>the only page whose rules run on <b>settled</b> closes; the trigger needs a close, the negation fires on an intraday touch</td></tr>
@@ -283,7 +285,7 @@
   </ul>
 
   <h2 id="log">10. Change log</h2>
-  <div class="tablewrap"><table>
+  <div class="tablewrap ref"><table>
     <thead><tr><th>Date</th><th>Change</th></tr></thead>
     <tbody>
       <tr><td>2026-08-17</td><td>Weekly and monthly lengths made consistent site-wide (10/30/40/200 · 10/12/20). This page written.</td></tr>
