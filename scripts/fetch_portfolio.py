@@ -29,6 +29,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+# Run as `python3 scripts/x.py` the script's own directory is already on the
+# path; spelled out so the import does not depend on how it was invoked.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import quality  # noqa: E402 - needs the path above
+
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 POSITIONS = DOCS / "data" / "portfolio.json"
 OUT = DOCS / "data" / "portfolio-data.json"
@@ -394,7 +399,13 @@ def timeframe_bars(symbols, rng, interval):
 def main():
     positions = json.loads(POSITIONS.read_text())
     tv_map = {p["tv"]: p for p in positions if p.get("tv")}
-    rows = scan(sorted(tv_map), COLUMNS)
+    # Same throttle, same shape: full symbol list, null fundamentals. Retry on
+    # thinness before accepting the answer.
+    rows = quality.retry_until_dense(
+        lambda: [dict(zip(COLUMNS, r["d"]), s=r["s"]) for r in scan(sorted(tv_map), COLUMNS)],
+        ["sector", "market_cap_basic", "earnings_release_next_date"],
+        "portfolio fundamentals")
+    rows = [{"s": r["s"], "d": [r[c] for c in COLUMNS]} for r in rows]
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     out = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "source": "TradingView scanner, Yahoo Finance, Google News",
@@ -605,6 +616,16 @@ def main():
 
     if not out["positions"]:
         sys.exit("aborting: no positions enriched")
+
+    # Prices come from a second source and survive a scanner outage, so
+    # measuring them would miss exactly the failure this guards against.
+    # Sector, market cap and the earnings date all come from the scanner and
+    # all went blank together in the run that prompted this.
+    cov = quality.coverage(out["positions"], ["sector", "mcap", "earn"])
+    old_cov = lambda old: quality.coverage(
+        old.get("positions") or [], ["sector", "mcap", "earn"])
+    if not quality.safe_to_write(OUT, cov, old_cov, "portfolio-data.json"):
+        sys.exit(1)
     OUT.write_text(json.dumps(out, separators=(",", ":")))
     withdata = sum(1 for r in out["positions"] if r.get("close") is not None)
     print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB): "

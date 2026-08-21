@@ -153,6 +153,13 @@
   .calcard li b { font-weight:640; }
   .calcard li span { color:var(--text-muted); font-size:11px; }
   .calcard .none { font-size:12px; color:var(--text-muted); }
+  .calcard li.soon b { color:var(--text-primary); }
+  .calcard li.soon { background:var(--mixed-bg); border-radius:6px;
+    margin:0 -6px; padding-left:6px; padding-right:6px; }
+  .calnow { grid-column:1/-1; font-size:12.5px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:9px 13px; }
+  .calnow.hit { background:var(--mixed-bg); color:var(--text-primary); font-weight:620; }
 
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:84ch; }
   footer a { color:var(--text-secondary); }
@@ -227,8 +234,9 @@
     <div class="breadth" id="breadth"></div>
 
     <h2>On the calendar</h2>
-    <p class="lede">Watchlist names with something scheduled today or tomorrow, from the
-      TradingView events feed.</p>
+    <p class="lede">What is coming up on the watchlist, nearest first, from the TradingView
+      events feed. Anything due today or tomorrow is called out; the rest is listed with its
+      distance so the section still tells you something on the many days when nothing reports.</p>
     <div class="calgrid" id="calendar"></div>
   </div>
 
@@ -691,6 +699,13 @@
   }
 
   // ---------- calendar from the watchlist events feed ----------
+  /* Originally this asked one question — is anything scheduled today or
+     tomorrow — and printed "Nothing scheduled" three times when the answer was
+     no. On a 78-name watchlist outside earnings season that is most days, so
+     the section sat dead at the bottom of the page looking broken, which is
+     how it got reported. The window is now open-ended and sorted by proximity:
+     today and tomorrow still get a badge, and the rest earns its place by
+     telling you what is actually next. */
   async function renderCalendar() {
     const box = $("#calendar");
     box.textContent = "";
@@ -705,32 +720,73 @@
     } catch { list = []; }
     const nameOf = {};
     for (const p of list) if (p.note) nameOf[p.sym] = p.note;
-    const today = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-    const pick = (field, days) => Object.entries(ev)
-      .filter(([, v]) => days.includes(v[field]))
+
+    const todayD = new Date(); todayD.setHours(0, 0, 0, 0);
+    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4)
+      .toISOString().slice(0, 10);
+    const today = iso(todayD);
+    const daysOut = d => Math.round((new Date(d + "T00:00:00") - todayD) / 864e5);
+
+    /* Future only, nearest first. A date in the past is a feed that has not
+       rolled forward yet, not an event you can still act on. */
+    const upcoming = field => Object.entries(ev)
+      .filter(([, v]) => v[field] && v[field] >= today)
       .map(([sym, v]) => ({ sym, name: nameOf[sym] || "", when: v[field],
-                            slot: v.earnings_when || "" }));
-    const cards = [
-      ["Reporting today", pick("earnings", [today])],
-      ["Reporting tomorrow", pick("earnings", [tomorrow])],
-      ["Ex-dividend today or tomorrow", pick("ex_div", [today, tomorrow])],
-    ];
-    for (const [title, items] of cards) {
-      const card = h("div", "calcard");
-      card.appendChild(h("h3", null, title));
-      if (!items.length) { card.appendChild(h("p", "none", "Nothing scheduled.")); box.appendChild(card); continue; }
+                            days: daysOut(v[field]),
+                            /* earnings_when is the reporting slot — before the
+                               open, after the close. It says nothing about an
+                               ex-dividend date, so it travels with the earnings
+                               row only. */
+                            slot: field === "earnings" ? (v.earnings_when || "") : "" }))
+      .sort((a, b) => a.when.localeCompare(b.when) || a.sym.localeCompare(b.sym));
+
+    const earnings = upcoming("earnings");
+    const exdiv = upcoming("ex_div");
+    const LIMIT = 8;
+
+    const label = n => n === 0 ? "today" : n === 1 ? "tomorrow"
+      : n < 7 ? "in " + n + " days"
+      : n < 14 ? "next week"
+      : n < 45 ? "in " + Math.round(n / 7) + " weeks"
+      : "in " + Math.round(n / 30) + " months";
+
+    const card = (title, items, empty) => {
+      const c = h("div", "calcard");
+      c.appendChild(h("h3", null, title));
+      if (!items.length) { c.appendChild(h("p", "none", empty)); box.appendChild(c); return; }
       const ul = h("ul");
-      for (const it of items.sort((a, b) => a.sym.localeCompare(b.sym))) {
+      for (const it of items.slice(0, LIMIT)) {
         const li = h("li");
+        if (it.days <= 1) li.className = "soon";
         li.appendChild(h("b", null, it.sym));
         if (it.name) li.appendChild(document.createTextNode(" " + it.name));
-        if (it.slot) li.appendChild(h("span", null, " · " + it.slot));
+        const meta = h("span", null, " · " + label(it.days) +
+          (it.days > 1 ? " (" + it.when.slice(5) + ")" : "") +
+          (it.slot ? " · " + it.slot : ""));
+        li.appendChild(meta);
         ul.appendChild(li);
       }
-      card.appendChild(ul);
-      box.appendChild(card);
-    }
+      c.appendChild(ul);
+      if (items.length > LIMIT) {
+        c.appendChild(h("p", "none", "+" + (items.length - LIMIT) + " further out"));
+      }
+      box.appendChild(c);
+    };
+
+    /* One line at the top answers the original question directly, so the
+       "is anything happening today" read does not require scanning two lists. */
+    const imminent = [...earnings, ...exdiv].filter(x => x.days <= 1);
+    const head = h("div", "calnow");
+    head.className = "calnow" + (imminent.length ? " hit" : "");
+    head.textContent = imminent.length
+      ? imminent.length + " on the watchlist " +
+        (imminent.length === 1 ? "has" : "have") + " something today or tomorrow"
+      : "Nothing on the watchlist reports or goes ex-dividend today or tomorrow" +
+        (earnings.length ? " — next is " + earnings[0].sym + " " + label(earnings[0].days) : "");
+    box.appendChild(head);
+
+    card("Reporting next", earnings, "No scheduled earnings dates on the watchlist.");
+    card("Ex-dividend next", exdiv, "No upcoming ex-dividend dates on the watchlist.");
   }
 
   $("#refresh").addEventListener("click", () => { load(); renderCalendar(); });

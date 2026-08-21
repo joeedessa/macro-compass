@@ -56,6 +56,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+# Run as `python3 scripts/x.py` the script's own directory is already on the
+# path; spelled out so the import does not depend on how it was invoked.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import quality  # noqa: E402 - needs the path above
+
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 OUT = DOCS / "data" / "ai.json"
 
@@ -639,9 +644,16 @@ def main():
 
     # ---- the complex -----------------------------------------------------
     tickers = [c[0] for c in COMPLEX]
-    data = scan(SCAN, {"symbols": {"tickers": tickers}, "columns": COLUMNS,
-                       "price_conversion": {"to_symbol": True}}).get("data", [])
-    got = {r["s"]: dict(zip(COLUMNS, r["d"])) for r in data}
+    # The scanner can answer with every ticker present and every fundamental
+    # null; that response wiped this table to zeros once already. Retry on
+    # thinness rather than on failure, because nothing fails.
+    data = quality.retry_until_dense(
+        lambda: [dict(zip(COLUMNS, r["d"]), s=r["s"])
+                 for r in scan(SCAN, {"symbols": {"tickers": tickers}, "columns": COLUMNS,
+                                      "price_conversion": {"to_symbol": True}}).get("data", [])],
+        ["market_cap_basic", "total_revenue_ttm", "ebitda_ttm"],
+        "AI complex")
+    got = {r["s"]: {c: r[c] for c in COLUMNS} for r in data}
     missing = [t for t in tickers if t not in got]
     if missing:
         print(f"  ! no scanner row for: {', '.join(missing)}", file=sys.stderr)
@@ -801,6 +813,13 @@ def main():
         print(f"  ! korea: {e}", file=sys.stderr)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    # Market cap and revenue are the spine of the complex table and of the
+    # concentration block built from it; when the scanner thins out, they go
+    # first and everything downstream quietly becomes zero.
+    cov = quality.coverage(out.get("names") or [], ["cap", "rev", "ebitda"])
+    old_cov = lambda old: quality.coverage(old.get("names") or [], ["cap", "rev", "ebitda"])
+    if not quality.safe_to_write(OUT, cov, old_cov, "ai.json"):
+        sys.exit(1)
     OUT.write_text(json.dumps(out, indent=1, sort_keys=False) + "\n")
     print(f"Wrote {OUT} ({OUT.stat().st_size / 1024:.0f} KB)")
 

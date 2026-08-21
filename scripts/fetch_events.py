@@ -19,6 +19,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+# Run as `python3 scripts/x.py` the script's own directory is already on the
+# path; spelled out so the import does not depend on how it was invoked.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import quality  # noqa: E402 - needs the path above
+
 DOCS = Path(__file__).resolve().parent.parent / "docs"
 OUT = DOCS / "data" / "watch-events.json"
 
@@ -202,7 +207,13 @@ def main():
             tv_to_yahoo[tv] = s
             tickers.append(tv)
 
-    rows = scan(tickers)
+    # A throttled scanner answers with the right symbols and null fundamentals,
+    # so retry on thinness rather than on failure — nothing here ever fails.
+    rows = quality.retry_until_dense(
+        lambda: [dict(zip(COLUMNS, r["d"]), s=r["s"]) for r in scan(tickers)],
+        ["earnings_release_next_date", "earnings_release_date", "price_target_average"],
+        "watch events")
+    rows = [{"s": r["s"], "d": [r[c] for c in COLUMNS]} for r in rows]
     # Company name for the news query: TradingView's description, falling back
     # to the note the watchlist itself carries.
     names = {p["sym"]: p["note"] for p in watchlist if p.get("note")}
@@ -286,6 +297,15 @@ def main():
     missing = [s for s in syms if s not in out["symbols"]]
     if not out["symbols"]:
         sys.exit("aborting: scanner returned nothing usable")
+
+    # The calendar on the Today page is built entirely from these two fields,
+    # so they are the ones worth measuring: a file that keeps its symbols and
+    # loses its dates leaves that section blank while looking healthy.
+    cov = quality.coverage(out["symbols"].values(), ["earnings", "ex_div"])
+    old_cov = lambda old: quality.coverage(
+        (old.get("symbols") or {}).values(), ["earnings", "ex_div"])
+    if not quality.safe_to_write(OUT, cov, old_cov, "watch-events.json"):
+        sys.exit(1)
     OUT.write_text(json.dumps(out, separators=(",", ":")))
     print(f"wrote {OUT}: {len(out['symbols'])}/{len(syms)} symbols"
           + (f" (missing: {', '.join(missing)})" if missing else ""))
