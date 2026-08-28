@@ -1,0 +1,16 @@
+{
+  // Configuration for deploying the price proxy from this repository, so the
+  // worker never has to be pasted into a dashboard editor by hand. Connect
+  // Cloudflare to the repo once and every later change to src/index.js
+  // redeploys itself on push — which also means the worker stays version
+  // controlled and reviewable like everything else here.
+  //
+  // Root directory in the Cloudflare build settings must be set to
+  // "cloudflare", since that is where this file and src/ live.
+  "name": "macro-compass-proxy",
+  "main": "src/index.js",
+  // Pins the runtime's behaviour to a known date rather than drifting with
+  // whatever Cloudflare ships next. Raise it deliberately, not by habit.
+  "compatibility_date": "2026-08-28",
+  "observability": { "enabled": true }
+}
