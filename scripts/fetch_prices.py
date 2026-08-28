@@ -86,6 +86,14 @@ def universe():
     syms = set()
 
     js = (DOCS / "universe.js").read_text()
+
+    # Flat lists of plain strings are labels, not instruments — REGIONS is
+    # ["Americas", "Europe", ...] and its first element looks exactly like a
+    # ticker to the pattern below. "Americas" was being fetched on every run and
+    # reported as a symbol without a quote, which is a warning that means
+    # nothing and trains the eye to skip warnings.
+    js = re.sub(r"const REGIONS = \[[^\]]*\];", "", js)
+
     # ["SYM", "Label", ...] — first string of each literal tuple
     for m in re.finditer(r'\[\s*"([^"]{1,15})"\s*,\s*"', js):
         s = m.group(1)
