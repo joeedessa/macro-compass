@@ -49,8 +49,18 @@
   const FILE = "data/prices.json";                // long series, hourly
   const FILE_TIP = "data/prices-latest.json";     // last close, every 15 min
 
-  let cache = null;          // the parsed snapshot, once
+  /* The history is cached for the life of the page — three megabytes that gain
+     one bar a day. The tip is not: it is thirteen kilobytes, CI rewrites it
+     every quarter hour, and caching it forever made "Refresh prices" a no-op.
+     With the proxies down, pressing it retried them, fell back to the same
+     cached object and redrew identical numbers — the button looked broken,
+     which is a fair reading of a control that cannot change anything. Re-reading
+     the tip when it is older than a minute costs almost nothing and gives the
+     button its meaning back. */
+  let cache = null;          // history, kept for the page's life
   let inflight = null;       // so a burst of failures loads it once, not fifty times
+  let tipData = null, tipAt = 0, tipInflight = null;
+  const TIP_TTL_MS = 60000;
   let served = 0;            // how many requests the floor has answered
 
   /* Hosts that have already failed this page load. Without this the watchlist
@@ -78,18 +88,37 @@
        adding 1.7GB a month to the repository — see scripts/fetch_prices.py.
        The tip is optional: if it is missing or stale the history alone is
        still a correct, if slightly older, answer. */
-    inflight = Promise.all([
-      fetch(FILE, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(FILE_TIP, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([hist, tip]) => {
-      if (hist && tip && tip.latest) {
-        hist.tip = tip.latest;
-        hist.tip_at = tip.generated_at;
-      }
-      cache = hist;
-      return hist;
-    });
+    inflight = fetch(FILE, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then(hist => { cache = hist; return hist; });
     return inflight;
+  }
+
+  /* The tip, re-read once it is older than a minute. Concurrent callers share
+     one request; a failure leaves whatever was already loaded in place, since a
+     slightly old tip beats none at all. */
+  function loadTip() {
+    if (tipData && (Date.now() - tipAt) < TIP_TTL_MS) return Promise.resolve(tipData);
+    if (tipInflight) return tipInflight;
+    tipInflight = fetch(FILE_TIP, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then(j => {
+        if (j && j.latest) { tipData = j; tipAt = Date.now(); }
+        tipInflight = null;
+        return tipData;
+      });
+    return tipInflight;
+  }
+
+  /* History plus the current tip as one object. The prices map is shared by
+     reference, not copied — it is the three-megabyte half. */
+  async function snapshot() {
+    const [hist, tip] = await Promise.all([load(), loadTip()]);
+    if (!hist) return null;
+    return { prices: hist.prices, generated_at: hist.generated_at,
+             tip: tip && tip.latest, tip_at: tip && tip.generated_at };
   }
 
   /* The daily series with the freshest close spliced on. Same timestamp as the
@@ -172,7 +201,10 @@
      saying nothing. Attached outside anything a page redraws, it cannot be
      lost that way. */
   function announce(snapshot) {
-    if (document.getElementById("pricefloor-note")) return;
+    /* Updated in place rather than skipped when it already exists: the tip is
+       re-read as the page runs, and a banner still quoting the first snapshot
+       it saw would understate how fresh the prices actually are. */
+    const existing = document.getElementById("pricefloor-note");
     // The tip is what sets the prices on screen; the history behind it is older
     // by design and quoting that would overstate the staleness.
     const stamp = snapshot.tip_at || snapshot.generated_at;
@@ -180,7 +212,7 @@
       ? new Date(stamp).toLocaleString(undefined,
           { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "the last hourly run";
-    const el = document.createElement("div");
+    const el = existing || document.createElement("div");
     el.id = "pricefloor-note";
     /* Worded as a condition, not a failure. The first version opened with
        "Live price feed unreachable", which reads as a broken site — the page is
@@ -195,7 +227,7 @@
       "font:500 12.5px/1.45 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;" +
       "text-align:center;border-top:1px solid rgba(237,161,0,0.55);" +
       "background:#3a2d05;color:#ffd97a;";
-    document.body.appendChild(el);
+    if (!existing) document.body.appendChild(el);
   }
 
   const realFetch = window.fetch.bind(window);
@@ -321,12 +353,12 @@
 
     const symbols = symbolsOf(inner);
     if (!symbols) return null;
-    const snapshot = await load();
-    if (!snapshot || !snapshot.prices) return null;
-    const body = sparkFrom(snapshot, symbols, tf);
+    const snap = await snapshot();
+    if (!snap || !snap.prices) return null;
+    const body = sparkFrom(snap, symbols, tf);
     if (!body.spark.result.length) return null;
     served++;
-    try { announce(snapshot); } catch { /* a missing banner must not break a page */ }
+    try { announce(snap); } catch { /* a missing banner must not break a page */ }
     window.PRICEFLOOR_ACTIVE = true;
 
     /* Duck-typed rather than a real Response, because a real one has to be
@@ -349,6 +381,6 @@
 
   window.PRICEFLOOR = {
     get served() { return served; },
-    snapshot: load,
+    snapshot,
   };
 })();
