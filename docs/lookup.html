@@ -240,11 +240,12 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828c"></script>
+<script src="pricefloor.js?v=20260828d"></script>
+<script src="quotes.js?v=20260828d"></script>
 </head>
 <body>
-<script src="universe.js?v=20260823a"></script>
-<script src="ma.js?v=20260828c"></script>
+<script src="universe.js?v=20260828d"></script>
+<script src="ma.js?v=20260828d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -1107,6 +1108,15 @@
         .then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
     SERIES = freshOnly(series); MACRO = macro;
+
+    /* Loaded once, here, rather than per subject: renderSubject is synchronous
+       and re-runs on every selection, and this page holds twelve round-the-clock
+       instruments whose daily bar does not close when their session does —
+       gold read +1.2% on a day it was +0.03% until this was added. */
+    if (window.QUOTES) {
+      try { await QUOTES.load(Object.keys(SERIES)); } catch { /* bars stand */ }
+    }
+
     try {
       const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
       EVENTS = r.ok ? (await r.json()).symbols || {} : {};
@@ -1167,7 +1177,11 @@
     if (S.kind) hh.appendChild(h("span", "kindtag", S.kind));
     head.appendChild(hh);
     head.appendChild(h("p", "thesis", S.thesis));
-    const lead = stats(SERIES[S.lead]);
+    /* No fetching here — renderSubject is synchronous and runs on every subject
+       change. The quotes are loaded once at boot; apply() is a no-op for
+       anything it does not hold, which is every listed fund on the page. */
+    const lead = window.QUOTES ? QUOTES.apply(S.lead, stats(SERIES[S.lead]))
+                               : stats(SERIES[S.lead]);
     if (lead) {
       const q = h("div", "quote");
       const item = (l, v, c) => {
@@ -1220,7 +1234,10 @@
     thead.appendChild(hr); tbl.appendChild(thead);
     const tb = h("tbody");
     for (const [sym, name] of S.complex) {
-      const st = stats(SERIES[sym]);
+      // Futures, crypto and FX need the exchange's own previous close; a
+      // listed fund's daily bar already is its session. QUOTES.apply is a
+      // no-op for anything it has not fetched.
+      const st = window.QUOTES ? QUOTES.apply(sym, stats(SERIES[sym])) : stats(SERIES[sym]);
       const tr = h("tr", sym === S.lead ? "lead" : null);
       const td0 = h("td", "left");
       const a = h("a", "iname", name);

@@ -177,11 +177,12 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828c"></script>
+<script src="pricefloor.js?v=20260828d"></script>
+<script src="quotes.js?v=20260828d"></script>
 </head>
 <body>
-<script src="universe.js?v=20260823a"></script>
-<script src="ma.js?v=20260828c"></script>
+<script src="universe.js?v=20260828d"></script>
+<script src="ma.js?v=20260828d"></script>
 <div class="wrap">
   <header>
     <div>
@@ -515,6 +516,18 @@
     const st = stats(pts);
     return st ? { sym, name, unit, cot, pts, m: st, sea: seasonal(pts) } : null;
   }).filter(Boolean);
+
+  /* Every contract on this page trades round the clock, so every one of them
+     had the wrong day change: six of eight measurably so on 2026-08-28, with
+     Brent reading -1.8% against a real -0.52%. The daily bar is cut at midnight
+     New York and the session is not, so the reference has to come from the
+     exchange rather than from the bar before last. */
+  if (window.QUOTES) {
+    try {
+      await QUOTES.load(ROWS.map(r => r.sym));
+      for (const r of ROWS) QUOTES.apply(r.sym, r.m);
+    } catch { /* keep the bar-derived figures rather than nothing */ }
+  }
 
   const upToday = ROWS.filter(r => r.m.d1 > 0).length;
   $("#stamp").textContent = "Live prices fetched " +

@@ -467,6 +467,19 @@ async function load() {
   const yields = new Set(UNIVERSE.filter(u => u[3] === "yield").map(u => u[0]));
   for (const s in series) METRICS[s] = metrics(series[s], yields.has(s));
 
+  /* Correct the day change for anything trading round the clock. Its daily bar
+     does not close when its session does, so bar-over-bar reads the wrong move
+     — gold showed +1.2% here on a day it was +0.03%. QUOTES fetches the
+     exchange's own previous close and replaces price and reference together.
+     Awaited rather than fired off, because rendering first and correcting after
+     would show the wrong number and then change it under the reader. */
+  if (window.QUOTES) {
+    try {
+      await QUOTES.load(Object.keys(series));
+      for (const s in METRICS) QUOTES.apply(s, METRICS[s]);
+    } catch { /* daily bars remain; better slightly off than blank */ }
+  }
+
   const live = Object.keys(series).length;
   if (!live) {
     status.textContent = "Live price feed unavailable right now. Showing official end-of-day macro data only — reload to retry.";
