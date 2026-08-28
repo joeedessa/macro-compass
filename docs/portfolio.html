@@ -213,6 +213,7 @@
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
 <script src="pricefloor.js?v=20260828d"></script>
+<script src="quotes.js?v=20260828d"></script>
 </head>
 <body>
 <div class="wrap">
@@ -356,6 +357,36 @@
     return;
   }
   const P = D.positions;
+
+  /* Live prices over the committed file.
+     Everything on this page comes from portfolio-data.json, which CI writes
+     when the hourly job manages to run — and GitHub's scheduler honours roughly
+     one request in eight. On the morning this was found the file was eight and
+     a half hours old: European holdings had drifted up to two per cent while
+     their markets traded, and the page had no way to know. It is the one page
+     showing the reader's own money, and the only one with no live path at all.
+
+     The enrichment stays as it is. Sector, market cap, earnings dates,
+     dividends, news and the moving-average structure are the slow half and do
+     not change intraday; only price and the day change do, and those are what
+     is replaced here. The stamp is rewritten afterwards so the page says which
+     half is live and which is from the file. */
+  let livePrices = 0;
+  if (window.QUOTES) {
+    try {
+      const syms = P.map(p => p.y).filter(Boolean);
+      await QUOTES.loadAll(syms);
+      for (const pos of P) {
+        const q = pos.y && QUOTES.get(pos.y);
+        if (!q || q.prev == null) continue;
+        pos.close = q.px;
+        pos.chg = (q.px / q.prev - 1) * 100;
+        pos.live = true;
+        livePrices++;
+      }
+    } catch { /* the file's own figures stand */ }
+  }
+
   $("#status").hidden = true;
   $("#content").hidden = false;
 
@@ -934,8 +965,16 @@
   }
   renderTable();
 
+  /* Two dates, because there are two kinds of figure here. Saying only when
+     the file was written implied the prices were that old, which they no longer
+     are; saying only that prices are live would imply the earnings dates and
+     dividends were too, which they are not. */
   $("#stamp").textContent = P.length + " positions · " +
-    new Set(P.map(p => p.ccy).filter(Boolean)).size + " currencies · updated " +
+    new Set(P.map(p => p.ccy).filter(Boolean)).size + " currencies · " +
+    (livePrices
+      ? "prices live for " + livePrices + " · "
+      : "prices from the file · ") +
+    "positions and fundamentals as of " +
     D.generated_at.slice(0, 16).replace("T", " ") + " UTC" +
     (D.news_found ? " · news on " + D.news_found + " names" : "");
 

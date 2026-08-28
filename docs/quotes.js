@@ -79,6 +79,28 @@
     loaded = true;
   }
 
+  /* Every symbol, not only the round-the-clock ones. The portfolio needs this:
+     its figures come from a file CI writes a few times a day, so on a morning
+     when the scheduler had not run since 23:51 the page was showing prices
+     eight and a half hours old — European holdings had drifted up to two per
+     cent while their markets traded. Nothing there is wrong in convention, it
+     is simply old, and only a live quote fixes that.
+
+     Batches run in parallel here rather than in sequence. Four hundred symbols
+     is forty round trips, and serialised behind a third of a second each that
+     is a page that finishes loading well after the reader has stopped waiting.
+     Six at a time keeps it civil without being slow. */
+  async function loadAll(symbols) {
+    const want = [...new Set(symbols)].filter(Boolean);
+    const chunks = [];
+    for (let i = 0; i < want.length; i += 10) chunks.push(want.slice(i, i + 10));
+    const LANES = 6;
+    for (let i = 0; i < chunks.length; i += LANES) {
+      await Promise.all(chunks.slice(i, i + LANES).map(fetchChunk));
+    }
+    loaded = true;
+  }
+
   /* Correct one metrics object in place. `last` and the day change move
      together or not at all — see the note at the top about pairing. The longer
      windows are untouched: a 1-week or 1-month change spans whole bars either
@@ -93,6 +115,6 @@
     return m;
   }
 
-  window.QUOTES = { load, apply, isRoundTheClock,
+  window.QUOTES = { load, loadAll, apply, isRoundTheClock,
                     get: s => MAP[s], get ready() { return loaded; } };
 })();
