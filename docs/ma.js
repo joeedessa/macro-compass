@@ -40,8 +40,21 @@
 
   const PERIODS = [21, 50, 150, 200];
   const PROXIES = [
-    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    /* Yahoo sends no access-control-allow-origin, so every price on this site
+       reaches the browser through one of these. They are free, public and
+       therefore mortal: on 2026-08-23 corsproxy.io began answering 401 to
+       everyone without a paid key and allorigins went to 522, and because
+       corsproxy.io was FIRST in this list every request on every page spent
+       its first attempt on a guaranteed failure before falling through to a
+       proxy that was also down. Nothing loaded anywhere.
+
+       Ordered by what was measured working that day, dead ones removed. Each
+       is tried in turn, so the cost of one being slow is bounded by the next
+       one succeeding — but none of them is dependable on its own, which is
+       why data/prices.json exists as a floor beneath all of them. */
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
   const TF = {
     weekly:  { label: "weekly",  range: "5y",  interval: "1wk", data: null, loading: false, maxAgo: 1 },

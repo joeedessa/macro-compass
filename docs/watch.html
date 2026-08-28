@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260815e">
+<link rel="stylesheet" href="styles.css?v=20260823a">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -307,11 +307,12 @@
   #sigscan .switch .manote { font-size:11.5px; color:var(--text-muted); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260821a">
-<script src="mobile.js?v=20260821a" defer></script>
+<link rel="stylesheet" href="mobile.css?v=20260823a">
+<script src="mobile.js?v=20260823a" defer></script>
+<script src="pricefloor.js?v=20260823a"></script>
 </head>
 <body>
-<script src="ma.js?v=20260817a"></script>
+<script src="ma.js?v=20260823a"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -484,8 +485,21 @@
   const idOf = p => p.sym + "|" + p.dir;
 
   const PROXIES = [
-    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+    /* Yahoo sends no access-control-allow-origin, so every price on this site
+       reaches the browser through one of these. They are free, public and
+       therefore mortal: on 2026-08-23 corsproxy.io began answering 401 to
+       everyone without a paid key and allorigins went to 522, and because
+       corsproxy.io was FIRST in this list every request on every page spent
+       its first attempt on a guaranteed failure before falling through to a
+       proxy that was also down. Nothing loaded anywhere.
+
+       Ordered by what was measured working that day, dead ones removed. Each
+       is tried in turn, so the cost of one being slow is bounded by the next
+       one succeeding — but none of them is dependable on its own, which is
+       why data/prices.json exists as a floor beneath all of them. */
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
   /* Daily history plus session metadata. The last point of a spark series is
      the LIVE tick while the session runs; it only becomes a settled close once

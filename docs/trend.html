@@ -209,12 +209,13 @@
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260821a">
-<script src="mobile.js?v=20260821a" defer></script>
+<link rel="stylesheet" href="mobile.css?v=20260823a">
+<script src="mobile.js?v=20260823a" defer></script>
+<script src="pricefloor.js?v=20260823a"></script>
 </head>
 <body>
-<script src="universe.js?v=20260815c"></script>
-<script src="ma.js?v=20260817a"></script>
+<script src="universe.js?v=20260823a"></script>
+<script src="ma.js?v=20260823a"></script>
 <div class="wrap">
   <header>
     <div>
@@ -373,8 +374,9 @@
   const DAILY = {};
   async function loadDaily(symbols) {
     const PROXIES = [
-      u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+      u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
       u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+      u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
     ];
     for (let i = 0; i < symbols.length; i += 10) {
       const chunk = symbols.slice(i, i + 10);
