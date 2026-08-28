@@ -40,6 +40,12 @@
   "use strict";
 
   const PROXY_HOSTS = ["api.cors.lol", "api.allorigins.win", "api.codetabs.com"];
+  // Same three, as wrappers, so the startup probe exercises the real paths.
+  const PROXIES_FOR_PROBE = [
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  ];
   const FILE = "data/prices.json";
 
   let cache = null;          // the parsed snapshot, once
@@ -57,6 +63,11 @@
      come back. */
   const dead = new Set();
 
+  /* Started the moment any proxy is seen to fail, not when the snapshot is
+     first needed. The download is over half a megabyte, and fetching it only
+     after the probe has finished put it in series behind the slowest dead
+     proxy. Overlapping the two takes that off the critical path; calling this
+     more than once is harmless because the first call owns the request. */
   function load() {
     if (cache) return Promise.resolve(cache);
     if (inflight) return inflight;
@@ -131,8 +142,14 @@
       : "the last hourly run";
     const el = document.createElement("div");
     el.id = "pricefloor-note";
-    el.textContent = "Live price feed unreachable — showing the hourly snapshot from " +
-      when + ". End-of-session figures, not intraday. Reload to retry.";
+    /* Worded as a condition, not a failure. The first version opened with
+       "Live price feed unreachable", which reads as a broken site — the page is
+       in fact fully populated and correct, just from the snapshot rather than
+       the tick. The snapshot refreshes every fifteen minutes and Yahoo's own
+       feed is fifteen-minute delayed anyway, so the practical difference is
+       usually nil, and saying so is more honest than sounding an alarm. */
+    el.textContent = "Prices from the " + when + " snapshot, refreshed about every " +
+      "15 minutes. The live feed is unavailable right now — reload to retry it.";
     el.style.cssText =
       "position:fixed;left:0;right:0;bottom:0;z-index:60;padding:8px 14px;" +
       "font:500 12.5px/1.45 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;" +
@@ -147,20 +164,82 @@
     try { return new URL(u, location.href).hostname; } catch { return ""; }
   }
 
+  /* A proxy that is going to fail must fail quickly. Two of the three answer a
+     dead request with a Cloudflare 522, which arrives only after their own
+     twenty-second timeout — so the first batch on a cold page waited a minute
+     before anything rendered, which reads as a broken site however correct the
+     eventual result is. Anything worth waiting for comes back in well under
+     four seconds; past that the snapshot is the better answer.
+
+     Only proxy hosts get the deadline. The page's own files — prices.json
+     among them — are on the same origin and must be allowed to take as long as
+     they take. */
+  const PROXY_DEADLINE_MS = 1500;
+
+  function withDeadline(input, init, host) {
+    if (!PROXY_HOSTS.includes(host)) return realFetch(input, init);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), PROXY_DEADLINE_MS);
+    return realFetch(input, Object.assign({}, init, { signal: ctrl.signal }))
+      .finally(() => clearTimeout(timer));
+  }
+
+  /* One probe at startup, all proxies at once, instead of discovering they are
+     down request by request.
+
+     Marking a host dead only after it has failed sounds sufficient, but the
+     page issues its batches in waves, and a wave that starts before the first
+     failure has landed still walks the whole list — so a cold load with every
+     proxy down took between nine and fourteen seconds depending on how the
+     waves happened to line up. A single parallel probe settles the question
+     once, in the time of the slowest single attempt, before the first real
+     request is answered.
+
+     A tiny one-symbol request, because the answer only has to prove the proxy
+     is alive. Whatever it costs is paid once per page load rather than per
+     batch. */
+  const PROBE_URL = "https://query1.finance.yahoo.com/v7/finance/spark" +
+    "?symbols=SPY&range=5d&interval=1d";
+
+  const probed = (async () => {
+    await Promise.all(PROXIES_FOR_PROBE.map(async wrap => {
+      const u = wrap(PROBE_URL);
+      const host = hostOf(u);
+      try {
+        const r = await withDeadline(u, { cache: "no-store" }, host);
+        if (!r.ok) { dead.add(host); load(); }
+      } catch { dead.add(host); load(); }
+    }));
+  })();
+
   window.fetch = async function (input, init) {
     const url = typeof input === "string" ? input : (input && input.url) || "";
     const host = hostOf(url);
 
-    /* Known-dead proxy and a request the snapshot can answer: skip the network
-       entirely rather than paying for a failure we have already seen. */
+    // Let the startup probe settle before walking a list that may all be down.
+    if (PROXY_HOSTS.includes(host)) await probed;
+
+    /* A host already known to be down is not contacted again, whatever is being
+       asked of it. Serve the snapshot if it covers the request; otherwise fail
+       instantly so the caller can move on.
+
+       The instant failure is the important half. The watchlist asks v8/chart
+       for a high and a low per symbol with a negation — forty-three requests
+       the floor must refuse, because a close cannot stand in for a low. Those
+       were still walking all three dead proxies at two and a half seconds
+       each, in waves, which is what kept a page busy for thirty seconds after
+       its tables had already been drawn. Declining to answer them is right;
+       spending eight seconds per symbol to rediscover that the proxies are
+       down is not. */
     if (dead.has(host)) {
       const short = await floorFor(url);
       if (short) return short;
+      throw new TypeError("pricefloor: " + host + " is down, not retrying");
     }
 
     let res = null, threw = null;
     try {
-      res = await realFetch(input, init);
+      res = await withDeadline(input, init, host);
       if (res.ok) return res;
       if (PROXY_HOSTS.includes(host)) dead.add(host);
     } catch (e) {
@@ -209,8 +288,23 @@
     served++;
     try { announce(snapshot); } catch { /* a missing banner must not break a page */ }
     window.PRICEFLOOR_ACTIVE = true;
-    return new Response(JSON.stringify(body),
-      { status: 200, headers: { "Content-Type": "application/json" } });
+
+    /* Duck-typed rather than a real Response, because a real one has to be
+       constructed from a string: the object would be serialised here and
+       immediately parsed back by the caller. Across a watchlist load that is
+       twenty-five payloads of ten symbols by up to three hundred closes,
+       stringified and re-parsed for nothing. Callers only ever touch .ok and
+       .json(), so handing them the object directly is both faster and less
+       work. The rest of the shape is filled in so anything reading .status or
+       .headers still finds what it expects. */
+    return {
+      ok: true, status: 200, statusText: "OK", redirected: false,
+      type: "basic", url: "", bodyUsed: false,
+      headers: new Headers({ "Content-Type": "application/json" }),
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+      clone() { return this; },
+    };
   }
 
   window.PRICEFLOOR = {

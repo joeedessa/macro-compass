@@ -1,0 +1,63 @@
+name: Update prices
+
+# Prices get their own workflow, on a much shorter cycle than the hourly data
+# job, because they are the one thing every page needs and the only thing that
+# goes visibly stale.
+#
+# The reason this exists at all: a static page cannot call Yahoo directly (no
+# access-control-allow-origin), so live prices went through free public CORS
+# proxies, and in August 2026 all of them failed at once and stayed down. The
+# fallback snapshot was hourly, so pages showed prices up to an hour old.
+#
+# Fifteen minutes closes almost the whole gap, because Yahoo's own feed is
+# fifteen-minute delayed regardless: a quarter-hourly snapshot is close to what
+# the proxied "live" path ever delivered, and it depends on nothing outside
+# GitHub. Scheduled runs are best-effort and can slip under load, so treat this
+# as "about every fifteen minutes", not a guarantee.
+#
+# The run takes ninety seconds. It is deliberately separate from update-data.yml
+# so it is not held behind the portfolio and AI jobs, which take far longer and
+# fail independently.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A slow run must never stack on top of the next one; the newer prices win.
+concurrency:
+  group: update-prices
+  cancel-in-progress: true
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch price snapshot
+        run: python3 scripts/fetch_prices.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/prices.json
+          if git diff --cached --quiet; then
+            echo "No price changes."
+          else
+            git commit -m "Update prices $(date -u +'%F %H:%M')"
+            # The hourly data job commits to the same branch, so a push can
+            # lose a race with it. Rebase and retry rather than failing: the
+            # two jobs touch different files and never truly conflict.
+            for i in 1 2 3; do
+              git push && exit 0
+              echo "push rejected, rebasing (attempt $i)"
+              git pull --rebase --autostash origin main || true
+            done
+            echo "could not push after 3 attempts" >&2
+            exit 1
+          fi

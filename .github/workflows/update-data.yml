@@ -25,13 +25,6 @@ jobs:
       - name: Fetch latest data
         run: python3 scripts/fetch_data.py
 
-      # The floor under every page. Runs server-side where there is no CORS, so
-      # it keeps working when the public proxies the browser depends on do not —
-      # which on 2026-08-23 was all of them at once. Placed early: if the run is
-      # cut short, this is the file the site least tolerates being stale.
-      - name: Fetch price snapshot
-        run: python3 scripts/fetch_prices.py || true
-
       - name: Fetch 13F holdings
         run: python3 scripts/fetch_letters.py || true   # quarterly data; a bad EDGAR day must not block the price refresh
 
