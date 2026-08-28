@@ -15,9 +15,13 @@ name: Update prices
 # GitHub. Scheduled runs are best-effort and can slip under load, so treat this
 # as "about every fifteen minutes", not a guarantee.
 #
-# The run takes ninety seconds. It is deliberately separate from update-data.yml
-# so it is not held behind the portfolio and AI jobs, which take far longer and
-# fail independently.
+# This job writes ONLY prices-latest.json — the last close per symbol, about
+# thirteen kilobytes. The year of daily bars and the weekly and monthly series
+# live in prices.json and are refreshed hourly by update-data.yml, because
+# committing three megabytes every fifteen minutes would add roughly 600KB of
+# compressed git objects each time: 59MB a day, 1.7GB a month, on a repository
+# currently under a hundred. Almost none of that history changes between runs;
+# only the tip does, so only the tip is written this often.
 
 on:
   schedule:
@@ -38,14 +42,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch price snapshot
-        run: python3 scripts/fetch_prices.py
+      - name: Fetch latest prices
+        run: python3 scripts/fetch_prices.py --latest
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/prices.json
+          git add docs/data/prices-latest.json
           if git diff --cached --quiet; then
             echo "No price changes."
           else

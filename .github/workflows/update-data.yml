@@ -25,6 +25,21 @@ jobs:
       - name: Fetch latest data
         run: python3 scripts/fetch_data.py
 
+      # The long series behind the price floor — three megabytes, and it gains
+      # exactly one bar a day. Refreshing it hourly would commit 15MB of git
+      # objects a day to add nothing; once after the US close is enough, and
+      # the quarter-hourly job keeps the current price fresh by splicing its
+      # tip onto whatever history is on disk. A history a few hours old is not
+      # stale, it is simply missing today's bar, which the tip supplies.
+      - name: Fetch price history (once daily, after the US close)
+        run: |
+          hour=$(date -u +%H)
+          if [ "$hour" = "23" ] || [ ! -f docs/data/prices.json ]; then
+            python3 scripts/fetch_prices.py || true
+          else
+            echo "skipping price history (UTC hour $hour; refreshes at 23)"
+          fi
+
       - name: Fetch 13F holdings
         run: python3 scripts/fetch_letters.py || true   # quarterly data; a bad EDGAR day must not block the price refresh
 

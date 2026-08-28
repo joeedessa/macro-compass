@@ -46,7 +46,8 @@
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
-  const FILE = "data/prices.json";
+  const FILE = "data/prices.json";                // long series, hourly
+  const FILE_TIP = "data/prices-latest.json";     // last close, every 15 min
 
   let cache = null;          // the parsed snapshot, once
   let inflight = null;       // so a burst of failures loads it once, not fifty times
@@ -71,11 +72,46 @@
   function load() {
     if (cache) return Promise.resolve(cache);
     if (inflight) return inflight;
-    inflight = fetch(FILE, { cache: "no-store" })
-      .then(r => (r.ok ? r.json() : null))
-      .then(j => { cache = j; return j; })
-      .catch(() => null);
+    /* Two files, fetched together. The history is three megabytes and moves
+       once an hour; the tip is thirteen kilobytes and moves every fifteen
+       minutes. Splitting them is what keeps a quarter-hourly refresh from
+       adding 1.7GB a month to the repository — see scripts/fetch_prices.py.
+       The tip is optional: if it is missing or stale the history alone is
+       still a correct, if slightly older, answer. */
+    inflight = Promise.all([
+      fetch(FILE, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(FILE_TIP, { cache: "no-store" }).then(r => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([hist, tip]) => {
+      if (hist && tip && tip.latest) {
+        hist.tip = tip.latest;
+        hist.tip_at = tip.generated_at;
+      }
+      cache = hist;
+      return hist;
+    });
     return inflight;
+  }
+
+  /* The daily series with the freshest close spliced on. Same timestamp as the
+     last bar means that bar has moved and is replaced; a later one means a new
+     session and is appended.
+
+     Daily only. A final bar up to an hour old changes a thirty-week or
+     ten-month average by nothing worth having, and appending to those risks
+     colliding with the phantom-bar rule ma.js applies to weekly and monthly
+     series — a fabricated trailing bar is exactly what that rule exists to
+     remove. */
+  function withTip(snapshot, sym, series) {
+    const t = snapshot.tip && snapshot.tip[sym];
+    if (!t || t.c == null || !series.c.length) return series;
+    const stamps = series.t || [];
+    const lastT = stamps.length ? stamps[stamps.length - 1] : null;
+    if (t.t == null || lastT == null) return series;
+    if (t.t < lastT) return series;                 // tip is behind; keep history
+    const c = series.c.slice(), ts = stamps.slice();
+    if (t.t === lastT) { c[c.length - 1] = t.c; }
+    else { c.push(t.c); ts.push(t.t); }
+    return { c, t: ts };
   }
 
   /* Pull the real Yahoo URL back out of whatever the proxy wrapped it in.
@@ -109,8 +145,9 @@
       const rec = snapshot.prices[sym];
       if (!rec) continue;
       // Daily lives at the top level; weekly and monthly hang off it.
-      const series = tf === "d" ? rec : rec[tf];
+      let series = tf === "d" ? rec : rec[tf];
       if (!series || !series.c || !series.c.length) continue;
+      if (tf === "d") series = withTip(snapshot, sym, series);
       result.push({
         symbol: sym,
         response: [{
@@ -136,8 +173,11 @@
      lost that way. */
   function announce(snapshot) {
     if (document.getElementById("pricefloor-note")) return;
-    const when = snapshot.generated_at
-      ? new Date(snapshot.generated_at).toLocaleString(undefined,
+    // The tip is what sets the prices on screen; the history behind it is older
+    // by design and quoting that would overstate the staleness.
+    const stamp = snapshot.tip_at || snapshot.generated_at;
+    const when = stamp
+      ? new Date(stamp).toLocaleString(undefined,
           { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "the last hourly run";
     const el = document.createElement("div");

@@ -33,7 +33,26 @@ Closes only, and rounded — no OHLC. The watchlist's intraday negation check
 needs real highs and lows and is left to fail honestly when the proxies are
 down, because there is no way to approximate a low from a close.
 
-Run: python3 scripts/fetch_prices.py
+Two files, because of what changes and what does not.
+
+prices.json carries a year of daily bars plus five years of weekly and
+twenty-five of monthly, and almost none of it moves between runs — only the
+last point does. Committing all three megabytes every fifteen minutes would add
+about 600KB of compressed git objects each time: 59MB a day, 1.7GB a month, on
+a repository currently under a hundred. The history would have destroyed the
+repo inside a month to keep one number current.
+
+So the tip is separated. prices-latest.json holds the last close, the one
+before it and the currency — a few tens of kilobytes — and is the only file the
+quarter-hourly job writes. The history is refreshed hourly alongside the other
+data. pricefloor.js reads both and splices the tip onto the daily series.
+
+Only the daily series gets the tip. A stale final bar matters not at all to a
+thirty-week or ten-month average, and splicing into those risks colliding with
+the phantom-bar rule that ma.js applies to them.
+
+Run: python3 scripts/fetch_prices.py            # full history
+     python3 scripts/fetch_prices.py --latest   # just the tip
 """
 
 import json
@@ -49,7 +68,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import quality  # noqa: E402 - needs the path above
 
 DOCS = Path(__file__).resolve().parent.parent / "docs"
-OUT = DOCS / "data" / "prices.json"
+OUT = DOCS / "data" / "prices.json"          # full history, hourly
+OUT_LATEST = DOCS / "data" / "prices-latest.json"   # just the tip, every 15 min
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
 SPARK = "https://query1.finance.yahoo.com/v7/finance/spark?symbols="
 
@@ -132,6 +152,34 @@ def fetch(symbols, rng, interval):
     return out
 
 
+def main_latest():
+    """The quarter-hourly path: last two closes only, one small file."""
+    syms = universe()
+    got = fetch(syms, "5d", "1d")
+    tip = {}
+    for sym, rec in got.items():
+        c, t = rec["c"], rec["t"]
+        if not c:
+            continue
+        tip[sym] = {"c": c[-1], "ccy": rec["ccy"]}
+        if len(c) > 1:
+            tip[sym]["p"] = c[-2]
+        if t:
+            tip[sym]["t"] = t[-1]
+    if not tip:
+        sys.exit("aborting: no prices fetched")
+    out = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "source": "Yahoo Finance, fetched server-side",
+           "latest": tip}
+    cov = len(tip) / max(1, len(syms))
+    old_cov = lambda old: len(old.get("latest") or {}) / max(1, len(syms))
+    if not quality.safe_to_write(OUT_LATEST, cov, old_cov, "prices-latest.json"):
+        sys.exit(1)
+    OUT_LATEST.write_text(json.dumps(out, separators=(",", ":")))
+    print(f"wrote {OUT_LATEST} ({OUT_LATEST.stat().st_size // 1024} KB): "
+          f"{len(tip)}/{len(syms)} symbols ({cov:.0%})")
+
+
 def main():
     syms = universe()
     print(f"universe: {len(syms)} symbols")
@@ -169,4 +217,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--latest" in sys.argv:
+        main_latest()
+    else:
+        main()
