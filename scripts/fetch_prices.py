@@ -152,20 +152,77 @@ def fetch(symbols, rng, interval):
     return out
 
 
-def main_latest():
-    """The quarter-hourly path: last two closes only, one small file."""
-    syms = universe()
-    got = fetch(syms, "5d", "1d")
-    tip = {}
-    for sym, rec in got.items():
-        c, t = rec["c"], rec["t"]
-        if not c:
+def fetch_quotes(symbols):
+    """Live price and the true previous close, ten symbols at a time.
+
+    Uses the intraday endpoint purely for its metadata. It is the only batched
+    call carrying `previousClose`, and that number is the reference the exchange
+    itself uses — which, for anything trading around the clock, is not the close
+    of the previous daily bar.
+
+    Gold exposed it. Yahoo cuts GC=F daily bars at midnight New York, but the
+    contract's session runs to 17:00 New York, so the bar labelled Thursday
+    closed at 4609.7 while Thursday actually settled at 4664.0. Measuring
+    Friday's 4628 against the bar made gold read 0.5% UP on a day it was 0.8%
+    DOWN — a sign error on the instrument this dashboard is most often opened to
+    check, which also fed the written session summary ("gold and the dollar
+    rising together points at haven demand"). Bitcoin was inverted the same way
+    and copper was out by a factor of sixteen. Equities were untouched, because
+    for them the daily bar and the session are the same thing, which is why it
+    went unnoticed.
+
+    regularMarketPrice comes back here too and is fresher than the last daily
+    bar, so it becomes the tip's current price.
+    """
+    out = {}
+    for i in range(0, len(symbols), 10):
+        chunk = symbols[i:i + 10]
+        url = (SPARK + ",".join(urllib.parse.quote(s) for s in chunk)
+               + "&range=1d&interval=5m")
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+                j = json.loads(r.read())
+        except Exception as e:                    # noqa: BLE001 - one bad chunk is not fatal
+            print(f"  ! quotes chunk {i//10}: {type(e).__name__} {e}", file=sys.stderr)
+            time.sleep(1.0)
             continue
-        tip[sym] = {"c": c[-1], "ccy": rec["ccy"]}
-        if len(c) > 1:
-            tip[sym]["p"] = c[-2]
-        if t:
-            tip[sym]["t"] = t[-1]
+        for row in (j.get("spark", {}).get("result") or []):
+            m = (row.get("response") or [{}])[0].get("meta") or {}
+            px, prev = m.get("regularMarketPrice"), m.get("previousClose")
+            if px is None:
+                continue
+            rec = {"c": round(px, 6), "ccy": m.get("currency")}
+            if prev is not None:
+                rec["p"] = round(prev, 6)
+            if m.get("regularMarketTime"):
+                rec["t"] = m["regularMarketTime"]
+            out[row["symbol"]] = rec
+        time.sleep(0.35)
+    return out
+
+
+def main_latest():
+    """The quarter-hourly path: current price and true previous close."""
+    syms = universe()
+    tip = fetch_quotes(syms)
+
+    # Whatever the quote call missed falls back to daily bars, which are right
+    # for everything whose session matches the calendar day — every listed
+    # equity and fund — and wrong only for the round-the-clock instruments the
+    # quote call almost always covers anyway.
+    missing = [s for s in syms if s not in tip]
+    if missing:
+        print(f"  {len(missing)} without a quote; falling back to daily bars")
+        for sym, rec in fetch(missing, "5d", "1d").items():
+            c, t = rec["c"], rec["t"]
+            if not c:
+                continue
+            tip[sym] = {"c": c[-1], "ccy": rec["ccy"]}
+            if len(c) > 1:
+                tip[sym]["p"] = c[-2]
+            if t:
+                tip[sym]["t"] = t[-1]
+
     if not tip:
         sys.exit("aborting: no prices fetched")
     out = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),

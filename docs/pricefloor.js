@@ -130,6 +130,8 @@
      colliding with the phantom-bar rule ma.js applies to weekly and monthly
      series — a fabricated trailing bar is exactly what that rule exists to
      remove. */
+  const utcDay = t => Math.floor(t / 86400);
+
   function withTip(snapshot, sym, series) {
     const t = snapshot.tip && snapshot.tip[sym];
     if (!t || t.c == null || !series.c.length) return series;
@@ -137,8 +139,15 @@
     const lastT = stamps.length ? stamps[stamps.length - 1] : null;
     if (t.t == null || lastT == null) return series;
     if (t.t < lastT) return series;                 // tip is behind; keep history
+
+    /* Compared by day, not by exact second. The tip now carries a live quote
+       time — 05:54Z, say — while the daily bar it belongs to is stamped at the
+       session's start, 04:00Z for a futures contract. Matching on equality
+       would have seen 05:54 > 04:00 and appended, giving the instrument two
+       bars for the same day: one duplicate close inside every average, and a
+       phantom session in every count. */
     const c = series.c.slice(), ts = stamps.slice();
-    if (t.t === lastT) { c[c.length - 1] = t.c; }
+    if (utcDay(t.t) === utcDay(lastT)) { c[c.length - 1] = t.c; }
     else { c.push(t.c); ts.push(t.t); }
     return { c, t: ts };
   }
@@ -176,6 +185,7 @@
       // Daily lives at the top level; weekly and monthly hang off it.
       let series = tf === "d" ? rec : rec[tf];
       if (!series || !series.c || !series.c.length) continue;
+      const tipRec = tf === "d" ? (snapshot.tip && snapshot.tip[sym]) : null;
       if (tf === "d") series = withTip(snapshot, sym, series);
       result.push({
         symbol: sym,
@@ -183,7 +193,15 @@
           meta: {
             currency: rec.ccy,
             symbol: sym,
-            previousClose: series.c.length > 1 ? series.c[series.c.length - 2] : null,
+            /* The exchange's own previous close where the snapshot has it,
+               and only then the bar before last. They agree for equities, and
+               for anything trading round the clock they do not: gold's daily
+               bar for Thursday closed at 4609.7 against a 4664.0 settlement,
+               which flipped the sign of its day change. The bar-based value
+               remains as the fallback because it is right for every listed
+               equity and fund, and those are most of the universe. */
+            previousClose: (tipRec && tipRec.p != null) ? tipRec.p
+              : (series.c.length > 1 ? series.c[series.c.length - 2] : null),
             fromPriceFloor: true,
           },
           timestamp: series.t || [],
