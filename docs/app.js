@@ -512,8 +512,12 @@ function renderStamp(live) {
   if (live) {
     bits.push("Live prices fetched " + t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
       " · " + live + " instruments");
+    /* Named for what it is. This date comes from SPY, so on a morning when
+       London and Frankfurt were mid-session and New York had not opened, an
+       unqualified "latest close 2026-08-27" read as though the whole page were
+       a day behind — while the European rows on it were live and moving. */
     const spy = METRICS.SPY || METRICS["^GSPC"];
-    if (spy) bits.push("latest close " + new Date(spy.asOf).toISOString().slice(0, 10));
+    if (spy) bits.push("US latest close " + new Date(spy.asOf).toISOString().slice(0, 10));
   }
   if (MACRO) bits.push("macro data " + MACRO.generated_at.slice(0, 10));
   $("#stamp").textContent = bits.join(" · ");

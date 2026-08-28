@@ -77,7 +77,7 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828d"></script>
+<script src="pricefloor.js?v=20260828e"></script>
 </head>
 <body>
 <div class="wrap">
@@ -107,7 +107,7 @@
     <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a>
     <a href="#read">Above / below</a> <a href="#level">Level test</a> <a href="#crosses">Crosses</a>
     <a href="#align">Alignment read</a> <a href="#pages">Which page shows what</a>
-    <a href="#data">Data rules</a> <a href="#log">Change log</a>
+    <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#log">Change log</a>
   </div>
 
   <h2 id="tf">1. Three timeframes, three questions</h2>
@@ -285,10 +285,44 @@
       ranks the whole universe against itself, which is converted once and labelled (USD).</li>
   </ul>
 
-  <h2 id="log">10. Change log</h2>
+  <h2 id="prices">10. Where the prices come from</h2>
+  <p>Yahoo sends no <code>access-control-allow-origin</code>, so a static page cannot call it
+    directly. Everything below exists because of that one fact.</p>
+  <div class="tablewrap ref"><table>
+    <thead><tr><th>Layer</th><th>What it is</th><th>When it is used</th></tr></thead>
+    <tbody>
+      <tr><td>Cloudflare Worker</td>
+        <td>A proxy on our own account. Fetches only Yahoo, answers only this site's origins.</td>
+        <td>First choice, always. Live prices, delayed ~15 minutes by Yahoo itself.</td></tr>
+      <tr><td>Public proxies</td>
+        <td>Three free services kept behind the Worker.</td>
+        <td>Only if the Worker fails. All five we have used have failed at some point.</td></tr>
+      <tr><td>Price snapshot</td>
+        <td><code>prices-latest.json</code> every five minutes, <code>prices.json</code> once a day.
+        Written server-side by CI, where there is no CORS at all.</td>
+        <td>When no proxy answers. The page says so, and states the snapshot's own time.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">
+    <p><b>The day change needs the exchange's reference, not the bar before last.</b> For a listed
+      equity or fund the daily bar and the session are the same thing, so dividing one bar by the
+      previous one is right. For anything trading round the clock it is not: Yahoo cuts gold's
+      daily bars at midnight New York while the contract settles at 17:00, so the bar labelled
+      Thursday closed at 4609.7 against a real settlement of 4664.0.</p>
+    <p>Measured on 28 August 2026, before it was fixed: gold read +1.2% on a day it was +0.03%,
+      copper +1.8% against +0.27%, palladium +4.9% against +3.45%, Brent −1.8% against −0.52%.
+      Every equity on the same pages was correct, which is why it went unnoticed for so long.</p>
+    <p>The rule: take the price and its reference from the same place, or take neither. A batched
+      call at <code>interval=5m</code> returns both. Mixing an intraday reference with a daily-bar
+      price is the same error wearing a hat.</p>
+  </div>
+
+  <h2 id="log">11. Change log</h2>
   <div class="tablewrap ref"><table>
     <thead><tr><th>Date</th><th>Change</th></tr></thead>
     <tbody>
+      <tr><td>2026-08-28</td><td>Day change corrected for round-the-clock instruments on Markets, Overview, Commodities and Lookup — it was wrong wherever the daily bar is not the session. Portfolio given live prices over its committed file. Prices moved onto our own Cloudflare Worker, with the CI snapshot as the floor beneath it.</td></tr>
+      <tr><td>2026-08-23</td><td>Every public CORS proxy failed within an hour and the site went dark. Snapshot floor added, then a five-minute refresh loop after GitHub's scheduler proved to honour about one request in eight.</td></tr>
       <tr><td>2026-08-17</td><td>Weekly and monthly lengths made consistent site-wide (10/30/40/200 · 10/12/20). This page written.</td></tr>
       <tr><td>2026-08-16</td><td>Alignment read pinned to fixed lines. Trend map: chartist lengths per axis; major crosses restricted to those that held. Phantom bar removed. Level-test tolerance scaled to volatility.</td></tr>
       <tr><td>2026-08-15</td><td>Five daily periods on every page with ▲/▼. Trend map built. Attribution ladder on Lookup. Watchlist: negation fails on intraday touch.</td></tr>
