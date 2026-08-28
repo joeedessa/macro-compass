@@ -1,48 +1,45 @@
 name: Update prices
 
-# Prices get their own workflow, on a much shorter cycle than the hourly data
-# job, because they are the one thing every page needs and the only thing that
-# goes visibly stale.
+# Prices refresh on a five-minute loop inside one long-running job, rather than
+# on a schedule. That is a reaction to measurement, not a preference.
 #
-# The reason this exists at all: a static page cannot call Yahoo directly (no
-# access-control-allow-origin), so live prices went through free public CORS
-# proxies, and in August 2026 all of them failed at once and stayed down. The
-# fallback snapshot was hourly, so pages showed prices up to an hour old.
+# GitHub's scheduler drops most of what it is asked for. The hourly data job in
+# this repo, asking for "20 * * * *", fired three times in the 24 hours of
+# 2026-08-27 — 03:19, 14:18, 23:48, an eleven-hour gap in the middle — and a
+# fifteen-minute schedule added the same day produced no scheduled run at all in
+# its first hour and a quarter, at ":00/:15/:30/:45" or at offset minutes.
+# Scheduled runs are documented as best-effort, and on a busy day that means
+# roughly one request in eight is honoured.
 #
-# Fifteen minutes closes almost the whole gap, because Yahoo's own feed is
-# fifteen-minute delayed regardless: a quarter-hourly snapshot is close to what
-# the proxied "live" path ever delivered, and it depends on nothing outside
-# GitHub. Scheduled runs are best-effort and DO slip: treat this as "usually
-# within fifteen or twenty minutes", never as a guarantee. The page always
-# states the snapshot's actual timestamp for exactly this reason.
+# A cron asking for five minutes would therefore have delivered something nearer
+# five hours. So the cadence lives inside the job: fetch, commit, sleep five
+# minutes, repeat, for as long as GitHub lets a job live. Any trigger that does
+# fire starts a fresh loop, and because one loop outlasts the gaps between
+# triggers, the site stays current even when the scheduler skips most of its
+# appointments.
 #
-# This job writes ONLY prices-latest.json — the last close per symbol, about
-# thirteen kilobytes. The year of daily bars and the weekly and monthly series
-# live in prices.json and are refreshed hourly by update-data.yml, because
-# committing three megabytes every fifteen minutes would add roughly 600KB of
-# compressed git objects each time: 59MB a day, 1.7GB a month, on a repository
-# currently under a hundred. Almost none of that history changes between runs;
-# only the tip does, so only the tip is written this often.
+# Actions minutes are unlimited on public repositories, so the wall-clock cost is
+# nothing. The loop writes only prices-latest.json — thirteen kilobytes, three
+# compressed — so a full day of five-minute commits stays under a megabyte. The
+# three-megabyte history keeps its once-daily slot in update-data.yml.
 
 on:
+  # Every trigger available, because not one of them is dependable alone.
   schedule:
-    # Offset off the quarter-hour. GitHub runs scheduled workflows on a shared,
-    # best-effort queue, and :00/:15/:30/:45 are far and away the most requested
-    # minutes — runs asked for then are routinely delayed, and under load simply
-    # dropped. The first hour on "*/15" produced no scheduled run at all. Odd
-    # minutes nobody else asks for get picked up far more reliably.
-    #
-    # This is still best-effort. GitHub guarantees nothing about cron timing,
-    # so the site must keep treating the snapshot's own timestamp as the truth
-    # about its age rather than assuming a cadence — which is why the banner
-    # prints the time it was taken.
-    - cron: "7,22,37,52 * * * *"
+    - cron: "3,33 * * * *"
   workflow_dispatch:
+  # The hourly data job is the most reliable clock this repo has, unreliable as
+  # that is. When it finishes, start a fresh price loop behind it.
+  workflow_run:
+    workflows: ["Update data"]
+    types: [completed]
 
 permissions:
   contents: write
 
-# A slow run must never stack on top of the next one; the newer prices win.
+# Newest wins. A trigger arriving while a loop is already running restarts it
+# rather than queueing behind it: a queue would build faster than it drains, and
+# every waiting run would be publishing stale prices by the time it started.
 concurrency:
   group: update-prices
   cancel-in-progress: true
@@ -50,29 +47,49 @@ concurrency:
 jobs:
   prices:
     runs-on: ubuntu-latest
+    # GitHub kills a job at six hours. Stopping at five and a half leaves the
+    # last pass room to finish and push instead of being cut mid-write.
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch latest prices
-        run: python3 scripts/fetch_prices.py --latest
-
-      - name: Commit and push if changed
+      - name: Refresh prices every five minutes
         run: |
+          set -u
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/prices-latest.json
-          if git diff --cached --quiet; then
-            echo "No price changes."
-          else
-            git commit -m "Update prices $(date -u +'%F %H:%M')"
-            # The hourly data job commits to the same branch, so a push can
-            # lose a race with it. Rebase and retry rather than failing: the
-            # two jobs touch different files and never truly conflict.
-            for i in 1 2 3; do
-              git push && exit 0
-              echo "push rejected, rebasing (attempt $i)"
-              git pull --rebase --autostash origin main || true
-            done
-            echo "could not push after 3 attempts" >&2
-            exit 1
-          fi
+
+          END=$(( SECONDS + 320*60 ))
+          N=0
+          while [ "$SECONDS" -lt "$END" ]; do
+            N=$(( N + 1 ))
+            echo "::group::pass $N ($(date -u +%H:%M:%S)Z)"
+
+            # A failed pass must not end the loop. The next one is five minutes
+            # away, and until then the site still serves the previous snapshot.
+            if python3 scripts/fetch_prices.py --latest; then
+              git add docs/data/prices-latest.json
+              if git diff --cached --quiet; then
+                echo "no change"
+              else
+                git commit -q -m "Update prices $(date -u +'%F %H:%M')"
+                # The daily history job shares this branch, so a push can lose a
+                # race with it. Rebase and retry; the two touch different files.
+                pushed=no
+                for i in 1 2 3; do
+                  if git push -q; then pushed=yes; break; fi
+                  echo "push rejected, rebasing (attempt $i)"
+                  git pull --rebase --autostash -q origin main || true
+                done
+                [ "$pushed" = yes ] || echo "::warning::could not push on pass $N"
+              fi
+            else
+              echo "::warning::fetch failed on pass $N; continuing"
+            fi
+
+            echo "::endgroup::"
+            # Never start a sleep that would run past the deadline.
+            [ $(( SECONDS + 300 )) -lt "$END" ] || break
+            sleep 300
+          done
+          echo "loop finished after $N passes"
