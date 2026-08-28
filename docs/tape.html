@@ -172,7 +172,7 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828b"></script>
+<script src="pricefloor.js?v=20260828c"></script>
 </head>
 <body>
 <div class="wrap">
@@ -272,6 +272,7 @@
        is tried in turn, so the cost of one being slow is bounded by the next
        one succeeding — but none of them is dependable on its own, which is
        why data/prices.json exists as a floor beneath all of them. */
+    u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
@@ -437,9 +438,34 @@
   function dayOf(sym) {
     const d = DAILY[sym];
     if (!d || d.pts.length < 3) return null;
-    const last = d.pts[d.pts.length - 1][1];
-    let prev = d.meta.previousClose;
-    if (prev == null) prev = d.pts[d.pts.length - 2][1];
+
+    /* Price and reference are taken from the same source, never mixed.
+       The intraday feed carries the exchange's own previousClose; the daily
+       feed does not, and falling back to "the bar before last" is only correct
+       for instruments whose session matches the calendar day.
+
+       Gold is where that broke. Yahoo cuts GC=F daily bars at midnight New
+       York while the contract settles at 17:00, so the bar labelled Thursday
+       closed at 4609.7 against a real settlement of 4664.0 — and measuring
+       Friday against the bar read +0.5% on a day gold was down 0.8%. Bitcoin
+       inverted the same way and copper was out by a factor of sixteen, while
+       every equity stayed correct, which is why it went unseen.
+
+       Pairing is the part that matters: taking the reference from the intraday
+       meta and the price from the daily bar would be a different pair of
+       conventions subtracted from each other, which is the original bug wearing
+       a hat. Both come from the intraday feed or neither does. */
+    const it = INTRA[sym];
+    let last, prev;
+    if (it && it.meta && it.meta.previousClose != null &&
+        it.meta.regularMarketPrice != null) {
+      last = it.meta.regularMarketPrice;
+      prev = it.meta.previousClose;
+    } else {
+      last = d.pts[d.pts.length - 1][1];
+      prev = d.meta.previousClose != null ? d.meta.previousClose
+           : d.pts[d.pts.length - 2][1];
+    }
     if (!prev) return null;
     const chg = (last / prev - 1) * 100;
     // 60-day daily-return standard deviation as the yardstick

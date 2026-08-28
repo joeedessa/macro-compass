@@ -39,9 +39,16 @@
 (function () {
   "use strict";
 
-  const PROXY_HOSTS = ["api.cors.lol", "api.allorigins.win", "api.codetabs.com"];
-  // Same three, as wrappers, so the startup probe exercises the real paths.
+  /* The worker first: it is the only one of these on infrastructure we control,
+     and the only one that has not failed. The three public proxies stay behind
+     it as a fallback, costing nothing while the worker answers — the probe
+     stops at the first host that works, so they are only ever contacted if it
+     does not. */
+  const PROXY_HOSTS = ["macro-compass-proxy.joe-edessa.workers.dev",
+                       "api.cors.lol", "api.allorigins.win", "api.codetabs.com"];
+  // The same list as wrappers, so the startup probe exercises the real paths.
   const PROXIES_FOR_PROBE = [
+    u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
@@ -292,6 +299,15 @@
     "?symbols=SPY&range=5d&interval=1d";
 
   const probed = (async () => {
+    /* All at once rather than in order: they are independent, and probing
+       sequentially would pay the deadline once per dead host before reaching a
+       live one. Whichever answer arrives, only the failures are recorded — a
+       host that works is simply never added to `dead`, so the ordinary proxy
+       loop in each page finds it first and the rest are never called.
+
+       The snapshot download starts on the first failure, not the last, so that
+       when everything is down it is already in flight. When the worker answers
+       it is never fetched at all. */
     await Promise.all(PROXIES_FOR_PROBE.map(async wrap => {
       const u = wrap(PROBE_URL);
       const host = hostOf(u);

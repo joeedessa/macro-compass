@@ -217,10 +217,10 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828b"></script>
+<script src="pricefloor.js?v=20260828c"></script>
 </head>
 <body>
-<script src="ma.js?v=20260823a"></script>
+<script src="ma.js?v=20260828c"></script>
 <div class="wrap">
   <header>
     <div>
@@ -434,6 +434,7 @@
        is tried in turn, so the cost of one being slow is bounded by the next
        one succeeding — but none of them is dependable on its own, which is
        why data/prices.json exists as a floor beneath all of them. */
+    u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),

@@ -52,6 +52,7 @@
        is tried in turn, so the cost of one being slow is bounded by the next
        one succeeding — but none of them is dependable on its own, which is
        why data/prices.json exists as a floor beneath all of them. */
+    u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),

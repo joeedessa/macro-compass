@@ -6,6 +6,7 @@
    also serves as the floor if the live feed is unavailable. */
 
 const PROXIES = [
+  u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
   u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
