@@ -12,8 +12,9 @@ name: Update prices
 # Fifteen minutes closes almost the whole gap, because Yahoo's own feed is
 # fifteen-minute delayed regardless: a quarter-hourly snapshot is close to what
 # the proxied "live" path ever delivered, and it depends on nothing outside
-# GitHub. Scheduled runs are best-effort and can slip under load, so treat this
-# as "about every fifteen minutes", not a guarantee.
+# GitHub. Scheduled runs are best-effort and DO slip: treat this as "usually
+# within fifteen or twenty minutes", never as a guarantee. The page always
+# states the snapshot's actual timestamp for exactly this reason.
 #
 # This job writes ONLY prices-latest.json — the last close per symbol, about
 # thirteen kilobytes. The year of daily bars and the weekly and monthly series
@@ -25,7 +26,17 @@ name: Update prices
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # Offset off the quarter-hour. GitHub runs scheduled workflows on a shared,
+    # best-effort queue, and :00/:15/:30/:45 are far and away the most requested
+    # minutes — runs asked for then are routinely delayed, and under load simply
+    # dropped. The first hour on "*/15" produced no scheduled run at all. Odd
+    # minutes nobody else asks for get picked up far more reliably.
+    #
+    # This is still best-effort. GitHub guarantees nothing about cron timing,
+    # so the site must keep treating the snapshot's own timestamp as the truth
+    # about its age rather than assuming a cadence — which is why the banner
+    # prints the time it was taken.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
