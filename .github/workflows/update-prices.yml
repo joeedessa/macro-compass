@@ -11,9 +11,15 @@ name: Update prices
 # Scheduled runs are documented as best-effort, and on a busy day that means
 # roughly one request in eight is honoured.
 #
-# A cron asking for five minutes would therefore have delivered something nearer
-# five hours. So the cadence lives inside the job: fetch, commit, sleep five
-# minutes, repeat, for as long as GitHub lets a job live. Any trigger that does
+# A cron asking for a short interval would therefore have delivered something
+# nearer five hours. So the cadence lives inside the job: fetch, commit, sleep,
+# repeat, for as long as GitHub lets a job live.
+#
+# Fifteen minutes, not five. It was five until the snapshot turned out to reach
+# the site only when a Pages deploy fires, which is far less often than that —
+# so the extra commits bought nothing and cost 288 commits a day. Live prices
+# do not come from here at all; they come from the worker, and this file is the
+# floor for when that fails. Any trigger that does
 # fire starts a fresh loop, and because one loop outlasts the gaps between
 # triggers, the site stays current even when the scheduler skips most of its
 # appointments.
@@ -67,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Refresh prices every five minutes
+      - name: Refresh prices every fifteen minutes
         run: |
           set -u
           git config user.name "github-actions[bot]"
@@ -103,7 +109,7 @@ jobs:
 
             echo "::endgroup::"
             # Never start a sleep that would run past the deadline.
-            [ $(( SECONDS + 300 )) -lt "$END" ] || break
-            sleep 300
+            [ $(( SECONDS + 900 )) -lt "$END" ] || break
+            sleep 900
           done
           echo "loop finished after $N passes"

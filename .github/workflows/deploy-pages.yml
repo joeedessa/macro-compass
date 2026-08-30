@@ -9,7 +9,13 @@ on:
   # on whatever the last human push produced. This fires the deploy when the
   # data job finishes instead.
   workflow_run:
-    workflows: ["Update data"]
+    # "Update prices" is here for one reason: its commits are made with the
+    # default token too, so the five-minute snapshot was landing on main and
+    # never being published. The site sat on whatever the last data job had
+    # deployed — three hours old when this was found. It was not visible,
+    # because live prices come from the Cloudflare worker and the snapshot is
+    # only the floor beneath it, but a floor nobody refreshes is not much of one.
+    workflows: ["Update data", "Update prices"]
     types: [completed]
   workflow_dispatch:
 
