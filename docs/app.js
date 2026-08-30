@@ -17,7 +17,7 @@ const CHUNK = 10;                       // Yahoo 400s on much more than this
    at, not read a summary of, and the summary page was one more click away
    from the thing you actually opened it for. Verified in a browser rather
    than with curl, which Yahoo answers 404 for every non-US symbol. */
-const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
+const YQ = window.YCHART;   // see links.js
 
 const GROUPS = [
   ["us", "US equity"],

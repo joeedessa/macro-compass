@@ -313,10 +313,11 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260830a"></script>
+<script src="pricefloor.js?v=20260830b"></script>
+<script src="links.js?v=20260830b"></script>
 </head>
 <body>
-<script src="ma.js?v=20260830a"></script>
+<script src="ma.js?v=20260830b"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -826,7 +827,7 @@
      at, not read a summary of, and the summary page was one more click away
      from the thing you actually opened it for. Verified in a browser rather
      than with curl, which Yahoo answers 404 for every non-US symbol. */
-  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
+  const YQ = window.YCHART;   // see links.js
   const pct1 = v => v == null ? null : Math.round(v * 10) / 10;
   // Display dates as DD-MM-YY; keep ISO internally for sorting and rules.
   const fmtD = iso => {
@@ -2036,7 +2037,7 @@
       const links = h("p", "dlinks");
       const mk = (txt, url) => { const a = h("a", null, txt); a.href = url;
         a.target = "_blank"; a.rel = "noopener noreferrer"; return a; };
-      links.appendChild(mk("Yahoo news ↗", "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym) + "/news"));
+      links.appendChild(mk("Yahoo news ↗", window.YNEWS(p.sym)));
       links.appendChild(mk("Google News ↗", "https://news.google.com/search?q=" + encodeURIComponent((p.note || p.sym) + " stock")));
       links.appendChild(mk("Chart ↗", YQ(p.sym)));
       card.appendChild(links);

@@ -212,8 +212,9 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260830a"></script>
-<script src="quotes.js?v=20260830a"></script>
+<script src="pricefloor.js?v=20260830b"></script>
+<script src="quotes.js?v=20260830b"></script>
+<script src="links.js?v=20260830b"></script>
 </head>
 <body>
 <div class="wrap">
@@ -347,7 +348,7 @@
      own chart rather than both landing on the US one. */
   /* Same form as every other page: /quote/SYM/chart. The bare /chart/SYM route
      works for US tickers and not reliably for the rest of the book. */
-  const CHART = p => p && p.y ? "https://finance.yahoo.com/quote/" + encodeURIComponent(p.y) + "/chart" : null;
+  const CHART = p => p && p.y ? window.YCHART(p.y) : null;   // see links.js
 
   let D = null;
   try {
