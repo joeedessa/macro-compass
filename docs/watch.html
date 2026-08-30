@@ -73,6 +73,10 @@
   table.wl tbody tr:hover { background:var(--surface-2); }
   .wsym { display:block; color:var(--text-primary); font-weight:620; text-decoration:none; }
   .wsym:hover { text-decoration:underline; }
+  /* A held position's negation has already been broken; the cell has to look
+     different from one that is intact, or the table implies a level still
+     stands when it does not. */
+  .wname.held { color:var(--down); font-weight:640; }
   .wname { display:block; font-size:11.5px; color:var(--text-muted); max-width:320px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .wdir { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
@@ -708,6 +712,18 @@
       const negHit = st.state !== "watch" && p.negation != null &&
         (long ? level < p.negation : level > p.negation);
       if (negHit) {
+        /* A held position records the touch and keeps its state. That is a
+           deliberate override, not a softer rule: a negation is the level at
+           which the trade is wrong, and someone deciding to stay in anyway is
+           making a judgement the replay has no business overturning. What the
+           replay must not do is let that judgement go unmarked, so the touch
+           and its date are kept on the row and the table prints them. The
+           alternative — quietly not testing a held position — would leave a
+           breached level looking exactly like an intact one. */
+        if (p.hold) {
+          st.touched = st.touched || { when: date, at: level, byTouch: !!ext && level !== c };
+          continue;
+        }
         st.failed = { when: date, close: c, at: level, byTouch: !!ext && level !== c,
           reason: st.state === "target" ? "negated after reaching target" : "failed breakout" };
         st.state = "failed";
@@ -799,6 +815,7 @@
            the replay walks from `created` and a negation entered afterwards
            reaches back over bars that predate the promotion. */
         confirmed: o.confirmed !== undefined ? o.confirmed : p.confirmed,
+        hold: o.hold !== undefined ? o.hold : p.hold,
         manualState: o.manualState || null, shared: true });
     }
     for (const p of OV.added) list.push({ ...p, shared: false });
@@ -1288,7 +1305,18 @@
         return td;
       }
       case "breakthrough": return levelCell(p, "breakthrough", editing);
-      case "negation": return levelCell(p, "negation", editing);
+      case "negation": {
+        const td = levelCell(p, "negation", editing);
+        /* A held position keeps its place in the breakout table, so this cell
+           is the only place a reader learns its negation has already been
+           broken. Without the marker the level looks intact when it is not,
+           which is worse than showing nothing at all. */
+        if (p.hold && st && st.touched) {
+          td.appendChild(h("span", "wname held",
+            "touched " + fmt(st.touched.at) + " on " + fmtD(st.touched.when) + " · held"));
+        }
+        return td;
+      }
       case "target": return levelCell(p, "target", editing);
       case "gap": return h("td", null, r.gap == null ? "–" : (r.gap > 0 ? "+" : "") + fmt(r.gap) + "%");
       case "relm": case "rels": {
