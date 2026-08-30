@@ -107,6 +107,13 @@ def tv_tickers_for(sym):
             base = sym[: -len(suf)]
             if suf == ".HK":
                 base = base.lstrip("0") or "0"
+            # Share classes: Yahoo separates them with a dash, TradingView with
+            # a dot — CGI is GIB-A.TO to one and TSX:GIB.A to the other. Without
+            # this the symbol resolves for prices (Yahoo) and silently vanishes
+            # from earnings and dividends (TradingView), which is the kind of
+            # half-presence nothing downstream reports.
+            if "-" in base:
+                return [f"{prefix}:{base.replace('-', '.')}", f"{prefix}:{base}"]
             return [f"{prefix}:{base}"]
     return [f"{p}:{sym}" for p in US_PREFIXES]
 
