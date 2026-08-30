@@ -96,6 +96,11 @@ SUFFIX_TV = {
     ".JO": "JSE", ".IS": "BIST", ".T": "TSE", ".NS": "NSE", ".AX": "ASX",
     ".HK": "HKEX", ".IR": "EURONEXT", ".DE": "XETR", ".HE": "OMXHEX",
     ".OL": "OSL", ".BR": "EURONEXT", ".AS": "EURONEXT", ".V": "TSXV",
+    # Tel Aviv. Prices there are quoted in agorot, a hundredth of a shekel, and
+    # both feeds agree on that — Yahoo reports the currency as ILA and the
+    # scanner returns the same 420.4 — so nothing needs converting. Worth
+    # knowing before someone "fixes" a level that looks a hundred times too big.
+    ".TA": "TASE",
 }
 US_PREFIXES = ["NASDAQ", "NYSE", "AMEX"]   # US listing venue unknown per symbol
 

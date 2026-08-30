@@ -1454,5 +1454,37 @@
   "duration_m": 3,
   "exchange": "TSX",
   "country": "Canada"
+ },
+ {
+  "sym": "NTGY.MC",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 30.46,
+  "breakthrough": 30.46,
+  "target": 32.8,
+  "negation": null,
+  "note": "Naturgy Energy Group SA",
+  "created": "2026-08-30",
+  "state": "watch",
+  "pattern": "H&S continuation",
+  "duration_m": 3,
+  "exchange": "BME",
+  "country": "Spain"
+ },
+ {
+  "sym": "SBEN.TA",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 454.0,
+  "breakthrough": 454.0,
+  "target": 592.0,
+  "negation": null,
+  "note": "Shikun & Binui Energy Ltd.",
+  "created": "2026-08-30",
+  "state": "watch",
+  "pattern": "Cup & Handle continuation",
+  "duration_m": 7,
+  "exchange": "TASE",
+  "country": "Israel"
  }
 ]
