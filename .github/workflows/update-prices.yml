@@ -26,7 +26,10 @@ name: Update prices
 on:
   # Every trigger available, because not one of them is dependable alone.
   schedule:
-    - cron: "3,33 * * * *"
+    # Every three hours, purely as a safety net. The loop itself lasts five and
+    # a half, and finishing one hands straight over to whatever is queued, so
+    # this only matters if a run dies early or nothing else has fired.
+    - cron: "17 */3 * * *"
   workflow_dispatch:
   # The hourly data job is the most reliable clock this repo has, unreliable as
   # that is. When it finishes, start a fresh price loop behind it.
@@ -37,12 +40,23 @@ on:
 permissions:
   contents: write
 
-# Newest wins. A trigger arriving while a loop is already running restarts it
-# rather than queueing behind it: a queue would build faster than it drains, and
-# every waiting run would be publishing stale prices by the time it started.
+# A new trigger waits for the running loop rather than killing it.
+#
+# It was the other way round at first, on the reasoning that the newest prices
+# should win. That was wrong here: this job is a five-and-a-half-hour loop, and
+# triggers arrive two or three times an hour, so the loop was being cancelled
+# and restarted before it had run a fraction of its length. Every one of those
+# restarts showed as a cancelled run — dozens a day of something that looks like
+# a failure and is not.
+#
+# Queueing costs nothing because the queue cannot grow: GitHub keeps at most one
+# pending run per group and replaces it when a newer one arrives. So there is
+# always exactly one loop running and at most one waiting to take over, which is
+# seamless handoff rather than a backlog. Prices keep refreshing every five
+# minutes throughout, from whichever loop currently holds the slot.
 concurrency:
   group: update-prices
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   prices:

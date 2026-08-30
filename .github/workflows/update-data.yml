@@ -61,5 +61,19 @@ jobs:
             echo "No data changes."
           else
             git commit -m "Update data $(date -u +%F)"
-            git push
+            # The price loop commits to this branch every five minutes, so a
+            # push started any time after checkout is very likely to be behind
+            # by the time it lands — which is exactly what happened: every run
+            # of this job on 29 August failed here, at 11:05, 15:37, 19:24 and
+            # 22:39, having done all its real work successfully. The two jobs
+            # touch different files and never truly conflict, so rebase onto
+            # whatever arrived and try again rather than treating a lost race
+            # as a failed run.
+            for i in 1 2 3 4 5; do
+              if git push; then exit 0; fi
+              echo "push rejected, rebasing (attempt $i)"
+              git pull --rebase --autostash origin main || true
+            done
+            echo "::error::could not push after 5 attempts"
+            exit 1
           fi
