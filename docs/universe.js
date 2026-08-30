@@ -77,7 +77,11 @@
     : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  /* Straight to the chart. A ticker on this site is something you want to look
+     at, not read a summary of, and the summary page was one more click away
+     from the thing you actually opened it for. Verified in a browser rather
+     than with curl, which Yahoo answers 404 for every non-US symbol. */
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
 
   async function proxied(url) {
     let err;

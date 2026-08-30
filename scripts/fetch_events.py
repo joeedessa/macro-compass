@@ -38,6 +38,17 @@ COLUMNS = [
     "earnings_release_next_date", "earnings_release_date",
     "earnings_publication_type_next_fq", "earnings_publication_type_fq",
     "dividend_ex_date_upcoming",
+    # ATR, the price it belongs to, and the size of the next dividend. On this
+    # site these are one question, not three. A trailing stop set at a multiple
+    # of ATR is a bet that a move that large means something; a stock going
+    # ex-dividend drops by roughly the dividend for no reason at all, and if
+    # that drop is a real fraction of the ATR it can close a position nothing
+    # has actually gone wrong with. Carried together so the page can say how
+    # much of the stop the dividend is about to eat.
+    #
+    # TradingView's ATR is the 14-period Wilder average — checked against an
+    # independent calculation on four names, matching to within 0.2%.
+    "ATR", "close", "dividend_amount_upcoming",
     # last reported quarter, actual vs consensus
     "earnings_per_share_fq", "earnings_per_share_forecast_fq",
     "revenue_fq", "revenue_forecast_fq",
@@ -250,6 +261,12 @@ def main():
             when = slot(d.get("earnings_publication_type_next_fq"))
             if when:
                 rec["earnings_when"] = when
+        if d.get("ATR") is not None:
+            rec["atr"] = rnd(d["ATR"], 4)
+            if d.get("close"):
+                rec["atr_pct"] = rnd(d["ATR"] / d["close"] * 100, 2)
+        if d.get("dividend_amount_upcoming") is not None:
+            rec["div_amount"] = rnd(d["dividend_amount_upcoming"], 4)
         if d.get("dividend_ex_date_upcoming"):
             ex = iso(d["dividend_ex_date_upcoming"])
             if ex and ex >= today:

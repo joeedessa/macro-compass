@@ -172,7 +172,7 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828e"></script>
+<script src="pricefloor.js?v=20260830a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -277,7 +277,11 @@
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
   ];
-  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  /* Straight to the chart. A ticker on this site is something you want to look
+     at, not read a summary of, and the summary page was one more click away
+     from the thing you actually opened it for. Verified in a browser rather
+     than with curl, which Yahoo answers 404 for every non-US symbol. */
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
   const fmt = (v, d = 1) => v == null || !isFinite(v) ? "–"
     : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   const pct = v => v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "%";

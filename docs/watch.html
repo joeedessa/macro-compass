@@ -313,10 +313,10 @@
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260823a">
 <script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260828e"></script>
+<script src="pricefloor.js?v=20260830a"></script>
 </head>
 <body>
-<script src="ma.js?v=20260828e"></script>
+<script src="ma.js?v=20260830a"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -822,7 +822,11 @@
     return list;
   }
 
-  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+  /* Straight to the chart. A ticker on this site is something you want to look
+     at, not read a summary of, and the summary page was one more click away
+     from the thing you actually opened it for. Verified in a browser rather
+     than with curl, which Yahoo answers 404 for every non-US symbol. */
+  const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
   const pct1 = v => v == null ? null : Math.round(v * 10) / 10;
   // Display dates as DD-MM-YY; keep ISO internally for sorting and rules.
   const fmtD = iso => {
@@ -915,12 +919,12 @@
                ["","Actions","nosort"]],
     breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Confirmed"],
-               ["target","Target"],["upside","Upside"],["risk","Risk"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["target","Target"],["upside","Upside"],["risk","Risk"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["negation","Negation"],["","Actions","nosort"]],
     target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Reached"],
-               ["target","Target"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["target","Target"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["negation","Negation"],["","Actions","nosort"]],
     failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],["breakthrough","Trigger"],
@@ -998,7 +1002,35 @@
   addEventListener("scroll", () => FREEZERS.forEach(f => f()), { passive: true });
   addEventListener("resize", () => SIZERS.forEach(f => f()), { passive: true });
 
+  /* True while a dividend is still ahead. The ex-date itself counts: the drop
+     lands at that morning's open, so a stop set the evening before is already
+     exposed to it. */
+  function divAhead(sym) {
+    const e = EVENTS[sym] || {};
+    if (!e.ex_div || e.div_amount == null) return false;
+    return e.ex_div >= new Date().toISOString().slice(0, 10);
+  }
+
+  /* Where a 2×ATR trailing stop sits, widened while a dividend is still to come
+     out of the price. Returns null when there is nothing to compute from. */
+  function stopFor(p, live) {
+    const e = EVENTS[p.sym] || {};
+    if (e.atr == null || live == null) return null;
+    /* Longs only. The ex-dividend drop is the risk to a long's trailing stop and
+       a gift to a short's — the price falls away from a short's stop, not into
+       it. Widening one would be protecting against profit. Caught when 9509.T
+       and 9533.T, both shorts, showed a widened stop further from the price
+       than the plain one. */
+    const wide = (p.dir !== "short" && divAhead(p.sym)) ? (e.div_amount || 0) : 0;
+    const dist = 2 * e.atr + wide;
+    return { at: p.dir === "short" ? live + dist : live - dist,
+             plain: p.dir === "short" ? live + 2 * e.atr : live - 2 * e.atr,
+             widenedBy: wide, atr: e.atr, exDiv: e.ex_div };
+  }
+
   function sortVal(r, key) {
+    if (key === "atr") return (EVENTS[r.p.sym] || {}).atr;
+    if (key === "stop") { const st = stopFor(r.p, r.live); return st ? st.at : null; }
     if (key === "sym" || key === "dir") return r.p[key] || "";
     if (key === "exchange" || key === "country") return r.p[key] || "";
     if (key === "pattern") return r.p.pattern || "";
@@ -1324,6 +1356,36 @@
         const cls = v == null ? null : v >= 1.5 ? "relup" : v <= -1.5 ? "reldown" : null;
         return h("td", cls, v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "pp");
       }
+      case "atr": {
+        const e = EVENTS[p.sym] || {};
+        if (e.atr == null) return h("td", null, "–");
+        const td = h("td", null, fmt(e.atr));
+        if (e.atr_pct != null) td.appendChild(h("span", "wname", fmt(e.atr_pct, 1) + "% of price"));
+        return td;
+      }
+      case "stop": {
+        /* A stock going ex-dividend falls by roughly the dividend that morning,
+           for no reason connected to the trade. Where that fall is a real
+           fraction of the ATR it can take out a stop set on the assumption that
+           a move of that size means something — closing a position nothing has
+           gone wrong with, the day before it carries on. So while the ex-date is
+           ahead this shows the stop widened by the dividend, and once the date
+           passes the ordinary 2×ATR is right again and that is what shows.
+
+           A distance from the live price, not the stop itself: where it really
+           belongs depends on the trade's high water mark, which this page does
+           not know and the trade log does. */
+        const st = stopFor(p, r.live);
+        if (!st) return h("td", null, "–");
+        const td = h("td", st.widenedBy ? "riskcell" : null, fmt(st.at));
+        td.appendChild(h("span", "wname",
+          st.widenedBy ? "2×ATR + div " + fmt(st.widenedBy) : "2×ATR"));
+        td.title = st.widenedBy
+          ? "Widened by the " + fmt(st.widenedBy) + " dividend going ex on " +
+            fmtD(st.exDiv) + ". Reverts to " + fmt(st.plain) + " once that has passed."
+          : "Twice the 14-day ATR below the live price.";
+        return td;
+      }
       case "upside": return h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
       case "risk": return h("td", r.risk != null ? "riskcell" : null,
         r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
@@ -1559,6 +1621,36 @@
     for (const r of all) {
       const { p, st } = r;
       const lastSettledDate = r.prevDate;
+
+      /* An ex-dividend date on an open position, while the dividend is large
+         enough relative to ATR to matter to a stop.
+         
+         The threshold is a quarter of one ATR, which on a 2×ATR stop means the
+         dividend eats an eighth of the buffer. Below that it is noise; at half
+         an ATR it is a third of the distance between the price and the exit,
+         arriving on a known date for a known reason. The alert exists so the
+         stop gets widened before the drop, not explained after it. */
+      if ((st.state === "breakout" || st.state === "target") &&
+          p.dir !== "short" && divAhead(p.sym)) {
+        const e = EVENTS[p.sym] || {};
+        const ratio = e.atr ? e.div_amount / e.atr : null;
+        const days = Math.round(
+          (new Date(e.ex_div) - new Date(new Date().toISOString().slice(0, 10))) / 864e5);
+        /* Inside a month. A dividend a hundred days out is not something to act
+           on today, and an alert strip that lists it every morning for three
+           months is one you stop reading — which costs you the one that matters.
+           The column carries the date regardless; this is only the nudge. */
+        if (ratio != null && ratio >= 0.25 && days <= 30) {
+          const st2 = stopFor(p, r.live);
+          items.push(["warn", p.sym + " goes ex-dividend " +
+            (days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + " days") +
+            " (" + fmtD(e.ex_div) + "): " + fmt(e.div_amount) + " is " +
+            Math.round(ratio * 100) + "% of one ATR, so a 2×ATR stop loses " +
+            Math.round(ratio / 2 * 100) + "% of its room to a drop that means nothing" +
+            (st2 ? " — widen to " + fmt(st2.at) + " until it has passed, then back to " +
+                   fmt(st2.plain) : "")]);
+        }
+      }
       if (st.breakout && st.breakout.close != null && st.breakout.when === lastSettledDate)
         items.push(["new", p.sym + " " + p.dir + " — BREAKOUT CONFIRMED: closed " +
           (p.dir === "long" ? "above" : "below") + " the trigger on " + st.breakout.when +
@@ -1946,7 +2038,7 @@
         a.target = "_blank"; a.rel = "noopener noreferrer"; return a; };
       links.appendChild(mk("Yahoo news ↗", "https://finance.yahoo.com/quote/" + encodeURIComponent(p.sym) + "/news"));
       links.appendChild(mk("Google News ↗", "https://news.google.com/search?q=" + encodeURIComponent((p.note || p.sym) + " stock")));
-      links.appendChild(mk("Chart ↗", YQ(p.sym) + "/chart"));
+      links.appendChild(mk("Chart ↗", YQ(p.sym)));
       card.appendChild(links);
       box.appendChild(card);
     }
@@ -2220,7 +2312,7 @@
       opens, e => {
         const tr = h("tr");
         const td0 = h("td", "left");
-        const a = h("a", "wsym", e.sym); a.href = YQ(e.sym) + "/chart";
+        const a = h("a", "wsym", e.sym); a.href = YQ(e.sym);
         a.target = "_blank"; a.rel = "noopener noreferrer";
         td0.appendChild(a); tr.appendChild(td0);
         tr.appendChild(h("td", "left", e.side === "buy" ? "long" : "short"));
@@ -2245,7 +2337,7 @@
       closed.slice().reverse(), c => {
         const tr = h("tr");
         const td0 = h("td", "left");
-        const a = h("a", "wsym", c.sym); a.href = YQ(c.sym) + "/chart";
+        const a = h("a", "wsym", c.sym); a.href = YQ(c.sym);
         a.target = "_blank"; a.rel = "noopener noreferrer";
         td0.appendChild(a); tr.appendChild(td0);
         tr.appendChild(h("td", "left", c.dir));

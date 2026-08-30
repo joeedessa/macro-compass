@@ -13,7 +13,11 @@ const PROXIES = [
 ];
 const SPARK = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=";
 const CHUNK = 10;                       // Yahoo 400s on much more than this
-const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s);
+/* Straight to the chart. A ticker on this site is something you want to look
+   at, not read a summary of, and the summary page was one more click away
+   from the thing you actually opened it for. Verified in a browser rather
+   than with curl, which Yahoo answers 404 for every non-US symbol. */
+const YQ = s => "https://finance.yahoo.com/quote/" + encodeURIComponent(s) + "/chart";
 
 const GROUPS = [
   ["us", "US equity"],
