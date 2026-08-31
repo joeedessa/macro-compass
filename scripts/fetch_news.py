@@ -44,12 +44,20 @@ OUT = DOCS / "data" / "news.json"
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"}
 
+# The markets desk only. The economics feed was in here too and it dragged the
+# section away from what this page is for — trade-deal politics, labour supply,
+# a flash flood — alongside the market copy. Bloomberg publishes several more
+# that answer (technology, politics, industries all return twenty items) and
+# none of them belong either. This is the feed behind Bloomberg's Markets page,
+# which is what was asked for.
 FEEDS = [
     ("Markets", "https://feeds.bloomberg.com/markets/news.rss"),
-    ("Economics", "https://feeds.bloomberg.com/economics/news.rss"),
 ]
 
-MAX_ITEMS = 40
+# One feed returns about twenty. Forty was sized for two feeds and left every
+# run reporting coverage of roughly half, which is a warning that means "this is
+# working" — exactly the kind that teaches you to ignore warnings.
+MAX_ITEMS = 20
 
 
 # Bloomberg's economics feed carries Bloomberg Linea alongside the English

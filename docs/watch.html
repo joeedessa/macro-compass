@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260831z">
+<link rel="stylesheet" href="styles.css?v=20260901b">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -279,6 +279,32 @@
     opacity:0; pointer-events:none; transition:opacity 0.2s; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
   #totop.show { opacity:1; pointer-events:auto; }
   #totop:hover { background:#fab219; border-color:#fab219; }
+
+  /* calendar */
+  .calgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
+  .calcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:11px 13px; }
+  .calcard h3 { font-size:12.5px; margin:0 0 6px; color:var(--text-secondary); }
+  .calcard ul { margin:0; padding:0; list-style:none; }
+  .calcard li { font-size:12.5px; padding:3px 0; border-top:1px solid var(--grid); }
+  .calcard li:first-child { border-top:none; }
+  .calcard li b { font-weight:640; }
+  .calcard li span { color:var(--text-muted); font-size:11px; }
+  .calcard .none { font-size:12px; color:var(--text-muted); }
+  .calcard li.soon b { color:var(--text-primary); }
+  .calcard li.soon { background:var(--mixed-bg); border-radius:6px;
+    margin:0 -6px; padding-left:6px; padding-right:6px; }
+  .calnow { grid-column:1/-1; font-size:12.5px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:9px 13px; }
+  .calnow.hit { background:var(--mixed-bg); color:var(--text-primary); font-weight:620; }
+  /* Pinned above the tables when on, gone when off. Off by default: it is a
+     lookahead, and most days nothing in the next fortnight is worth pushing
+     the watchlist down the page for. */
+  #calwrap { margin:0 0 20px; }
+  #calwrap h2 { font-size:16px; margin:0 0 4px; }
+  #calwrap .lede { margin:0 0 10px; font-size:13px; color:var(--text-secondary); max-width:84ch; }
+  #calbtn[aria-pressed="true"] { background:var(--mixed-bg); border-color:var(--open); }
   /* ---- shared cross-scan grid (ma.js) ---- */
   .sigblock { margin-bottom:14px; }
   .sigblock > h3 { font-size:13.5px; margin:0 0 2px; display:flex; align-items:baseline; gap:8px;
@@ -311,13 +337,13 @@
   #sigscan .switch .manote { font-size:11.5px; color:var(--text-muted); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831z">
-<script src="mobile.js?v=20260831z" defer></script>
-<script src="pricefloor.js?v=20260831z"></script>
-<script src="links.js?v=20260831z"></script>
+<link rel="stylesheet" href="mobile.css?v=20260901b">
+<script src="mobile.js?v=20260901b" defer></script>
+<script src="pricefloor.js?v=20260901b"></script>
+<script src="links.js?v=20260901b"></script>
 </head>
 <body>
-<script src="ma.js?v=20260831z"></script>
+<script src="ma.js?v=20260901b"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -342,6 +368,7 @@
       <a href="method.html">Method</a>
     </nav>
     <span class="spacer"></span>
+    <button id="calbtn" type="button" class="chip" aria-pressed="false">Calendar</button>
     <button id="exportbtn" type="button" class="chip">Export</button>
     <button id="importbtn" type="button" class="chip">Import</button>
     <input id="importfile" type="file" accept="application/json" hidden>
@@ -377,6 +404,16 @@
   </div>
 
   <div id="gauge"></div>
+
+  <!-- Off by default and pinned above everything when on; the toggle sits with
+       the other chips at the top. Moved here from the Today page, where it was
+       a watchlist lookahead sitting at the bottom of a macro dashboard. -->
+  <section id="calwrap" hidden>
+    <h2>On the calendar</h2>
+    <p class="lede">What is coming up on the watchlist, nearest first, from the TradingView events
+      feed. Anything due today or tomorrow is called out; the rest is listed with its date.</p>
+    <div class="calgrid" id="calendar"></div>
+  </section>
 
   <div class="algroup" id="grp-setup" hidden>
     <h3 class="alhead">Setup events<span class="alcount"></span><span class="alsub"> · your own levels — a trigger taken, a
@@ -2047,6 +2084,106 @@
   }
 
   const SECTIONS = ["watch", "breakout", "target", "failed", "removed"];
+  // ---------- calendar from the watchlist events feed ----------
+  /* Originally this asked one question — is anything scheduled today or
+     tomorrow — and printed "Nothing scheduled" three times when the answer was
+     no. On a 78-name watchlist outside earnings season that is most days, so
+     the section sat dead at the bottom of the page looking broken, which is
+     how it got reported. The window is now open-ended and sorted by proximity:
+     today and tomorrow still get a badge, and the rest earns its place by
+     telling you what is actually next. */
+  function renderCalendar() {
+    const box = $("#calendar");
+    box.textContent = "";
+    /* No fetching here. This page already holds the events feed and the list,
+       so the copy on the Today page was re-downloading both to render the same
+       thing. */
+    const ev = EVENTS || {};
+    const nameOf = {};
+    for (const p of (SHARED || [])) if (p.note) nameOf[p.sym] = p.note;
+
+    const todayD = new Date(); todayD.setHours(0, 0, 0, 0);
+    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4)
+      .toISOString().slice(0, 10);
+    const today = iso(todayD);
+    const daysOut = d => Math.round((new Date(d + "T00:00:00") - todayD) / 864e5);
+
+    /* Future only, nearest first. A date in the past is a feed that has not
+       rolled forward yet, not an event you can still act on. */
+    const upcoming = field => Object.entries(ev)
+      .filter(([, v]) => v[field] && v[field] >= today)
+      .map(([sym, v]) => ({ sym, name: nameOf[sym] || "", when: v[field],
+                            days: daysOut(v[field]),
+                            /* earnings_when is the reporting slot — before the
+                               open, after the close. It says nothing about an
+                               ex-dividend date, so it travels with the earnings
+                               row only. */
+                            slot: field === "earnings" ? (v.earnings_when || "") : "" }))
+      .sort((a, b) => a.when.localeCompare(b.when) || a.sym.localeCompare(b.sym));
+
+    const earnings = upcoming("earnings");
+    const exdiv = upcoming("ex_div");
+    const LIMIT = 8;
+
+    const label = n => n === 0 ? "today" : n === 1 ? "tomorrow"
+      : n < 7 ? "in " + n + " days"
+      : n < 14 ? "next week"
+      : n < 45 ? "in " + Math.round(n / 7) + " weeks"
+      : "in " + Math.round(n / 30) + " months";
+
+    const card = (title, items, empty) => {
+      const c = h("div", "calcard");
+      c.appendChild(h("h3", null, title));
+      if (!items.length) { c.appendChild(h("p", "none", empty)); box.appendChild(c); return; }
+      const ul = h("ul");
+      for (const it of items.slice(0, LIMIT)) {
+        const li = h("li");
+        if (it.days <= 1) li.className = "soon";
+        li.appendChild(h("b", null, it.sym));
+        if (it.name) li.appendChild(document.createTextNode(" " + it.name));
+        const meta = h("span", null, " · " + label(it.days) +
+          (it.days > 1 ? " (" + it.when.slice(5) + ")" : "") +
+          (it.slot ? " · " + it.slot : ""));
+        li.appendChild(meta);
+        ul.appendChild(li);
+      }
+      c.appendChild(ul);
+      if (items.length > LIMIT) {
+        c.appendChild(h("p", "none", "+" + (items.length - LIMIT) + " further out"));
+      }
+      box.appendChild(c);
+    };
+
+    /* One line at the top answers the original question directly, so the
+       "is anything happening today" read does not require scanning two lists. */
+    const imminent = [...earnings, ...exdiv].filter(x => x.days <= 1);
+    const head = h("div", "calnow");
+    head.className = "calnow" + (imminent.length ? " hit" : "");
+    head.textContent = imminent.length
+      ? imminent.length + " on the watchlist " +
+        (imminent.length === 1 ? "has" : "have") + " something today or tomorrow"
+      : "Nothing on the watchlist reports or goes ex-dividend today or tomorrow" +
+        (earnings.length ? " — next is " + earnings[0].sym + " " + label(earnings[0].days) : "");
+    box.appendChild(head);
+
+    card("Reporting next", earnings, "No scheduled earnings dates on the watchlist.");
+    card("Ex-dividend next", exdiv, "No upcoming ex-dividend dates on the watchlist.");
+  }
+
+  /* The toggle. Remembered per browser, because whether a lookahead is worth
+     the top of the page is a standing preference rather than a per-visit one. */
+  const CAL_KEY = "mc-watch-calendar";
+  function setCalendar(on) {
+    const btn = $("#calbtn"), wrap = $("#calwrap");
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    wrap.hidden = !on;
+    if (on && Object.keys(EVENTS || {}).length) renderCalendar();
+    try { localStorage.setItem(CAL_KEY, on ? "1" : "0"); } catch { /* private mode */ }
+  }
+  $("#calbtn").addEventListener("click", () =>
+    setCalendar($("#calbtn").getAttribute("aria-pressed") !== "true"));
+  try { if (localStorage.getItem(CAL_KEY) === "1") setCalendar(true); } catch { /* ignore */ }
+
   function render() {
     FREEZERS.length = 0;
     SIZERS.length = 0;
@@ -2116,6 +2253,10 @@
       const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
       EVENTS = r.ok ? (await r.json()).symbols || {} : {};
     } catch { EVENTS = {}; }
+    /* The events feed is what the calendar draws, and it lands here. Restoring
+       the toggle at parse time renders it against an empty EVENTS, so it is
+       drawn again once there is something to draw. */
+    if (!$("#calwrap").hidden) renderCalendar();
     const syms = [...new Set(workingList().map(p => p.sym))];
     const idxSyms = [...new Set(workingList().map(p => INDEX_MAP[p.country]).filter(Boolean))]
       .filter(s => !syms.includes(s));

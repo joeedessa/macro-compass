@@ -87,8 +87,16 @@ jobs:
 
             # A failed pass must not end the loop. The next one is five minutes
             # away, and until then the site still serves the previous snapshot.
+            # Headlines ride the price loop rather than the hourly data job.
+            # They were on the hourly one, which is the same scheduler that
+            # fired three times in twenty-four hours — so the news sat eight
+            # hours stale while this loop was refreshing prices every fifteen
+            # minutes beside it. A few kilobytes on a commit that is happening
+            # anyway.
+            python3 scripts/fetch_news.py || true
+
             if python3 scripts/fetch_prices.py --latest; then
-              git add docs/data/prices-latest.json
+              git add docs/data/prices-latest.json docs/data/news.json
               if git diff --cached --quiet; then
                 echo "no change"
               else

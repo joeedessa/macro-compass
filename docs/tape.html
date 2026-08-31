@@ -93,6 +93,12 @@
               letter-spacing:.01em; }
   .readhead:first-of-type { margin-top:4px; }
   .readhead .rstamp { font-weight:450; color:var(--text-muted); margin-left:6px; }
+  /* The heading carries the state, because the sentence under it is easy to
+     scroll past and these two sections look identical whether the prices in
+     them are moving or three days old. */
+  .h2stamp { font-size:12px; font-weight:500; color:var(--text-muted); margin-left:8px;
+             white-space:nowrap; }
+  .h2stamp .cdot { margin-right:5px; vertical-align:middle; }
   /* Freshness is a sentence, not a dot. Nothing here is coloured by state,
      because it is not a state — it is how old the numbers are. */
   .datafeed { font-size:11.5px; color:var(--text-secondary); margin:0 0 7px; }
@@ -202,24 +208,6 @@
   .bcard .bbar i { display:block; height:100%; background:var(--up); }
   .bcard .bsub { font-size:10.5px; color:var(--text-muted); }
 
-  /* calendar */
-  .calgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
-  .calcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
-    padding:11px 13px; }
-  .calcard h3 { font-size:12.5px; margin:0 0 6px; color:var(--text-secondary); }
-  .calcard ul { margin:0; padding:0; list-style:none; }
-  .calcard li { font-size:12.5px; padding:3px 0; border-top:1px solid var(--grid); }
-  .calcard li:first-child { border-top:none; }
-  .calcard li b { font-weight:640; }
-  .calcard li span { color:var(--text-muted); font-size:11px; }
-  .calcard .none { font-size:12px; color:var(--text-muted); }
-  .calcard li.soon b { color:var(--text-primary); }
-  .calcard li.soon { background:var(--mixed-bg); border-radius:6px;
-    margin:0 -6px; padding-left:6px; padding-right:6px; }
-  .calnow { grid-column:1/-1; font-size:12.5px; color:var(--text-secondary);
-    background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
-    padding:9px 13px; }
-  .calnow.hit { background:var(--mixed-bg); color:var(--text-primary); font-weight:620; }
 
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:84ch; }
   footer a { color:var(--text-secondary); }
@@ -230,10 +218,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831z">
-<script src="mobile.js?v=20260831z" defer></script>
-<script src="pricefloor.js?v=20260831z"></script>
-<script src="links.js?v=20260831z"></script>
+<link rel="stylesheet" href="mobile.css?v=20260901b">
+<script src="mobile.js?v=20260901b" defer></script>
+<script src="pricefloor.js?v=20260901b"></script>
+<script src="links.js?v=20260901b"></script>
 </head>
 <body>
 <div class="wrap">
@@ -294,24 +282,19 @@
     <div class="heads" id="cross"></div>
 
 
-    <h2>Movers</h2>
+    <h2>Movers <span class="h2stamp" id="moversstamp"></span></h2>
     <p class="lede" id="moverssession"></p>
     <p class="lede">Ranked by size of move against each instrument's own 60-day volatility, so a
       2% day in something that never moves outranks a 4% day in something that always does. The
       σ figure is that ratio.</p>
     <div class="movegrid" id="movers"></div>
 
-    <h2>Breadth</h2>
+    <h2>Breadth <span class="h2stamp" id="breadthstamp"></span></h2>
     <p class="lede" id="breadthsession"></p>
     <p class="lede">Share of each block trading higher on the session — where participation is
       broad and where it is a handful of names.</p>
     <div class="breadth" id="breadth"></div>
 
-    <h2>On the calendar</h2>
-    <p class="lede">What is coming up on the watchlist, nearest first, from the TradingView
-      events feed. Anything due today or tomorrow is called out; the rest is listed with its
-      distance so the section still tells you something on the many days when nothing reports.</p>
-    <div class="calgrid" id="calendar"></div>
 
     <h2>Sessions</h2>
     <p class="lede">Every cash market this page tracks and whether it is trading right now. Open
@@ -636,7 +619,7 @@
   async function loadNews() {
     let data;
     try {
-      const r = await fetch("data/news.json", { cache: "no-store" });
+      const r = await fetch("data/news.json?t=" + Date.now(), { cache: "no-store" });
       if (!r.ok) throw new Error(r.status);
       data = await r.json();
     } catch {
@@ -679,13 +662,19 @@
      proxy every minute for a day is rude to the worker and buys the reader
      nothing — and refreshed immediately on return, so coming back to the tab
      never shows a stale minute. */
-  let timer = null;
+  let timer = null, newsTimer = null;
   function startAutoRefresh() {
     if (timer) clearInterval(timer);
     timer = setInterval(() => { if (!document.hidden) load(true); }, 60000);
+    /* Headlines were fetched once, at load, and never again — so a tab left
+       open all morning showed the same news at noon that it showed at eight,
+       whatever the file behind it said. Five minutes rather than one, because
+       the file itself only changes every fifteen. */
+    if (newsTimer) clearInterval(newsTimer);
+    newsTimer = setInterval(() => { if (!document.hidden) loadNews(); }, 300000);
   }
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) load(true);
+    if (!document.hidden) { load(true); loadNews(); }
   });
   startAutoRefresh();
   loadNews();
@@ -1159,6 +1148,16 @@
         "opening bell" + (usSt ? " in " + dur(usSt.start - nowSec()) : "") + ".";
     $("#moverssession").textContent = sessionNote;
     $("#breadthsession").textContent = sessionNote;
+    /* Live or a closed price, and which date, on the heading itself. */
+    const liveNow = !!(usSt && usSt.open);
+    for (const id of ["#moversstamp", "#breadthstamp"]) {
+      const el = $(id);
+      el.textContent = "";
+      el.appendChild(h("span", "cdot" + (liveNow ? " on" : " off")));
+      el.appendChild(document.createTextNode(liveNow
+        ? "live · US session" + (usSt ? ", closes in " + dur(usSt.end - nowSec()) : "")
+        : "closing prices · " + (usDay || "last session")));
+    }
 
     /* "Yesterday" was only ever true before the New York open. Read at half past
        one in the afternoon UTC it labelled Monday's own session "Yesterday", and
@@ -1416,98 +1415,8 @@
         : "trading hours unavailable");
   }
 
-  // ---------- calendar from the watchlist events feed ----------
-  /* Originally this asked one question — is anything scheduled today or
-     tomorrow — and printed "Nothing scheduled" three times when the answer was
-     no. On a 78-name watchlist outside earnings season that is most days, so
-     the section sat dead at the bottom of the page looking broken, which is
-     how it got reported. The window is now open-ended and sorted by proximity:
-     today and tomorrow still get a badge, and the rest earns its place by
-     telling you what is actually next. */
-  async function renderCalendar() {
-    const box = $("#calendar");
-    box.textContent = "";
-    let ev = {}, list = [];
-    try {
-      const r = await fetch("data/watch-events.json?t=" + Date.now(), { cache: "no-store" });
-      ev = r.ok ? (await r.json()).symbols || {} : {};
-    } catch { ev = {}; }
-    try {
-      const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
-      list = r.ok ? await r.json() : [];
-    } catch { list = []; }
-    const nameOf = {};
-    for (const p of list) if (p.note) nameOf[p.sym] = p.note;
 
-    const todayD = new Date(); todayD.setHours(0, 0, 0, 0);
-    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4)
-      .toISOString().slice(0, 10);
-    const today = iso(todayD);
-    const daysOut = d => Math.round((new Date(d + "T00:00:00") - todayD) / 864e5);
-
-    /* Future only, nearest first. A date in the past is a feed that has not
-       rolled forward yet, not an event you can still act on. */
-    const upcoming = field => Object.entries(ev)
-      .filter(([, v]) => v[field] && v[field] >= today)
-      .map(([sym, v]) => ({ sym, name: nameOf[sym] || "", when: v[field],
-                            days: daysOut(v[field]),
-                            /* earnings_when is the reporting slot — before the
-                               open, after the close. It says nothing about an
-                               ex-dividend date, so it travels with the earnings
-                               row only. */
-                            slot: field === "earnings" ? (v.earnings_when || "") : "" }))
-      .sort((a, b) => a.when.localeCompare(b.when) || a.sym.localeCompare(b.sym));
-
-    const earnings = upcoming("earnings");
-    const exdiv = upcoming("ex_div");
-    const LIMIT = 8;
-
-    const label = n => n === 0 ? "today" : n === 1 ? "tomorrow"
-      : n < 7 ? "in " + n + " days"
-      : n < 14 ? "next week"
-      : n < 45 ? "in " + Math.round(n / 7) + " weeks"
-      : "in " + Math.round(n / 30) + " months";
-
-    const card = (title, items, empty) => {
-      const c = h("div", "calcard");
-      c.appendChild(h("h3", null, title));
-      if (!items.length) { c.appendChild(h("p", "none", empty)); box.appendChild(c); return; }
-      const ul = h("ul");
-      for (const it of items.slice(0, LIMIT)) {
-        const li = h("li");
-        if (it.days <= 1) li.className = "soon";
-        li.appendChild(h("b", null, it.sym));
-        if (it.name) li.appendChild(document.createTextNode(" " + it.name));
-        const meta = h("span", null, " · " + label(it.days) +
-          (it.days > 1 ? " (" + it.when.slice(5) + ")" : "") +
-          (it.slot ? " · " + it.slot : ""));
-        li.appendChild(meta);
-        ul.appendChild(li);
-      }
-      c.appendChild(ul);
-      if (items.length > LIMIT) {
-        c.appendChild(h("p", "none", "+" + (items.length - LIMIT) + " further out"));
-      }
-      box.appendChild(c);
-    };
-
-    /* One line at the top answers the original question directly, so the
-       "is anything happening today" read does not require scanning two lists. */
-    const imminent = [...earnings, ...exdiv].filter(x => x.days <= 1);
-    const head = h("div", "calnow");
-    head.className = "calnow" + (imminent.length ? " hit" : "");
-    head.textContent = imminent.length
-      ? imminent.length + " on the watchlist " +
-        (imminent.length === 1 ? "has" : "have") + " something today or tomorrow"
-      : "Nothing on the watchlist reports or goes ex-dividend today or tomorrow" +
-        (earnings.length ? " — next is " + earnings[0].sym + " " + label(earnings[0].days) : "");
-    box.appendChild(head);
-
-    card("Reporting next", earnings, "No scheduled earnings dates on the watchlist.");
-    card("Ex-dividend next", exdiv, "No upcoming ex-dividend dates on the watchlist.");
-  }
-
-  $("#refresh").addEventListener("click", () => { load(); renderCalendar(); });
+  $("#refresh").addEventListener("click", () => load());
 
   const tt = h("button", null, "↑");
   tt.id = "totop"; tt.type = "button"; tt.title = "Back to top";
@@ -1519,7 +1428,6 @@
   });
 
   await load();
-  renderCalendar();
 })();
 </script>
 </body>
