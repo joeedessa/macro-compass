@@ -230,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831t">
-<script src="mobile.js?v=20260831t" defer></script>
-<script src="pricefloor.js?v=20260831t"></script>
-<script src="links.js?v=20260831t"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831v">
+<script src="mobile.js?v=20260831v" defer></script>
+<script src="pricefloor.js?v=20260831v"></script>
+<script src="links.js?v=20260831v"></script>
 </head>
 <body>
 <div class="wrap">
@@ -731,7 +731,7 @@
     for (let i = 1; i < tail.length; i++) rets.push(tail[i][1] / tail[i - 1][1] - 1);
     const mean = rets.reduce((a, b) => a + b, 0) / (rets.length || 1);
     const sd = Math.sqrt(rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length || 1)) * 100;
-    return { last, prev, chg, sigma: sd ? chg / sd : null, state: sessionState(d.meta) };
+    return { last, prev, chg, sd, sigma: sd ? chg / sd : null, state: sessionState(d.meta) };
   }
 
   /* Session change for a regional index. The intraday feed carries the
@@ -1120,117 +1120,6 @@
     thead.appendChild(h("span", "rstamp",
       onFloor ? "from the snapshot" : "live, re-read every minute"));
 
-    // ---------- read of the session ----------
-    const g = s => { const x = dayOf(s); return x ? x.chg : null; };
-
-    /* One verdict builder, two sets of inputs. `signals` are booleans that mean
-       risk appetite; the wording and the colour come from how many hold. */
-    function verdictInto(box, signals, bits, notes, empty) {
-      box.textContent = "";
-      const onCount = signals.filter(Boolean).length;
-      const cls = !signals.length ? "" : onCount === signals.length ? "on"
-        : onCount === 0 ? "off" : "mixed";
-      const v = h("div", "verdict " + cls);
-      v.appendChild(h("b", null, !signals.length ? empty
-        : onCount === signals.length ? "Risk-on across the board."
-        : onCount === 0 ? "Risk-off across the board."
-        : "A split tape."));
-      if (bits.length) v.appendChild(h("span", "vsub", bits.join(" · ") + "."));
-      if (notes.length) v.appendChild(h("span", "vsub", notes.join(" ")));
-      box.appendChild(v);
-    }
-
-    /* ---- the session that closed ----
-       Cash only. Gold and the dollar used to be counted here and they do not
-       belong: both trade around the clock, so their "day change" is the move
-       happening now, not the one that settled with the equity close. Reading a
-       Friday verdict that quietly contained Monday's gold is the same class of
-       mistake as the rest of this page had — two conventions subtracted from
-       each other. They are in the live read below, where they are true. */
-    const spy = g("SPY"), tlt = g("TLT"), hyg = g("HYG"),
-          vix = g("^VIX"), iwm = g("IWM");
-    const ySig = [], yBits = [];
-    if (spy != null) { ySig.push(spy >= 0); yBits.push("S&P " + pct(spy)); }
-    if (iwm != null) { ySig.push(iwm >= 0); yBits.push("small caps " + pct(iwm)); }
-    if (hyg != null) { ySig.push(hyg >= 0); yBits.push("high yield " + pct(hyg)); }
-    if (vix != null) { ySig.push(vix < 0); yBits.push("VIX " + pct(vix)); }
-    if (tlt != null) yBits.push("long Treasuries " + pct(tlt));
-    const yNotes = [];
-    if (spy != null && hyg != null && spy > 0 && hyg < 0)
-      yNotes.push("Equity is up while high yield is down — credit is not confirming.");
-    if (spy != null && vix != null && spy > 0 && vix > 0)
-      yNotes.push("Both the index and volatility are higher, which usually means the move is being hedged rather than chased.");
-    if (spy != null && iwm != null && Math.abs(spy - iwm) > 1)
-      yNotes.push("Small caps and the index have parted by " + fmt(Math.abs(spy - iwm), 1) +
-        " points — leadership is " + (iwm > spy ? "broadening" : "narrowing") + ".");
-    verdictInto($("#verdict"), ySig, yBits, yNotes, "No read available.");
-
-    /* ---- the session already running ----
-       Built only from things that are actually trading: futures, metals, oil,
-       FX, crypto, and whichever cash markets are open. A bond future rising is
-       money going into safety, so the risk-appetite signal is the inverse. */
-    /* Same baseline as the cards. A verdict computed off a different reference
-       from the numbers printed above it is how a page ends up arguing with
-       itself. */
-    const gf = sym => {
-      const d = dayOf(sym); if (!d) return null;
-      const cb = cashBaseline(sym);
-      return cb ? (d.last / cb.base - 1) * 100 : d.chg;
-    };
-    const es = gf("ES=F"), rty = gf("RTY=F"), nky = gf("NIY=F"),
-          zn = g("ZN=F"), cl = g("CL=F"), gold = g("GC=F"),
-          dxy = g("DX-Y.NYB"), btc = g("BTC-USD");
-    /* Built from the futures cards and nothing else. It used to fold in an
-       average of whichever cash regions happened to be open, which put a line
-       like "Middle East and Europe +0.4%" into a read otherwise made of
-       futures — a different measure, over a different window, averaged across
-       markets that have nothing to do with each other, and appearing or
-       vanishing depending on the hour. The cards above are the read's inputs
-       and the read says exactly what is on them. */
-    const tSig = [], tBits = [];
-    if (es != null) { tSig.push(es >= 0); tBits.push("S&P futures " + pct(es)); }
-    if (rty != null) { tSig.push(rty >= 0); tBits.push("small cap futures " + pct(rty)); }
-    if (nky != null) { tSig.push(nky >= 0); tBits.push("Nikkei futures " + pct(nky)); }
-    if (zn != null) { tSig.push(zn < 0); tBits.push("10-year note " + pct(zn)); }
-    if (gold != null) tBits.push("gold " + pct(gold));
-    if (dxy != null) tBits.push("dollar " + pct(dxy));
-    if (cl != null) tBits.push("crude " + pct(cl));
-    if (btc != null) tBits.push("bitcoin " + pct(btc));
-
-    /* A note has to clear a size before it is worth a sentence.
-       Opposite signs alone fired on -0.04% against +0.16% and announced that
-       the US and Japan had diverged, which is not a divergence, it is noise
-       with a sign. Both legs must move at least a quarter point and differ by
-       at least half a point before any of this is said out loud. */
-    const DIV = 0.25, GAP = 0.5;
-    const parted = (a, b) =>
-      a != null && b != null && Math.abs(a) >= DIV && Math.abs(b) >= DIV &&
-      Math.sign(a) !== Math.sign(b) && Math.abs(a - b) >= GAP;
-
-    const tNotes = [];
-    if (gold != null && dxy != null && gold > DIV && dxy > DIV)
-      tNotes.push("Gold and the dollar are rising together, which points at haven demand rather than a rate story.");
-    if (es != null && rty != null && Math.abs(es - rty) > GAP)
-      tNotes.push("The index and small caps have parted by " + fmt(Math.abs(es - rty), 1) +
-        " points — leadership is " + (rty > es ? "broadening" : "narrowing") + ".");
-    if (parted(es, nky))
-      tNotes.push("US and Japanese futures are moving against each other overnight.");
-    if (es != null && zn != null && es > DIV && zn > DIV)
-      tNotes.push("Equity futures and Treasuries are bid together, which is usually positioning rather than a view.");
-    verdictInto($("#verdictlive"), tSig, tBits, tNotes,
-      "Nothing is trading yet — no live read available.");
-
-    // ---------- movers ----------
-    /* Both this and the breadth block below are built from the tape universe,
-       and every one of its sixty-three instruments is listed in New York. So
-       for roughly seventeen hours out of twenty-four, and all weekend, none of
-       these numbers can move: they are the last US close, ranked and presented
-       exactly as they are during the session, with nothing to say so. Opened on
-       a Monday morning in Europe, "Movers" was ranking Friday.
-
-       The figures were never wrong; the framing was. These two sections
-       describe a US session, so they now name which one and whether it is
-       still running. */
     const usMeta = DAILY["SPY"] || DAILY["^GSPC"];
     const usSt = usMeta && sessionState(usMeta.meta);
     const usBars = (DAILY["SPY"] && DAILY["SPY"].pts) || [];
@@ -1246,10 +1135,146 @@
     $("#moverssession").textContent = sessionNote;
     $("#breadthsession").textContent = sessionNote;
 
-    const rows = TAPE.map(([sym, name, block]) => {
+    // ---------- read of the session ----------
+    /* Rewritten because the old one restated the cards and then editorialised.
+       It counted four booleans into "risk-on" / "risk-off" / "a split tape",
+       listed the same percentages printed directly below it, and appended
+       pattern-matched sentences about handovers breaking. None of that told
+       anyone anything the cards had not already said.
+
+       Three questions instead, and only things the cards cannot answer:
+       where do we stand, what is actually doing the work, and what is next.
+       The middle one is the point — a move is only interesting relative to
+       what that instrument normally does in a day, so everything is ranked by
+       its own sixty-day volatility rather than by size. Crude at +3.3% and
+       bitcoin at +0.9% look nothing alike until you divide by how far each
+       usually travels, and then sometimes they do. */
+    const g = s => { const x = dayOf(s); return x ? x.chg : null; };
+
+    // The tape universe with sigmas, needed here and again by Movers below.
+    const tapeRows = TAPE.map(([sym, name, block]) => {
       const d = dayOf(sym);
       return d ? { sym, name, block, ...d } : null;
     }).filter(Boolean);
+
+    /* The displayed change over the instrument's own daily standard deviation.
+       Index futures are shown against the cash close, so the sigma has to be
+       taken on that same figure or the read ranks one number and prints
+       another. */
+    function shownOf(sym) {
+      const d = dayOf(sym);
+      if (!d) return null;
+      const cb = cashBaseline(sym);
+      const chg = cb ? (d.last / cb.base - 1) * 100 : d.chg;
+      return { chg, sigma: d.sd ? chg / d.sd : null };
+    }
+
+    const size = x => {
+      const a = Math.abs(x);
+      return a < 0.15 ? "flat" : a < 0.5 ? (x > 0 ? "a shade higher" : "a shade lower")
+        : a < 1.5 ? (x > 0 ? "higher" : "lower")
+        : (x > 0 ? "sharply higher" : "sharply lower");
+    };
+
+    function readInto(box, lines, tone) {
+      box.textContent = "";
+      const v = h("div", "verdict " + (tone || ""));
+      lines.filter(Boolean).forEach((t, i) =>
+        v.appendChild(i === 0 ? h("b", null, t) : h("span", "vsub", t)));
+      box.appendChild(v);
+      return v;
+    }
+
+    /* ---- the session that closed ---- */
+    const spy = g("SPY"), iwm = g("IWM"), vixC = g("^VIX");
+    const yTone = spy == null ? "" : spy > 0.15 ? "on" : spy < -0.15 ? "off" : "mixed";
+    const yLines = [];
+    if (spy == null) {
+      yLines.push("No completed session to read.");
+    } else {
+      yLines.push("The S&P closed " + pct(spy) + (usDay ? " on " + usDay : "") + ".");
+      // Who actually did the work, by each name's own volatility.
+      const ranked = tapeRows.filter(r => r.sigma != null)
+        .sort((a, b) => Math.abs(b.sigma) - Math.abs(a.sigma));
+      const up = ranked.find(r => r.chg > 0), dn = ranked.find(r => r.chg < 0);
+      const bits = [];
+      if (dn) bits.push(dn.name + " " + pct(dn.chg) + " (" + fmt(Math.abs(dn.sigma), 1) + "σ)");
+      if (up) bits.push(up.name + " " + pct(up.chg) + " (" + fmt(Math.abs(up.sigma), 1) + "σ)");
+      if (bits.length)
+        yLines.push("Furthest from its own normal day: " + bits.join(", and ") + ".");
+      if (iwm != null && spy != null && Math.abs(spy - iwm) > 1)
+        yLines.push("Small caps and the index parted by " + fmt(Math.abs(spy - iwm), 1) +
+          " points, so leadership " + (iwm > spy ? "broadened" : "narrowed") + ".");
+      if (vixC != null && Math.abs(vixC) > 5)
+        // pct() carries its own sign, so "rose +5.5%" signed the number twice.
+        yLines.push("Volatility " + (vixC > 0 ? "rose " : "fell ") +
+          fmt(Math.abs(vixC), 1) + "%, which is a real move in the hedge rather than a drift.");
+    }
+    readInto($("#verdict"), yLines, yTone);
+
+    /* ---- the session already running ---- */
+    const futs = LIVE.map(([sym, name]) => {
+      const v = shownOf(sym);
+      return v && v.sigma != null ? { sym, name, ...v } : null;
+    }).filter(Boolean).sort((a, b) => Math.abs(b.sigma) - Math.abs(a.sigma));
+
+    const es = (shownOf("ES=F") || {}).chg;
+    const tLines = [];
+    let tTone = "", nextEl = null;
+    if (!futs.length) {
+      tLines.push("Nothing is trading yet — no live read available.");
+    } else {
+      // 1. Where we stand: one number, the one everything else is judged against.
+      if (es != null) {
+        tTone = es > 0.15 ? "on" : es < -0.15 ? "off" : "mixed";
+        tLines.push("S&P futures are " + size(es) + " at " + pct(es) +
+          " against the last cash close.");
+      } else {
+        tLines.push("Where we stand: " + futs[0].name + " " + pct(futs[0].chg) + ".");
+      }
+
+      // 2. What is doing the work, by each instrument's own daily range.
+      const OUT = 1;
+      const outliers = futs.filter(f => Math.abs(f.sigma) >= OUT).slice(0, 3);
+      if (outliers.length) {
+        tLines.push((outliers.length === 1 ? "The outlier is " : "The outliers are ") +
+          outliers.map(f => f.name.replace(/ fut$/, "") + " " + pct(f.chg) +
+            " at " + fmt(Math.abs(f.sigma), 1) + "σ").join(", ") +
+          ". Everything else is inside a normal day.");
+      } else {
+        const top = futs[0];
+        tLines.push("Nothing is moving unusually. The largest is " +
+          top.name.replace(/ fut$/, "") + " at " + pct(top.chg) + ", only " +
+          fmt(Math.abs(top.sigma), 1) + "σ — inside its own average day.");
+      }
+
+      // 3. What is next: the bell, and whatever the calendar has.
+      const nextUp = allMarkets
+        .filter(m => m.st && !m.st.open && m.st.start > nowSec())
+        .sort((a, b) => a.st.start - b.st.start)[0];
+      const nextLine = h("span", "vsub");
+      nextLine.id = "nextline";
+      nextLine.textContent = nextUp
+        ? "Next: " + nextUp.name.split(" · ").pop() + " opens in " +
+          dur(nextUp.st.start - nowSec()) + "."
+        : "Next: every market this page tracks is trading.";
+      nextEl = nextLine;
+    }
+    const liveBox = readInto($("#verdictlive"), tLines, tTone);
+    if (nextEl) liveBox.appendChild(nextEl);
+
+    // ---------- movers ----------
+    /* Both this and the breadth block below are built from the tape universe,
+       and every one of its sixty-three instruments is listed in New York. So
+       for roughly seventeen hours out of twenty-four, and all weekend, none of
+       these numbers can move: they are the last US close, ranked and presented
+       exactly as they are during the session, with nothing to say so. Opened on
+       a Monday morning in Europe, "Movers" was ranking Friday.
+
+       The figures were never wrong; the framing was. These two sections
+       describe a US session, so they now name which one and whether it is
+       still running. */
+    const rows = tapeRows;
     const mbox = $("#movers");
     mbox.textContent = "";
     const byMove = rows.slice().sort((a, b) => (b.sigma ?? 0) - (a.sigma ?? 0));
