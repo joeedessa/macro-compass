@@ -17,6 +17,14 @@
     --up:#006300; --down:#d03b3b;
     --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10);
     --mixed-bg:rgba(237,161,0,0.12);
+    /* Market state, deliberately not green and red.
+       Open and closed were drawn in the same two colours as up and down, and
+       both appear inside one card — so a red dot beside a red percentage read
+       as one fact stated twice rather than two separate ones. A market being
+       open is not good news and a market being shut is not bad news; they are
+       not that kind of fact. Amber for trading, grey for not, and neither says
+       anything about direction. */
+    --open:#a8730a; --open-bg:rgba(250,178,25,0.13); --shut:#898781;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -27,6 +35,7 @@
       --up:#0ca30c; --down:#e66767;
       --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14);
       --mixed-bg:rgba(237,161,0,0.16);
+      --open:#fab219; --open-bg:rgba(250,178,25,0.16); --shut:#898781;
     }
   }
   * { box-sizing:border-box; margin:0; }
@@ -57,17 +66,16 @@
     margin-bottom:6px; }
   .sess { border:1px solid var(--border); border-radius:11px; padding:8px 12px;
     background:var(--surface-1); }
-  .sess.open { border-color:var(--up); background:var(--on-bg); }
+  .sess.open { border-color:var(--open); background:var(--open-bg); }
   .sess .sname { font-size:12px; color:var(--text-secondary); display:flex; align-items:center;
     gap:6px; }
-  /* Closed is red, open is green. It was grey for closed, which reads as "no
-     information" rather than "shut" — and the card that mattered was doing
-     exactly that while a market was trading. */
-  .sess.shut .dot { background:var(--down); }
-  .sess.shut { border-color:color-mix(in srgb, var(--down) 35%, var(--border)); }
-  .sess .dot { width:7px; height:7px; border-radius:50%; background:var(--text-muted);
+  /* Amber trading, grey shut. Green and red were the first attempt and they
+     collide with up and down, which sit in the same card — a red dot next to a
+     red percentage reads as one fact stated twice instead of two facts. */
+  .sess.shut .dot { background:var(--shut); }
+  .sess .dot { width:7px; height:7px; border-radius:50%; background:var(--baseline);
     flex:none; }
-  .sess.open .dot { background:var(--up); }
+  .sess.open .dot { background:var(--open); }
   .sess .sstate { font-size:14.5px; font-weight:650; }
   .sess .stime { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
   /* What is actually feeding the strip below, named rather than implied. */
@@ -89,10 +97,13 @@
   .feed { display:flex; align-items:center; gap:6px; font-size:11.5px; padding:4px 9px;
           border:1px solid var(--border); border-radius:999px; color:var(--text-secondary);
           white-space:nowrap; }
-  .feed .dot { width:6px; height:6px; border-radius:50%; background:var(--text-muted); flex:none; }
-  .feed.on   { border-color:color-mix(in srgb, var(--up) 45%, var(--border)); }
-  .feed.on .dot { background:var(--up); }
-  .feed.off .dot { background:var(--down); }
+  /* Same rule as the market dots: grey is "shut", so "unknown" is an outline. */
+  .feed .dot { width:6px; height:6px; border-radius:50%; background:transparent;
+               box-shadow:inset 0 0 0 1.5px var(--baseline); flex:none; }
+  .feed.on .dot, .feed.off .dot { box-shadow:none; }
+  .feed.on   { border-color:color-mix(in srgb, var(--open) 45%, var(--border)); }
+  .feed.on .dot { background:var(--open); }
+  .feed.off .dot { background:var(--shut); }
   .feed b { font-weight:600; color:var(--text-primary); }
   .hcard .hage { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
   .hcard .hage.stale { color:var(--down); }
@@ -114,13 +125,17 @@
   .rhead { display:flex; align-items:baseline; gap:11px; flex-wrap:wrap; margin-bottom:7px; }
   .rtitle { font-size:14.5px; font-weight:650; display:flex; align-items:center; gap:7px; }
   .rtitle .dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); }
-  .rtitle .dot.on { background:var(--up); }
+  .rtitle .dot.on { background:var(--open); }
   /* Per-market state, on the card rather than only on the region heading. */
   .rcard .rname { display:flex; align-items:center; gap:6px; }
-  .cdot { width:6px; height:6px; border-radius:50%; background:var(--text-muted);
+  /* Grey now means closed, so "we do not know the hours" cannot also be grey.
+     An outline reads as an absent value rather than a state. */
+  .cdot { width:6px; height:6px; border-radius:50%; background:transparent;
+          box-shadow:inset 0 0 0 1.5px var(--baseline);
           flex:none; display:inline-block; }
-  .cdot.on { background:var(--up); }
-  .cdot.off { background:var(--down); }
+  .cdot.on, .cdot.off { box-shadow:none; }
+  .cdot.on { background:var(--open); }
+  .cdot.off { background:var(--shut); }
   .rcard .rwhen { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums;
                   margin-top:1px; }
   .rstate { font-size:11.5px; color:var(--text-muted); }
@@ -209,10 +224,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831f">
-<script src="mobile.js?v=20260831f" defer></script>
-<script src="pricefloor.js?v=20260831f"></script>
-<script src="links.js?v=20260831f"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831h">
+<script src="mobile.js?v=20260831h" defer></script>
+<script src="pricefloor.js?v=20260831h"></script>
+<script src="links.js?v=20260831h"></script>
 </head>
 <body>
 <div class="wrap">

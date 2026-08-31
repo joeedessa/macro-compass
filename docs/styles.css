@@ -6,6 +6,14 @@
     --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a; --ma150:#9aa0a6;
     --up:#006300; --down:#d03b3b;
     --on-bg:rgba(12,163,12,0.10); --off-bg:rgba(208,59,59,0.10); --mixed-bg:rgba(250,178,25,0.14);
+    /* Market state, deliberately not green and red.
+       Open and closed were drawn in the same two colours as up and down, on
+       pages where both appear inside one card — so a red dot beside a red
+       percentage read as "down twice" rather than "shut, and down". A market
+       being open is not good news and a market being shut is not bad news;
+       they are not that kind of fact. Amber for trading, grey for not, and
+       neither colour means anything about direction anywhere on this site. */
+    --open:#a8730a; --open-bg:rgba(250,178,25,0.13); --shut:#898781;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) {
@@ -15,6 +23,7 @@
       --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --ma150:#7d8286;
       --up:#0ca30c; --down:#e66767;
       --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14); --mixed-bg:rgba(250,178,25,0.16);
+    --open:#fab219; --open-bg:rgba(250,178,25,0.16); --shut:#898781;
     }
   }
   :root[data-theme="dark"] {
@@ -24,6 +33,7 @@
     --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70; --ma150:#7d8286;
     --up:#0ca30c; --down:#e66767;
     --on-bg:rgba(12,163,12,0.14); --off-bg:rgba(230,103,103,0.14); --mixed-bg:rgba(250,178,25,0.16);
+    --open:#fab219; --open-bg:rgba(250,178,25,0.16); --shut:#898781;
   }
   * { box-sizing:border-box; margin:0; }
   body { background:var(--page); color:var(--text-primary);
