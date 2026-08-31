@@ -250,14 +250,20 @@
     if (!hours) return null;
     const [tz, open, close] = hours;
     const WEEKEND = FRI_SAT[tz] ? FRI_SAT_DAYS : SAT_SUN;
+    const now = Math.floor(Date.now() / 1000);
     let ms = Date.now();
-    // Today if it is a weekday, otherwise roll forward to the next one. Two
-    // steps at most from Saturday, and the loop is bounded regardless.
-    for (let i = 0; i < 5; i++) {
+    /* The current session, or the next one if today's has finished.
+       It used to stop at today's whatever the hour, so a market that shut two
+       hours ago reported a session already over and the page could only say
+       "closed 2h ago" — true, and not the thing anyone wants to know. Sydney
+       shutting at 06:12 UTC should read "opens in 20h", not "closed 2h ago".
+       Eight steps is enough to clear any weekend from any starting day. */
+    for (let i = 0; i < 8; i++) {
       const f = tzFields(tz, ms);
       if (!WEEKEND[f.wd]) {
-        return { start: zonedEpoch(tz, f.y, f.mo, f.d, open),
-                 end: zonedEpoch(tz, f.y, f.mo, f.d, close) };
+        const start = zonedEpoch(tz, f.y, f.mo, f.d, open);
+        const end = zonedEpoch(tz, f.y, f.mo, f.d, close);
+        if (end > now) return { start, end };
       }
       ms += 86400000;
     }

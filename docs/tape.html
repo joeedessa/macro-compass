@@ -230,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831n">
-<script src="mobile.js?v=20260831n" defer></script>
-<script src="pricefloor.js?v=20260831n"></script>
-<script src="links.js?v=20260831n"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831s">
+<script src="mobile.js?v=20260831s" defer></script>
+<script src="pricefloor.js?v=20260831s"></script>
+<script src="links.js?v=20260831s"></script>
 </head>
 <body>
 <div class="wrap">
@@ -273,30 +273,25 @@
     <h3 class="readhead" id="thead">Today so far</h3>
     <div id="verdictlive"></div>
 
-    <h2>Market news</h2>
-    <p class="lede" id="newslede">Headlines from Bloomberg's public markets and economics feeds,
-      newest first. Titles and links only — the stories stay on Bloomberg.</p>
-    <div id="news" class="news"></div>
-
-    <h2>Sessions</h2>
-    <p class="lede">Which cash equity sessions are trading right now. Everything below is the
-      current session where a market is open, and the last completed session where it is not —
-      each card says which.</p>
-    <div class="sessions" id="sessions"></div>
+    <h2>Futures</h2>
+    <p class="lede">What the read above is built from, and the only thing on this page that keeps
+      moving once the cash markets shut. Index futures are measured against the last close of the
+      market they track, so the figure answers one question all day: where do we stand against the
+      last time that market printed a close. Every card carries the age of its last tick.</p>
+    <div id="datafeed"></div>
+    <div class="heads" id="heads"></div>
 
     <h2>Around the world</h2>
-    <p class="lede">Every region's own indices, quoted in their own currency and measured against
-      their own exchange's previous close — so Asia reads as Asia saw it. Blocks run in session
-      order, which is the order the day actually happens in.</p>
+    <p class="lede">Cash equity indices, each in its own currency and against its own exchange's
+      previous close — so Asia reads as Asia saw it. Amber is trading now, grey is shut with the
+      time it next opens. Blocks run in session order, which is the order the day happens in.</p>
     <div id="regions"></div>
 
     <h2>Cross-asset</h2>
-    <p class="lede">What is trading right now. Index futures run almost around the clock, so this is
-      a real read on the US session hours before it opens — the paths are five-minute bars against
-      each contract's own previous settlement. Every card carries the age of its last tick.</p>
-    <div id="datafeed"></div>
-    <div id="feeds" class="feeds"></div>
-    <div class="heads" id="heads"></div>
+    <p class="lede">The cash reads that no future here can give: volatility, the yield itself, and
+      credit. All are New York instruments, so they sit still outside the US session — amber while
+      it is trading, grey with the next open when it is not.</p>
+    <div class="heads" id="cross"></div>
 
 
     <h2>Movers</h2>
@@ -315,6 +310,16 @@
       events feed. Anything due today or tomorrow is called out; the rest is listed with its
       distance so the section still tells you something on the many days when nothing reports.</p>
     <div class="calgrid" id="calendar"></div>
+
+    <h2>Sessions</h2>
+    <p class="lede">Every cash market this page tracks and whether it is trading right now. Open
+      first, then the rest in the order they come back.</p>
+    <div class="sessions" id="sessions"></div>
+
+    <h2>Market news</h2>
+    <p class="lede" id="newslede">Headlines from Bloomberg's public markets and economics feeds,
+      newest first. Titles and links only — the stories stay on Bloomberg.</p>
+    <div id="news" class="news"></div>
   </div>
 
   <footer>
@@ -387,6 +392,18 @@
     ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
     ["HYG", "High yield"], ["TLT", "Long Treasuries"],
   ];
+  /* Cross-asset in cash, and only what no future on this page already covers.
+     Equities, the dollar, the metals, oil and crypto are all in the futures
+     strip and continuous; repeating them here in ETF form would be the same
+     exposure twice, which is the duplication that got the yesterday/today card
+     split thrown out. What is left is genuinely cash-only: volatility, the
+     yield itself rather than the note contract, and credit. All New York
+     instruments, so all of them sit still outside the US session — which is
+     what the state dot is for. */
+  const CROSS = [
+    ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
+    ["HYG", "High yield"], ["LQD", "Investment grade"], ["TLT", "Long Treasuries"],
+  ];
   /* Nikkei futures are the only market outside the US we can read overnight,
      and it is worth knowing why, because it decides what is ever possible here.
      Everything Yahoo serves as a future is CME Group — the equity indices, the
@@ -409,7 +426,7 @@
     ["CL=F", "WTI crude"], ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
   ];
   // Everything either strip needs fetched, plus what the verdict reads.
-  const HEADLINE = SETTLED.concat(LIVE);
+  const HEADLINE = [...new Map(SETTLED.concat(LIVE, CROSS).map(x => [x[0], x])).values()];
   /* The tape reads as a relay: Asia sets the tone, Europe picks it up, the US
      closes the loop. Each block is that region's own indices in their own
      currency — never converted, so what you see is what a local saw. */
@@ -823,9 +840,25 @@
     const sbox = $("#sessions");
     sbox.textContent = "";
     let anyOpen = false, anyState = false, anyDerived = false;
-    for (const [name, sym] of SESSIONS) {
-      const d = DAILY[sym];
-      const st = d && sessionState(d.meta);
+    /* Every market the page tracks, not four cities standing in for the world.
+       Four cards described four exchanges and said nothing about the twenty-odd
+       others on the page, several of which keep their own hours — Taiwan shuts
+       an hour before the rest of Asia, the Gulf trades Sunday to Thursday.
+       Open first, then the rest by how soon they come back, so the top of the
+       list is always what is live and the order below it is the order the day
+       arrives in. */
+    const allMarkets = REGIONS.flatMap(R => R.members.map(([sym, label]) => {
+      const d = DAILY[sym], st = d && sessionState(d.meta);
+      return { sym, name: label, st };
+    })).filter(m => m.st || DAILY[m.sym]);
+    allMarkets.sort((a, b) => {
+      const ao = a.st && a.st.open, bo = b.st && b.st.open;
+      if (ao !== bo) return ao ? -1 : 1;
+      const an = a.st ? a.st.start - nowSec() : Infinity;
+      const bn = b.st ? b.st.start - nowSec() : Infinity;
+      return (an < 0 ? Infinity : an) - (bn < 0 ? Infinity : bn);
+    });
+    for (const { name, st } of allMarkets) {
       const card = h("div", "sess" + (st ? (st.open ? " open" : " shut") : ""));
       const nm = h("div", "sname");
       nm.appendChild(h("span", "dot"));
@@ -833,20 +866,19 @@
       card.appendChild(nm);
       if (!st) {
         card.appendChild(h("div", "sstate", "–"));
-        card.appendChild(h("div", "stime", "no session data"));
+        card.appendChild(h("div", "stime", "hours unknown"));
       } else if (st.open) {
         anyOpen = true; anyState = true; anyDerived = anyDerived || st.derived;
         card.appendChild(h("div", "sstate", "Open"));
         card.appendChild(h("div", "stime", "closes in " + dur(st.end - nowSec()) +
-          " · " + clock(st.end) + (st.derived ? " · scheduled hours" : "")));
+          " · " + clock(st.end)));
       } else {
         anyState = true;
         const ahead = st.start - nowSec();
         card.appendChild(h("div", "sstate", "Closed"));
-        card.appendChild(h("div", "stime", (ahead > 0
+        card.appendChild(h("div", "stime", ahead > 0
           ? "opens in " + dur(ahead) + " · " + clock(st.start)
-          : "closed " + dur(nowSec() - st.end) + " ago") +
-          (st.derived ? " · scheduled hours" : "")));
+          : "closed " + dur(nowSec() - st.end) + " ago"));
       }
       sbox.appendChild(card);
     }
@@ -858,6 +890,11 @@
     for (const R of REGIONS) {
       const cd = DAILY[R.clock];
       const st = cd && sessionState(cd.meta);
+      /* The heading counts its own members. It used to report the state of one
+         nominated clock symbol, so Asia-Pacific said "session closed" — true of
+         Tokyo — directly above a Singapore card sitting amber with an hour left
+         to trade. A region is not one bell, which is the same reason the dots
+         moved onto the cards. */
       /* Each market carries its own state, because a region is not one bell.
          Asia-Pacific spans Tokyo, Sydney, Hong Kong, Mumbai and Singapore, and
          at almost any hour some of those are trading and some are not — so a
@@ -873,15 +910,24 @@
       if (!rows.length) continue;
       const avg = rows.reduce((a, b) => a + b.chg, 0) / rows.length;
       const upN = rows.filter(r => r.chg > 0).length;
-      regionSummary.push({ name: R.name, avg, upN, total: rows.length, open: !!(st && st.open) });
+      regionSummary.push({ name: R.name, avg, upN, total: rows.length,
+                           open: rows.some(r => r.st && r.st.open) });
       const sec = h("section", "region");
       const head = h("div", "rhead");
       const title = h("div", "rtitle");
-      title.appendChild(h("span", "dot" + (st && st.open ? " on" : "")));
+      title.appendChild(h("span", "dot" +
+        (rows.some(r => r.st && r.st.open) ? " on" : "")));
       title.appendChild(document.createTextNode(R.name));
       head.appendChild(title);
-      head.appendChild(h("span", "rstate", !st ? ""
-        : st.open ? "trading now" : "session closed"));
+      const openCount = rows.filter(r => r.st && r.st.open).length;
+      const known = rows.filter(r => r.st).length;
+      /* "3 trading", not "3 of 8 trading" — the breadth figure beside it already
+         reads "3 of 8 higher", and two different counts in the same phrasing an
+         inch apart invites reading one as the other. */
+      head.appendChild(h("span", "rstate", !known ? ""
+        : openCount === 0 ? "all shut"
+        : openCount === known ? "all trading"
+        : openCount + " trading"));
       const av = h("span", "ravg " + (avg >= 0 ? "up" : "down"));
       av.textContent = pct(avg) + " average · " + upN + " of " + rows.length + " higher";
       head.appendChild(av);
@@ -970,12 +1016,21 @@
       ? Math.max(0, nowSec() - Math.floor(new Date(window.PRICEFLOOR_AT).getTime() / 1000))
       : null;
 
-    function strip(box, list, withAge) {
+    function strip(box, list, withAge, withState) {
       box.textContent = "";
       for (const [sym, name, kind] of list) {
         const d = dayOf(sym);
         const card = h("div", "hcard");
-        card.appendChild(h("div", "hname", name));
+        const nm = h("div", "hname");
+        if (withState) {
+          const md = DAILY[sym], mst = md && sessionState(md.meta);
+          nm.appendChild(h("span", "cdot" + (!mst ? "" : mst.open ? " on" : " off")));
+          if (mst) card.dataset.when = mst.open
+            ? "closes in " + dur(mst.end - nowSec())
+            : (mst.start - nowSec() > 0 ? "opens in " + dur(mst.start - nowSec()) : "closed");
+        }
+        nm.appendChild(document.createTextNode(name));
+        card.appendChild(nm);
         if (!d) { card.appendChild(h("div", "hval", "–")); box.appendChild(card); continue; }
         const isYield = kind === "yield";
         card.appendChild(h("div", "hval", isYield ? fmt(d.last, 2) + "%" : fmt(d.last, 2)));
@@ -998,11 +1053,14 @@
           // about something that is not.
           if (lbl) card.appendChild(h("div", "hage" + (secs > 3600 ? " stale" : ""), lbl));
         }
+        if (withState && card.dataset.when)
+          card.appendChild(h("div", "hbase", card.dataset.when));
         card.appendChild(sparkPath(sym, d.chg));
         box.appendChild(card);
       }
     }
-    strip($("#heads"), LIVE, true);
+    strip($("#heads"), LIVE, true, false);
+    strip($("#cross"), CROSS, false, true);
 
     /* Two different questions, and they were being answered in one row of
        identical pills.
@@ -1042,28 +1100,6 @@
     if (futAge != null && futAge > 5400) fresh.className = "datafeed stale";
     dbox.appendChild(fresh);
 
-    /* Market hours, and only market hours. */
-    const fbox = $("#feeds");
-    fbox.textContent = "";
-    const feeds = [];
-    for (const [label, sym] of SESSIONS) {
-      const d = DAILY[sym], st = d && sessionState(d.meta);
-      feeds.push({
-        label: label,
-        on: !!(st && st.open),
-        unknown: !st,
-        note: !st ? "hours unknown"
-          : st.open ? "open · closes in " + dur(st.end - nowSec())
-          : (st.start - nowSec() > 0 ? "opens in " + dur(st.start - nowSec()) : "closed"),
-      });
-    }
-    for (const f of feeds) {
-      const el = h("div", "feed " + (f.unknown ? "" : f.on ? "on" : "off"));
-      el.appendChild(h("span", "dot"));
-      el.appendChild(h("b", null, f.label));
-      el.appendChild(document.createTextNode(f.note));
-      fbox.appendChild(el);
-    }
 
     /* "Yesterday" is only loosely yesterday — read on a Monday morning it is
        Friday, three days back — so the heading names the session. The date
@@ -1142,38 +1178,43 @@
     const es = gf("ES=F"), rty = gf("RTY=F"), nky = gf("NIY=F"),
           zn = g("ZN=F"), cl = g("CL=F"), gold = g("GC=F"),
           dxy = g("DX-Y.NYB"), btc = g("BTC-USD");
-    const openRegions = regionSummary.filter(r => r.open);
-    const asia = openRegions.length
-      ? openRegions.reduce((a, b) => a + b.avg, 0) / openRegions.length : null;
-
+    /* Built from the futures cards and nothing else. It used to fold in an
+       average of whichever cash regions happened to be open, which put a line
+       like "Middle East and Europe +0.4%" into a read otherwise made of
+       futures — a different measure, over a different window, averaged across
+       markets that have nothing to do with each other, and appearing or
+       vanishing depending on the hour. The cards above are the read's inputs
+       and the read says exactly what is on them. */
     const tSig = [], tBits = [];
     if (es != null) { tSig.push(es >= 0); tBits.push("S&P futures " + pct(es)); }
     if (rty != null) { tSig.push(rty >= 0); tBits.push("small cap futures " + pct(rty)); }
     if (nky != null) { tSig.push(nky >= 0); tBits.push("Nikkei futures " + pct(nky)); }
     if (zn != null) { tSig.push(zn < 0); tBits.push("10-year note " + pct(zn)); }
-    if (asia != null) {
-      tSig.push(asia >= 0);
-      tBits.push(openRegions.map(r => r.name).join(" and ") + " " + pct(asia));
-    }
     if (gold != null) tBits.push("gold " + pct(gold));
     if (dxy != null) tBits.push("dollar " + pct(dxy));
     if (cl != null) tBits.push("crude " + pct(cl));
     if (btc != null) tBits.push("bitcoin " + pct(btc));
 
+    /* A note has to clear a size before it is worth a sentence.
+       Opposite signs alone fired on -0.04% against +0.16% and announced that
+       the US and Japan had diverged, which is not a divergence, it is noise
+       with a sign. Both legs must move at least a quarter point and differ by
+       at least half a point before any of this is said out loud. */
+    const DIV = 0.25, GAP = 0.5;
+    const parted = (a, b) =>
+      a != null && b != null && Math.abs(a) >= DIV && Math.abs(b) >= DIV &&
+      Math.sign(a) !== Math.sign(b) && Math.abs(a - b) >= GAP;
+
     const tNotes = [];
-    if (es != null && asia != null && Math.sign(es) !== Math.sign(asia) && es !== 0 && asia !== 0)
-      tNotes.push("US futures and the open cash markets are pointing opposite ways — the overnight handover has broken.");
-    if (gold != null && dxy != null && gold > 0 && dxy > 0)
-      tNotes.push("Gold and the dollar rising together points at haven demand rather than a rate story.");
-    if (es != null && rty != null && Math.abs(es - rty) > 0.5)
+    if (gold != null && dxy != null && gold > DIV && dxy > DIV)
+      tNotes.push("Gold and the dollar are rising together, which points at haven demand rather than a rate story.");
+    if (es != null && rty != null && Math.abs(es - rty) > GAP)
       tNotes.push("The index and small caps have parted by " + fmt(Math.abs(es - rty), 1) +
-        " points before the open — leadership is " + (rty > es ? "broadening" : "narrowing") + ".");
-    if (es != null && nky != null && Math.sign(es) !== Math.sign(nky) && es !== 0 && nky !== 0)
-      tNotes.push("US and Japanese futures are pointing opposite ways overnight.");
-    if (es != null && zn != null && es > 0 && zn > 0)
-      tNotes.push("Equity futures and Treasuries are bid together, which is a positioning move rather than a view.");
-    if (spy != null && es != null && Math.sign(spy) !== Math.sign(es) && spy !== 0 && es !== 0)
-      tNotes.push("Futures have reversed the direction of the last cash session.");
+        " points — leadership is " + (rty > es ? "broadening" : "narrowing") + ".");
+    if (parted(es, nky))
+      tNotes.push("US and Japanese futures are moving against each other overnight.");
+    if (es != null && zn != null && es > DIV && zn > DIV)
+      tNotes.push("Equity futures and Treasuries are bid together, which is usually positioning rather than a view.");
     verdictInto($("#verdictlive"), tSig, tBits, tNotes,
       "Nothing is trading yet — no live read available.");
 
@@ -1238,8 +1279,13 @@
          that trades overnight. Now that it leads with futures, the bell and
          the freshness of the tape are two separate facts and the summary has
          to carry both or it contradicts the section under it. */
-      (anyOpen ? (anyDerived ? "a session is open, figures are the last snapshot"
-                             : "a session is open, figures are live")
+      /* Keyed to the price source, not to anyDerived. Derived means the trading
+         hours were rebuilt from the exchange's schedule; it says nothing about
+         where the prices came from, and wiring the two together put "figures
+         are the last snapshot" on a page whose futures had quoted nine minutes
+         earlier. */
+      (anyOpen ? (servingSnapshot ? "a session is open, figures are the last snapshot"
+                                  : "a session is open, figures are live")
         : anyState && futuresFresh ? "cash markets shut, futures still quoting"
         : anyState && servingSnapshot ? "cash markets shut, prices from the last snapshot"
         : anyState ? "all cash sessions closed, figures are the last completed session"
