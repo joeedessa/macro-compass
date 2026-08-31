@@ -534,8 +534,27 @@
     };
   }
 
+  /* The session rebuild, published.
+
+     It lives in this file because this is where it was needed first — the
+     snapshot has no trading periods and had to reconstruct them. But the live
+     feed needs the same thing for a different reason: Yahoo rolls
+     currentTradingPeriod forward at different times for different exchanges,
+     and a period that has already ended is a stale reference rather than a
+     closed market. Reconstructing from it beats believing it. */
   window.PRICEFLOOR = {
     get served() { return served; },
     snapshot,
+    /* Epoch pair + timezone -> the same session as local opening hours, which
+       is the form that survives being read on another day. */
+    hoursFromPeriod(tz, start, end) {
+      if (!tz || start == null || end == null) return null;
+      try {
+        const a = tzFields(tz, start * 1000), b = tzFields(tz, end * 1000);
+        const o = a.h * 60 + a.mi, c = b.h * 60 + b.mi;
+        return c > o ? [tz, o, c] : null;
+      } catch { return null; }
+    },
+    sessionFromHours: derivedPeriod,
   };
 })();

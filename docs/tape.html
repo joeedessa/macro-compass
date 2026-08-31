@@ -187,10 +187,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831b">
-<script src="mobile.js?v=20260831b" defer></script>
-<script src="pricefloor.js?v=20260831b"></script>
-<script src="links.js?v=20260831b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831c">
+<script src="mobile.js?v=20260831c" defer></script>
+<script src="pricefloor.js?v=20260831c"></script>
+<script src="links.js?v=20260831c"></script>
 </head>
 <body>
 <div class="wrap">
@@ -470,12 +470,33 @@
     const reg = meta?.currentTradingPeriod?.regular;
     if (!reg) return null;
     const n = nowSec();
-    return { open: n >= reg.start && n < reg.end, start: reg.start, end: reg.end,
+    let start = reg.start, end = reg.end, stale = false;
+
+    /* A trading period that has already ended is a stale reference, not a shut
+       market. Yahoo rolls this forward at its own pace and not in step across
+       exchanges: at 05:35 on a Monday it had already moved the DAX to Monday's
+       session while still reporting Friday's for the FTSE, both of which open
+       at 07:00 UTC. Believing it means this page would print "Closed" through
+       a London morning if the roll came late — which is the same failure as
+       announcing every session shut while Tokyo traded, arriving by a
+       different route, so it is not left to Yahoo's timing.
+
+       Rebuilt from the exchange's own hours instead, which the stale block
+       still states correctly: an open at 08:00 London time is an open at 08:00
+       London time whichever day it was read from. Prices are untouched by any
+       of this — they come from the quote series and update on the bell. */
+    if (end < n && window.PRICEFLOOR && window.PRICEFLOOR.hoursFromPeriod) {
+      const hrs = window.PRICEFLOOR.hoursFromPeriod(
+        meta.exchangeTimezoneName || meta.exchangeTz, reg.start, reg.end);
+      const p = hrs && window.PRICEFLOOR.sessionFromHours(hrs);
+      if (p) { start = p.start; end = p.end; stale = true; }
+    }
+    return { open: n >= start && n < end, start, end,
              /* True when the hours were rebuilt from the snapshot rather than
                 read live, which means holidays are not accounted for. Carried
                 to the card so the page can say so instead of implying it
                 watched the bell. */
-             derived: !!meta.sessionDerived };
+             derived: !!meta.sessionDerived || stale };
   }
   const clock = epoch => new Date(epoch * 1000)
     .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
