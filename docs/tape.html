@@ -71,6 +71,10 @@
   .sess .sstate { font-size:14.5px; font-weight:650; }
   .sess .stime { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
   /* What is actually feeding the strip below, named rather than implied. */
+  .readhead { font-size:13px; font-weight:640; color:var(--text-secondary); margin:14px 0 6px;
+              letter-spacing:.01em; }
+  .readhead:first-of-type { margin-top:4px; }
+  .readhead .rstamp { font-weight:450; color:var(--text-muted); margin-left:6px; }
   .feeds { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
   .feed { display:flex; align-items:center; gap:6px; font-size:11.5px; padding:4px 9px;
           border:1px solid var(--border); border-radius:999px; color:var(--text-secondary);
@@ -101,6 +105,12 @@
   .rtitle { font-size:14.5px; font-weight:650; display:flex; align-items:center; gap:7px; }
   .rtitle .dot { width:8px; height:8px; border-radius:50%; background:var(--text-muted); }
   .rtitle .dot.on { background:var(--up); }
+  /* Per-market state, on the card rather than only on the region heading. */
+  .rcard .rname { display:flex; align-items:center; gap:6px; }
+  .cdot { width:6px; height:6px; border-radius:50%; background:var(--text-muted);
+          flex:none; display:inline-block; }
+  .cdot.on { background:var(--up); }
+  .cdot.off { background:var(--down); }
   .rstate { font-size:11.5px; color:var(--text-muted); }
   .ravg { font-size:12.5px; font-weight:640; margin-left:auto;
     font-variant-numeric:tabular-nums; }
@@ -187,10 +197,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831c">
-<script src="mobile.js?v=20260831c" defer></script>
-<script src="pricefloor.js?v=20260831c"></script>
-<script src="links.js?v=20260831c"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831d">
+<script src="mobile.js?v=20260831d" defer></script>
+<script src="pricefloor.js?v=20260831d"></script>
+<script src="links.js?v=20260831d"></script>
 </head>
 <body>
 <div class="wrap">
@@ -233,12 +243,7 @@
       order, which is the order the day actually happens in.</p>
     <div id="regions"></div>
 
-    <h2>Where yesterday left off</h2>
-    <p class="lede" id="settledlede">The last completed cash session, on the instruments that set the
-      tone. These do not move again until New York reopens.</p>
-    <div class="heads" id="settled"></div>
-
-    <h2>Today so far</h2>
+    <h2>Cross-asset</h2>
     <p class="lede">What is trading right now. Index futures run almost around the clock, so this is
       a real read on the US session hours before it opens — the paths are five-minute bars against
       each contract's own previous settlement. Every card carries the age of its last tick.</p>
@@ -246,7 +251,13 @@
     <div class="heads" id="heads"></div>
 
     <h2>Read of the session</h2>
+    <p class="lede">Two reads, because at most hours of the day they disagree: the session that has
+      finished, and the one already under way. The second is built only from instruments that are
+      trading at this moment and re-reads itself every minute.</p>
+    <h3 class="readhead" id="yhead">Yesterday</h3>
     <div id="verdict"></div>
+    <h3 class="readhead" id="thead">Today so far</h3>
+    <div id="verdictlive"></div>
 
     <h2>Movers</h2>
     <p class="lede">Ranked by size of move against each instrument's own 60-day volatility, so a
@@ -508,18 +519,26 @@
   const status = $("#status");
   let DAILY = {}, INTRA = {};
 
-  async function load() {
-    status.hidden = false;
-    status.textContent = "Fetching live prices…";
-    $("#content").hidden = true;
+  /* A quiet reload leaves the page on screen and swaps the numbers underneath.
+     The first pass has to blank the page because there is nothing to show yet;
+     a refresh sixty seconds later must not, or the tape blinks out every minute
+     and reading it becomes impossible. */
+  async function load(quiet) {
+    if (!quiet) {
+      status.hidden = false;
+      status.textContent = "Fetching live prices…";
+      $("#content").hidden = true;
+    }
     const syms = [...new Set(TAPE.map(t => t[0]).concat(HEADLINE.map(x => x[0]),
       SESSIONS.map(s => s[1]), REGIONS.flatMap(r => r.members.map(m => m[0]))))];
     // 6 months of daily bars: previous close plus a 60-day volatility baseline.
-    DAILY = await fetchSpark(syms, "6mo", "1d");
-    if (!Object.keys(DAILY).length) {
-      status.textContent = "Could not reach the price feed. Reload in a moment.";
+    const daily = await fetchSpark(syms, "6mo", "1d");
+    if (!Object.keys(daily).length) {
+      // A failed refresh keeps the last good tape rather than wiping it.
+      if (!quiet) status.textContent = "Could not reach the price feed. Reload in a moment.";
       return;
     }
+    DAILY = daily;
     // Regional indices need the intraday pass as well: their session change is
     // the last five-minute bar against the exchange's own previous close.
     const intraSyms = [...new Set(HEADLINE.map(x => x[0])
@@ -529,6 +548,22 @@
     $("#content").hidden = false;
     render();
   }
+
+  /* The live read says it re-reads itself every minute, so it has to.
+
+     Paused while the tab is hidden, because a backgrounded page polling a
+     proxy every minute for a day is rude to the worker and buys the reader
+     nothing — and refreshed immediately on return, so coming back to the tab
+     never shows a stale minute. */
+  let timer = null;
+  function startAutoRefresh() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => { if (!document.hidden) load(true); }, 60000);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) load(true);
+  });
+  startAutoRefresh();
 
   /* Today's move against the previous close, plus how big that is relative to
      the instrument's own recent daily range. */
@@ -658,9 +693,17 @@
     for (const R of REGIONS) {
       const cd = DAILY[R.clock];
       const st = cd && sessionState(cd.meta);
+      /* Each market carries its own state, because a region is not one bell.
+         Asia-Pacific spans Tokyo, Sydney, Hong Kong, Mumbai and Singapore, and
+         at almost any hour some of those are trading and some are not — so a
+         single dot on the region heading describes the clock symbol and quietly
+         mislabels everything else under it. */
       const rows = R.members.map(([sym, name]) => {
         const mv = sessionMove(sym);
-        return mv ? { sym, name, ...mv } : null;
+        if (!mv) return null;
+        const md = DAILY[sym];
+        const mst = md && sessionState(md.meta);
+        return { sym, name, ...mv, st: mst };
       }).filter(Boolean);
       if (!rows.length) continue;
       const avg = rows.reduce((a, b) => a + b.chg, 0) / rows.length;
@@ -681,7 +724,16 @@
       const grid = h("div", "rgrid");
       for (const r of rows.sort((a, b) => b.chg - a.chg)) {
         const card = h("div", "rcard");
-        card.appendChild(h("div", "rname", r.name));
+        const nm = h("div", "rname");
+        // Grey where the hours are unknown; a dot must not assert a state the
+        // page has not established.
+        nm.appendChild(h("span", "cdot" + (!r.st ? "" : r.st.open ? " on" : " off")));
+        nm.appendChild(document.createTextNode(r.name));
+        if (r.st) nm.title = r.st.open
+          ? "Open — closes " + clock(r.st.end)
+          : (r.st.start - nowSec() > 0 ? "Closed — opens " + clock(r.st.start)
+                                       : "Closed");
+        card.appendChild(nm);
         const line = h("div", "rline");
         line.appendChild(h("span", "rlast", fmt(r.last, 2)));
         line.appendChild(h("span", "rchg " + (r.chg >= 0 ? "up" : "down"), pct(r.chg)));
@@ -771,7 +823,6 @@
         box.appendChild(card);
       }
     }
-    strip($("#settled"), SETTLED, false);
     strip($("#heads"), LIVE, true);
 
     /* Which feeds are actually behind the strip above, in the order the day
@@ -811,62 +862,105 @@
       fbox.appendChild(el);
     }
 
-    /* The settled strip is only "yesterday" in the loosest sense — read on a
-       Monday morning it is Friday, three days back. Naming the session costs
-       one line and removes the guesswork, and the date comes from the last
-       daily bar rather than from subtracting a day from today, which would be
-       wrong every Monday and every holiday. */
+    /* "Yesterday" is only loosely yesterday — read on a Monday morning it is
+       Friday, three days back — so the heading names the session. The date
+       comes off the last daily bar rather than from subtracting a day from
+       today, which would be wrong every Monday and every holiday. */
     const spyBars = DAILY["SPY"] && DAILY["SPY"].pts;
+    const yhead = $("#yhead");
+    yhead.textContent = "Yesterday";
     if (spyBars && spyBars.length) {
       const when = new Date(spyBars[spyBars.length - 1][0] * 1000);
-      $("#settledlede").textContent =
-        "The cash session that closed " +
-        when.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) +
-        ", on the instruments that set the tone. These do not move again until New York reopens.";
+      yhead.appendChild(h("span", "rstamp", "cash session of " +
+        when.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })));
     }
+    const thead = $("#thead");
+    thead.textContent = "Today so far";
+    thead.appendChild(h("span", "rstamp",
+      onFloor ? "from the snapshot" : "live, re-read every minute"));
 
     // ---------- read of the session ----------
-    const vbox = $("#verdict");
-    vbox.textContent = "";
     const g = s => { const x = dayOf(s); return x ? x.chg : null; };
-    const spy = g("SPY"), tlt = g("TLT"), hyg = g("HYG"), vix = g("^VIX"),
-          gold = g("GC=F"), dxy = g("DX-Y.NYB"), iwm = g("IWM");
-    const signals = [];
-    if (spy != null) signals.push(spy >= 0);
-    if (hyg != null) signals.push(hyg >= 0);
-    if (iwm != null) signals.push(iwm >= 0);
-    if (vix != null) signals.push(vix < 0);
-    const onCount = signals.filter(Boolean).length;
-    const cls = !signals.length ? "" : onCount === signals.length ? "on"
-      : onCount === 0 ? "off" : "mixed";
-    const v = h("div", "verdict " + cls);
-    const headline = !signals.length ? "No read available."
-      : onCount === signals.length ? "Risk-on across the board."
-      : onCount === 0 ? "Risk-off across the board."
-      : "A split tape.";
-    v.appendChild(h("b", null, headline));
-    const bits = [];
-    if (spy != null) bits.push("S&P " + pct(spy));
-    if (iwm != null) bits.push("small caps " + pct(iwm));
-    if (hyg != null) bits.push("high yield " + pct(hyg));
-    if (vix != null) bits.push("VIX " + pct(vix));
-    if (tlt != null) bits.push("long Treasuries " + pct(tlt));
-    if (gold != null) bits.push("gold " + pct(gold));
-    if (dxy != null) bits.push("dollar " + pct(dxy));
-    v.appendChild(h("span", "vsub", bits.join(" · ") + "."));
-    // the divergences worth a sentence
-    const notes = [];
+
+    /* One verdict builder, two sets of inputs. `signals` are booleans that mean
+       risk appetite; the wording and the colour come from how many hold. */
+    function verdictInto(box, signals, bits, notes, empty) {
+      box.textContent = "";
+      const onCount = signals.filter(Boolean).length;
+      const cls = !signals.length ? "" : onCount === signals.length ? "on"
+        : onCount === 0 ? "off" : "mixed";
+      const v = h("div", "verdict " + cls);
+      v.appendChild(h("b", null, !signals.length ? empty
+        : onCount === signals.length ? "Risk-on across the board."
+        : onCount === 0 ? "Risk-off across the board."
+        : "A split tape."));
+      if (bits.length) v.appendChild(h("span", "vsub", bits.join(" · ") + "."));
+      if (notes.length) v.appendChild(h("span", "vsub", notes.join(" ")));
+      box.appendChild(v);
+    }
+
+    /* ---- the session that closed ----
+       Cash only. Gold and the dollar used to be counted here and they do not
+       belong: both trade around the clock, so their "day change" is the move
+       happening now, not the one that settled with the equity close. Reading a
+       Friday verdict that quietly contained Monday's gold is the same class of
+       mistake as the rest of this page had — two conventions subtracted from
+       each other. They are in the live read below, where they are true. */
+    const spy = g("SPY"), tlt = g("TLT"), hyg = g("HYG"),
+          vix = g("^VIX"), iwm = g("IWM");
+    const ySig = [], yBits = [];
+    if (spy != null) { ySig.push(spy >= 0); yBits.push("S&P " + pct(spy)); }
+    if (iwm != null) { ySig.push(iwm >= 0); yBits.push("small caps " + pct(iwm)); }
+    if (hyg != null) { ySig.push(hyg >= 0); yBits.push("high yield " + pct(hyg)); }
+    if (vix != null) { ySig.push(vix < 0); yBits.push("VIX " + pct(vix)); }
+    if (tlt != null) yBits.push("long Treasuries " + pct(tlt));
+    const yNotes = [];
     if (spy != null && hyg != null && spy > 0 && hyg < 0)
-      notes.push("Equity is up while high yield is down — credit is not confirming.");
+      yNotes.push("Equity is up while high yield is down — credit is not confirming.");
     if (spy != null && vix != null && spy > 0 && vix > 0)
-      notes.push("Both the index and volatility are higher, which usually means the move is being hedged rather than chased.");
-    if (gold != null && dxy != null && gold > 0 && dxy > 0)
-      notes.push("Gold and the dollar rising together points at haven demand rather than a rate story.");
+      yNotes.push("Both the index and volatility are higher, which usually means the move is being hedged rather than chased.");
     if (spy != null && iwm != null && Math.abs(spy - iwm) > 1)
-      notes.push("Small caps and the index have parted by " + fmt(Math.abs(spy - iwm), 1) +
+      yNotes.push("Small caps and the index have parted by " + fmt(Math.abs(spy - iwm), 1) +
         " points — leadership is " + (iwm > spy ? "broadening" : "narrowing") + ".");
-    if (notes.length) v.appendChild(h("span", "vsub", notes.join(" ")));
-    vbox.appendChild(v);
+    verdictInto($("#verdict"), ySig, yBits, yNotes, "No read available.");
+
+    /* ---- the session already running ----
+       Built only from things that are actually trading: futures, metals, oil,
+       FX, crypto, and whichever cash markets are open. A bond future rising is
+       money going into safety, so the risk-appetite signal is the inverse. */
+    const es = g("ES=F"), rty = g("RTY=F"), zn = g("ZN=F"), cl = g("CL=F"),
+          gold = g("GC=F"), dxy = g("DX-Y.NYB"), btc = g("BTC-USD");
+    const openRegions = regionSummary.filter(r => r.open);
+    const asia = openRegions.length
+      ? openRegions.reduce((a, b) => a + b.avg, 0) / openRegions.length : null;
+
+    const tSig = [], tBits = [];
+    if (es != null) { tSig.push(es >= 0); tBits.push("S&P futures " + pct(es)); }
+    if (rty != null) { tSig.push(rty >= 0); tBits.push("small cap futures " + pct(rty)); }
+    if (zn != null) { tSig.push(zn < 0); tBits.push("10-year note " + pct(zn)); }
+    if (asia != null) {
+      tSig.push(asia >= 0);
+      tBits.push(openRegions.map(r => r.name).join(" and ") + " " + pct(asia));
+    }
+    if (gold != null) tBits.push("gold " + pct(gold));
+    if (dxy != null) tBits.push("dollar " + pct(dxy));
+    if (cl != null) tBits.push("crude " + pct(cl));
+    if (btc != null) tBits.push("bitcoin " + pct(btc));
+
+    const tNotes = [];
+    if (es != null && asia != null && Math.sign(es) !== Math.sign(asia) && es !== 0 && asia !== 0)
+      tNotes.push("US futures and the open cash markets are pointing opposite ways — the overnight handover has broken.");
+    if (gold != null && dxy != null && gold > 0 && dxy > 0)
+      tNotes.push("Gold and the dollar rising together points at haven demand rather than a rate story.");
+    if (es != null && rty != null && Math.abs(es - rty) > 0.5)
+      tNotes.push("The index and small caps have parted by " + fmt(Math.abs(es - rty), 1) +
+        " points before the open — leadership is " + (rty > es ? "broadening" : "narrowing") + ".");
+    if (es != null && zn != null && es > 0 && zn > 0)
+      tNotes.push("Equity futures and Treasuries are bid together, which is a positioning move rather than a view.");
+    if (spy != null && es != null && Math.sign(spy) !== Math.sign(es) && spy !== 0 && es !== 0)
+      tNotes.push("Futures have reversed the direction of the last cash session.");
+    verdictInto($("#verdictlive"), tSig, tBits, tNotes,
+      "Nothing is trading yet — no live read available.");
 
     // ---------- movers ----------
     const rows = TAPE.map(([sym, name, block]) => {
