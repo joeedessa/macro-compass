@@ -110,6 +110,7 @@
   .feed.on .dot { background:var(--open); }
   .feed.off .dot { background:var(--shut); }
   .feed b { font-weight:600; color:var(--text-primary); }
+  .hcard .hbase { font-size:10px; color:var(--text-muted); }
   .hcard .hage { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
   .hcard .hage.stale { color:var(--down); }
 
@@ -229,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831k">
-<script src="mobile.js?v=20260831k" defer></script>
-<script src="pricefloor.js?v=20260831k"></script>
-<script src="links.js?v=20260831k"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831n">
+<script src="mobile.js?v=20260831n" defer></script>
+<script src="pricefloor.js?v=20260831n"></script>
+<script src="links.js?v=20260831n"></script>
 </head>
 <body>
 <div class="wrap">
@@ -386,8 +387,24 @@
     ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
     ["HYG", "High yield"], ["TLT", "Long Treasuries"],
   ];
+  /* Nikkei futures are the only market outside the US we can read overnight,
+     and it is worth knowing why, because it decides what is ever possible here.
+     Everything Yahoo serves as a future is CME Group — the equity indices, the
+     note, gold, crude, copper, the euro. Eurex (Euro Stoxx, DAX), ICE Europe
+     (FTSE) and HKEX (Hang Seng) return nothing at all, and the exchanges' own
+     endpoints refuse: CME answers 403 "IP blocked due to suspected web
+     scraping", Eurex 404, Stooq is dead for every symbol including known-good
+     ones. That is a licensing boundary rather than a technical one — Yahoo
+     redistributes CME and does not redistribute the rest — so Europe and Asia
+     ex-Japan have no overnight read at any price this project is willing to
+     pay, and their cards show the last cash close with its age instead.
+
+     NIY over NKD: both are the CME's Nikkei contract, NIY in yen and NKD in
+     dollars. Yen, because prices on this site stay in the currency they are
+     listed in. */
   const LIVE = [
     ["ES=F", "S&P 500 fut"], ["NQ=F", "Nasdaq 100 fut"], ["RTY=F", "Russell 2000 fut"],
+    ["NIY=F", "Nikkei 225 fut"],
     ["ZN=F", "10-year note fut"], ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"],
     ["CL=F", "WTI crude"], ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
   ];
@@ -569,7 +586,11 @@
       $("#content").hidden = true;
     }
     const syms = [...new Set(TAPE.map(t => t[0]).concat(HEADLINE.map(x => x[0]),
-      SESSIONS.map(s => s[1]), REGIONS.flatMap(r => r.members.map(m => m[0]))))];
+      SESSIONS.map(s => s[1]), REGIONS.flatMap(r => r.members.map(m => m[0])),
+      // The cash indices the futures are measured against. ^NDX is here and
+      // nowhere else on the page, so leaving this to the other lists would
+      // have silently disabled the Nasdaq baseline.
+      Object.values(CASH_FOR)))];
     // 6 months of daily bars: previous close plus a 60-day volatility baseline.
     const daily = await fetchSpark(syms, "6mo", "1d");
     if (!Object.keys(daily).length) {
@@ -581,7 +602,7 @@
     // Regional indices need the intraday pass as well: their session change is
     // the last five-minute bar against the exchange's own previous close.
     const intraSyms = [...new Set(HEADLINE.map(x => x[0])
-      .concat(REGIONS.flatMap(r => r.members.map(m => m[0]))))];
+      .concat(REGIONS.flatMap(r => r.members.map(m => m[0])), Object.values(CASH_FOR)))];
     INTRA = await fetchSpark(intraSyms, "1d", "5m");
     status.hidden = true;
     $("#content").hidden = false;
@@ -705,6 +726,64 @@
     }
     const d = dayOf(sym);
     return d ? { last: d.last, chg: d.chg, live: false } : null;
+  }
+
+  /* An index future measured against the cash market it tracks, not against
+     its own prior settlement.
+
+     Yahoo's previousClose for a future is that contract's last settlement, and
+     for the CME Nikkei that lands at 21:00 UTC — fifteen hours after Tokyo
+     shuts, late enough to have priced a US afternoon that Tokyo never saw. On
+     the Friday in question it settled at 65,780 against a Tokyo cash close of
+     66,405, so the same instrument read +1.0% while Japanese equities were
+     down 0.14% on the day. Both figures are correct against their own
+     reference and they answer different questions; printed side by side, one
+     of them is simply read as the other.
+
+     This is the gold error again in a new instrument — a price and a reference
+     taken from two different conventions and subtracted. It stayed invisible
+     in the US futures because the S&P contract settles at the same hour the
+     cash index closes, so the two references agree to within a basis point or
+     two and nothing looked wrong.
+
+     The baseline is the last completed cash close: the previous close while
+     that market is trading, the latest close while it is shut. Both cases give
+     the same sentence — "this is where the future stands against the last time
+     the cash market printed a close" — which is the question this page exists
+     to answer. */
+  /* NQ tracks the Nasdaq 100, so its cash index is ^NDX. Pairing it with
+     ^IXIC, the Composite, printed +11.8% — two different indices at two
+     different levels, subtracted. It was obvious only because the number was
+     absurd; a wrong pairing between two indices of similar size would have
+     produced something entirely believable, which is the case the check below
+     exists for. */
+  const CASH_FOR = { "ES=F": "^GSPC", "NQ=F": "^NDX", "RTY=F": "^RUT", "NIY=F": "^N225" };
+
+  /* A future and the index it tracks sit within a fraction of a percent of one
+     another — measured at the time of writing: S&P -0.01%, Nasdaq +0.27%,
+     Russell +0.20%, Nikkei +0.16%. Five percent is far outside anything carry
+     explains, so it does not mean the market has moved; it means the pair is
+     wrong. In that case the cash baseline is refused rather than used, and the
+     card falls back to the contract's own reference without claiming a
+     comparison it cannot make. */
+  const MAX_BASIS = 5;
+
+  function cashBaseline(sym) {
+    const cash = CASH_FOR[sym];
+    if (!cash) return null;
+    const d = dayOf(cash), f = dayOf(sym);
+    if (!d || !f) return null;
+    const cd = DAILY[cash], st = cd && sessionState(cd.meta);
+    // Trading: its own previous close. Shut: the close it just printed.
+    const base = st && st.open ? d.prev : d.last;
+    if (base == null || !(base > 0)) return null;
+    if (Math.abs(f.last / base - 1) * 100 > MAX_BASIS) {
+      console.warn("tape: " + sym + " and " + cash + " are " +
+        (f.last / base - 1 > 0 ? "+" : "") + ((f.last / base - 1) * 100).toFixed(1) +
+        "% apart — not a valid pair, falling back to the contract's own close");
+      return null;
+    }
+    return { base, cash, open: !!(st && st.open) };
   }
 
   function sparkPath(sym, chg) {
@@ -900,11 +979,17 @@
         if (!d) { card.appendChild(h("div", "hval", "–")); box.appendChild(card); continue; }
         const isYield = kind === "yield";
         card.appendChild(h("div", "hval", isYield ? fmt(d.last, 2) + "%" : fmt(d.last, 2)));
-        const chg = h("div", "hchg " + (d.chg >= 0 ? "up" : "down"));
+        const cb = cashBaseline(sym);
+        const shown = cb ? (d.last / cb.base - 1) * 100 : d.chg;
+        const chg = h("div", "hchg " + (shown >= 0 ? "up" : "down"));
         chg.textContent = isYield
           ? ((d.last - d.prev) >= 0 ? "+" : "") + fmt((d.last - d.prev) * 100, 0) + "bp"
-          : pct(d.chg);
+          : pct(shown);
         card.appendChild(chg);
+        // Say what it is measured against; the whole point is that it is not
+        // the contract's own settlement.
+        if (cb) card.appendChild(h("div", "hbase",
+          cb.open ? "vs previous cash close" : "vs last cash close"));
         if (withAge) {
           const live = tickAge(sym);
           const secs = live != null ? live : floorAge;
@@ -1046,8 +1131,17 @@
        Built only from things that are actually trading: futures, metals, oil,
        FX, crypto, and whichever cash markets are open. A bond future rising is
        money going into safety, so the risk-appetite signal is the inverse. */
-    const es = g("ES=F"), rty = g("RTY=F"), zn = g("ZN=F"), cl = g("CL=F"),
-          gold = g("GC=F"), dxy = g("DX-Y.NYB"), btc = g("BTC-USD");
+    /* Same baseline as the cards. A verdict computed off a different reference
+       from the numbers printed above it is how a page ends up arguing with
+       itself. */
+    const gf = sym => {
+      const d = dayOf(sym); if (!d) return null;
+      const cb = cashBaseline(sym);
+      return cb ? (d.last / cb.base - 1) * 100 : d.chg;
+    };
+    const es = gf("ES=F"), rty = gf("RTY=F"), nky = gf("NIY=F"),
+          zn = g("ZN=F"), cl = g("CL=F"), gold = g("GC=F"),
+          dxy = g("DX-Y.NYB"), btc = g("BTC-USD");
     const openRegions = regionSummary.filter(r => r.open);
     const asia = openRegions.length
       ? openRegions.reduce((a, b) => a + b.avg, 0) / openRegions.length : null;
@@ -1055,6 +1149,7 @@
     const tSig = [], tBits = [];
     if (es != null) { tSig.push(es >= 0); tBits.push("S&P futures " + pct(es)); }
     if (rty != null) { tSig.push(rty >= 0); tBits.push("small cap futures " + pct(rty)); }
+    if (nky != null) { tSig.push(nky >= 0); tBits.push("Nikkei futures " + pct(nky)); }
     if (zn != null) { tSig.push(zn < 0); tBits.push("10-year note " + pct(zn)); }
     if (asia != null) {
       tSig.push(asia >= 0);
@@ -1073,6 +1168,8 @@
     if (es != null && rty != null && Math.abs(es - rty) > 0.5)
       tNotes.push("The index and small caps have parted by " + fmt(Math.abs(es - rty), 1) +
         " points before the open — leadership is " + (rty > es ? "broadening" : "narrowing") + ".");
+    if (es != null && nky != null && Math.sign(es) !== Math.sign(nky) && es !== 0 && nky !== 0)
+      tNotes.push("US and Japanese futures are pointing opposite ways overnight.");
     if (es != null && zn != null && es > 0 && zn > 0)
       tNotes.push("Equity futures and Treasuries are bid together, which is a positioning move rather than a view.");
     if (spy != null && es != null && Math.sign(spy) !== Math.sign(es) && spy !== 0 && es !== 0)
