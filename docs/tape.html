@@ -230,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831s">
-<script src="mobile.js?v=20260831s" defer></script>
-<script src="pricefloor.js?v=20260831s"></script>
-<script src="links.js?v=20260831s"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831t">
+<script src="mobile.js?v=20260831t" defer></script>
+<script src="pricefloor.js?v=20260831t"></script>
+<script src="links.js?v=20260831t"></script>
 </head>
 <body>
 <div class="wrap">
@@ -295,12 +295,14 @@
 
 
     <h2>Movers</h2>
+    <p class="lede" id="moverssession"></p>
     <p class="lede">Ranked by size of move against each instrument's own 60-day volatility, so a
       2% day in something that never moves outranks a 4% day in something that always does. The
       σ figure is that ratio.</p>
     <div class="movegrid" id="movers"></div>
 
     <h2>Breadth</h2>
+    <p class="lede" id="breadthsession"></p>
     <p class="lede">Share of each block trading higher on the session — where participation is
       broad and where it is a handful of names.</p>
     <div class="breadth" id="breadth"></div>
@@ -423,7 +425,7 @@
     ["ES=F", "S&P 500 fut"], ["NQ=F", "Nasdaq 100 fut"], ["RTY=F", "Russell 2000 fut"],
     ["NIY=F", "Nikkei 225 fut"],
     ["ZN=F", "10-year note fut"], ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"],
-    ["CL=F", "WTI crude"], ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
+    ["SI=F", "Silver"], ["CL=F", "WTI crude"], ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
   ];
   // Everything either strip needs fetched, plus what the verdict reads.
   const HEADLINE = [...new Map(SETTLED.concat(LIVE, CROSS).map(x => [x[0], x])).values()];
@@ -1219,6 +1221,31 @@
       "Nothing is trading yet — no live read available.");
 
     // ---------- movers ----------
+    /* Both this and the breadth block below are built from the tape universe,
+       and every one of its sixty-three instruments is listed in New York. So
+       for roughly seventeen hours out of twenty-four, and all weekend, none of
+       these numbers can move: they are the last US close, ranked and presented
+       exactly as they are during the session, with nothing to say so. Opened on
+       a Monday morning in Europe, "Movers" was ranking Friday.
+
+       The figures were never wrong; the framing was. These two sections
+       describe a US session, so they now name which one and whether it is
+       still running. */
+    const usMeta = DAILY["SPY"] || DAILY["^GSPC"];
+    const usSt = usMeta && sessionState(usMeta.meta);
+    const usBars = (DAILY["SPY"] && DAILY["SPY"].pts) || [];
+    const usDay = usBars.length
+      ? new Date(usBars[usBars.length - 1][0] * 1000)
+          .toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })
+      : null;
+    const sessionNote = usSt && usSt.open
+      ? "The US session is trading — these move while you watch them."
+      : "The completed US session" + (usDay ? " of " + usDay : "") +
+        ". Every instrument here is New York-listed, so none of it changes again until the " +
+        "opening bell" + (usSt ? " in " + dur(usSt.start - nowSec()) : "") + ".";
+    $("#moverssession").textContent = sessionNote;
+    $("#breadthsession").textContent = sessionNote;
+
     const rows = TAPE.map(([sym, name, block]) => {
       const d = dayOf(sym);
       return d ? { sym, name, block, ...d } : null;
