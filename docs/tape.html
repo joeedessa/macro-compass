@@ -230,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831x">
-<script src="mobile.js?v=20260831x" defer></script>
-<script src="pricefloor.js?v=20260831x"></script>
-<script src="links.js?v=20260831x"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831z">
+<script src="mobile.js?v=20260831z" defer></script>
+<script src="pricefloor.js?v=20260831z"></script>
+<script src="links.js?v=20260831z"></script>
 </head>
 <body>
 <div class="wrap">
@@ -265,12 +265,12 @@
 
   <div id="content" hidden>
     <h2>Read of the session</h2>
-    <p class="lede">Two reads, because at most hours of the day they disagree: the session that has
-      finished, and the one already under way. The second is built only from instruments that are
-      trading at this moment and re-reads itself every minute.</p>
-    <h3 class="readhead" id="yhead">Yesterday</h3>
+    <p class="lede">Two reads, because at most hours of the day they disagree: the last cash
+      session to finish, and what has happened since it closed. The second is built only from
+      instruments still trading and re-reads itself every minute.</p>
+    <h3 class="readhead" id="yhead">Last session</h3>
     <div id="verdict"></div>
-    <h3 class="readhead" id="thead">Today so far</h3>
+    <h3 class="readhead" id="thead">Since that close</h3>
     <div id="verdictlive"></div>
 
     <h2>Futures</h2>
@@ -793,8 +793,27 @@
     const d = dayOf(cash), f = dayOf(sym);
     if (!d || !f) return null;
     const cd = DAILY[cash], st = cd && sessionState(cd.meta);
-    // Trading: its own previous close. Shut: the close it just printed.
-    const base = st && st.open ? d.prev : d.last;
+
+    /* Whether the cash index has actually printed this session, rather than
+       whether the clock says it should have.
+
+       The rule was "trading: use the previous close; shut: use the last one",
+       taken from session state alone. Three minutes after the New York open
+       that was wrong for the Russell: the session said open, but ^RUT had not
+       ticked since Friday — small-cap indices lag the bell — so its last value
+       was still Friday's close and its previousClose was therefore Thursday's.
+       Measuring the future against Thursday printed -1.50% when the honest
+       figure was -0.11%. A whole session of drift, presented as the day's move,
+       for the twenty-odd minutes it takes the index to wake up.
+
+       So it is decided by the data: if the index's last tick falls inside the
+       current session it is live and the baseline is its previous close; if the
+       tick predates the session start it has not opened yet, and its last value
+       IS the previous close. */
+    const tick = (cd && cd.meta && cd.meta.regularMarketTime) ||
+                 (cd && cd.pts.length && cd.pts[cd.pts.length - 1][0]);
+    const printed = st && st.open && tick != null && tick >= st.start;
+    const base = printed ? d.prev : d.last;
     if (base == null || !(base > 0)) return null;
     if (Math.abs(f.last / base - 1) * 100 > MAX_BASIS) {
       console.warn("tape: " + sym + " and " + cash + " are " +
@@ -1108,23 +1127,29 @@
        comes off the last daily bar rather than from subtracting a day from
        today, which would be wrong every Monday and every holiday. */
     const spyBars = DAILY["SPY"] && DAILY["SPY"].pts;
-    const yhead = $("#yhead");
-    yhead.textContent = "Yesterday";
-    if (spyBars && spyBars.length) {
-      const when = new Date(spyBars[spyBars.length - 1][0] * 1000);
-      yhead.appendChild(h("span", "rstamp", "cash session of " +
-        when.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })));
-    }
-    const thead = $("#thead");
-    thead.textContent = "Today so far";
-    thead.appendChild(h("span", "rstamp",
-      onFloor ? "from the snapshot" : "live, re-read every minute"));
 
     const usMeta = DAILY["SPY"] || DAILY["^GSPC"];
     const usSt = usMeta && sessionState(usMeta.meta);
-    const usBars = (DAILY["SPY"] && DAILY["SPY"].pts) || [];
-    const usDay = usBars.length
-      ? new Date(usBars[usBars.length - 1][0] * 1000)
+
+    /* The last session that actually finished.
+       Yahoo opens a daily bar the moment trading starts, so taking the final
+       bar meant that from 13:30 UTC the completed-session read was labelled
+       with today's date and announced that US equities "closed lower on
+       Monday" while Monday was three minutes old and still trading. The
+       in-progress bar is dropped whenever that market is open. */
+    function completed(sym) {
+      const d = DAILY[sym];
+      if (!d || d.pts.length < 2) return null;
+      const st = sessionState(d.meta);
+      const n = d.pts.length - (st && st.open ? 1 : 0);
+      if (n < 2) return null;
+      const last = d.pts[n - 1][1], prev = d.pts[n - 2][1];
+      if (!(prev > 0)) return null;
+      return { last, prev, chg: (last / prev - 1) * 100, at: d.pts[n - 1][0] };
+    }
+    const cSpy = completed("SPY");
+    const usDay = cSpy
+      ? new Date(cSpy.at * 1000)
           .toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })
       : null;
     const sessionNote = usSt && usSt.open
@@ -1134,6 +1159,20 @@
         "opening bell" + (usSt ? " in " + dur(usSt.start - nowSec()) : "") + ".";
     $("#moverssession").textContent = sessionNote;
     $("#breadthsession").textContent = sessionNote;
+
+    /* "Yesterday" was only ever true before the New York open. Read at half past
+       one in the afternoon UTC it labelled Monday's own session "Yesterday", and
+       "Today so far" described a stretch that had already become tonight. These
+       two say what they are at every hour: the session that finished, and the
+       move since it closed — which is also literally what the futures figure
+       below is measured against. */
+    const yhead = $("#yhead");
+    yhead.textContent = "Last session";
+    if (usDay) yhead.appendChild(h("span", "rstamp", "closed " + usDay));
+    const thead = $("#thead");
+    thead.textContent = "Since that close";
+    thead.appendChild(h("span", "rstamp",
+      onFloor ? "from the snapshot" : "live, re-read every minute"));
 
     // ---------- read of the session ----------
     /* Rewritten because the old one restated the cards and then editorialised.
@@ -1194,8 +1233,12 @@
        exactly that, and it is not a macro read. Equities, rates, credit,
        volatility and the dollar are what belongs here; sectors and themes have
        their own section further down. */
-    const spy = g("SPY"), iwm = g("IWM"), vixC = g("^VIX"),
-          tnxD = dayOf("^TNX"), hyg = g("HYG"), tlt = g("TLT");
+    /* Every figure here comes from the completed bar. Reading them live meant
+       the "session that has finished" box filled with the session currently
+       running the moment New York opened. */
+    const cg = sym => { const c = completed(sym); return c ? c.chg : null; };
+    const spy = cg("SPY"), iwm = cg("IWM"), vixC = cg("^VIX"),
+          tnxD = completed("^TNX"), hyg = cg("HYG"), tlt = cg("TLT");
     const yTone = spy == null ? "" : spy > 0.15 ? "on" : spy < -0.15 ? "off" : "mixed";
     const yLines = [];
     if (spy == null) {
