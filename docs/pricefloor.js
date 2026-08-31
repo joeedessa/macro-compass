@@ -510,6 +510,11 @@
     served++;
     try { announce(snap); } catch { /* a missing banner must not break a page */ }
     window.PRICEFLOOR_ACTIVE = true;
+    /* When the data this page is showing was actually taken. A page that wants
+       to tell the reader what is feeding it needs the timestamp, not just the
+       fact that the floor is on — "no data" beside nine populated cards is a
+       worse answer than "from the 03:54 snapshot". */
+    window.PRICEFLOOR_AT = snap.tip_at || snap.generated_at || null;
 
     /* Duck-typed rather than a real Response, because a real one has to be
        constructed from a string: the object would be serialised here and

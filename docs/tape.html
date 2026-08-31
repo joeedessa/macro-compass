@@ -70,6 +70,18 @@
   .sess.open .dot { background:var(--up); }
   .sess .sstate { font-size:14.5px; font-weight:650; }
   .sess .stime { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+  /* What is actually feeding the strip below, named rather than implied. */
+  .feeds { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+  .feed { display:flex; align-items:center; gap:6px; font-size:11.5px; padding:4px 9px;
+          border:1px solid var(--border); border-radius:999px; color:var(--text-secondary);
+          white-space:nowrap; }
+  .feed .dot { width:6px; height:6px; border-radius:50%; background:var(--text-muted); flex:none; }
+  .feed.on   { border-color:color-mix(in srgb, var(--up) 45%, var(--border)); }
+  .feed.on .dot { background:var(--up); }
+  .feed.off .dot { background:var(--down); }
+  .feed b { font-weight:600; color:var(--text-primary); }
+  .hcard .hage { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+  .hcard .hage.stale { color:var(--down); }
 
   /* headline strip with intraday paths */
   .heads { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:9px; }
@@ -175,10 +187,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831a">
-<script src="mobile.js?v=20260831a" defer></script>
-<script src="pricefloor.js?v=20260831a"></script>
-<script src="links.js?v=20260831a"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831b">
+<script src="mobile.js?v=20260831b" defer></script>
+<script src="pricefloor.js?v=20260831b"></script>
+<script src="links.js?v=20260831b"></script>
 </head>
 <body>
 <div class="wrap">
@@ -221,9 +233,16 @@
       order, which is the order the day actually happens in.</p>
     <div id="regions"></div>
 
-    <h2>Cross-asset</h2>
-    <p class="lede">The instruments that set the tone across asset classes, with today's path drawn
-      from five-minute bars against the previous close. Flat lines mean the market has not opened yet.</p>
+    <h2>Where yesterday left off</h2>
+    <p class="lede" id="settledlede">The last completed cash session, on the instruments that set the
+      tone. These do not move again until New York reopens.</p>
+    <div class="heads" id="settled"></div>
+
+    <h2>Today so far</h2>
+    <p class="lede">What is trading right now. Index futures run almost around the clock, so this is
+      a real read on the US session hours before it opens — the paths are five-minute bars against
+      each contract's own previous settlement. Every card carries the age of its last tick.</p>
+    <div id="feeds" class="feeds"></div>
     <div class="heads" id="heads"></div>
 
     <h2>Read of the session</h2>
@@ -296,12 +315,34 @@
   /* The instruments that set the tone, drawn intraday. Yields are quoted in
      index points on Yahoo, so their "percent change" is a change in the yield
      itself — flagged so it is never read as a price move. */
-  const HEADLINE = [
+  /* Two lists, because they answer different questions and were answering them
+     together and badly.
+
+     One list of ten sat under "Cross-asset" and was read as today's tape. Half
+     of it could not be: SPY, QQQ, IWM, the VIX and the ten-year are cash
+     instruments that stop trading at 16:00 New York, so opening the page on a
+     Monday morning in Europe showed Friday's closes with no indication they
+     were three days old. Measured at the time of writing, the VIX and the
+     ten-year had last ticked fifty-seven hours earlier and were shown beside
+     gold, which had ticked ten minutes earlier, in identical cards.
+
+     SETTLED is the completed session and says so. LIVE is what is trading
+     right now — index futures rather than the ETFs that track them, a note
+     future rather than the cash yield — and for a reader in Europe or Asia
+     that is the difference between a page that is three days stale and one
+     that is ten minutes old. */
+  const SETTLED = [
     ["SPY", "S&P 500"], ["QQQ", "Nasdaq 100"], ["IWM", "Russell 2000"],
     ["^VIX", "VIX", "level"], ["^TNX", "US 10-year", "yield"],
-    ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"], ["CL=F", "WTI crude"],
-    ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
+    ["HYG", "High yield"], ["TLT", "Long Treasuries"],
   ];
+  const LIVE = [
+    ["ES=F", "S&P 500 fut"], ["NQ=F", "Nasdaq 100 fut"], ["RTY=F", "Russell 2000 fut"],
+    ["ZN=F", "10-year note fut"], ["DX-Y.NYB", "Dollar index"], ["GC=F", "Gold"],
+    ["CL=F", "WTI crude"], ["HG=F", "Copper"], ["BTC-USD", "Bitcoin"],
+  ];
+  // Everything either strip needs fetched, plus what the verdict reads.
+  const HEADLINE = SETTLED.concat(LIVE);
   /* The tape reads as a relay: Asia sets the tone, Europe picks it up, the US
      closes the loop. Each block is that region's own indices in their own
      currency — never converted, so what you see is what a local saw. */
@@ -660,23 +701,107 @@
       rbox.appendChild(p);
     }
 
-    // ---------- headline strip ----------
-    const hbox = $("#heads");
-    hbox.textContent = "";
-    for (const [sym, name, kind] of HEADLINE) {
-      const d = dayOf(sym);
-      const card = h("div", "hcard");
-      card.appendChild(h("div", "hname", name));
-      if (!d) { card.appendChild(h("div", "hval", "–")); hbox.appendChild(card); continue; }
-      const isYield = kind === "yield";
-      card.appendChild(h("div", "hval", isYield ? fmt(d.last, 2) + "%" : fmt(d.last, 2)));
-      const chg = h("div", "hchg " + (d.chg >= 0 ? "up" : "down"));
-      chg.textContent = isYield
-        ? ((d.last - d.prev) >= 0 ? "+" : "") + fmt((d.last - d.prev) * 100, 0) + "bp"
-        : pct(d.chg);
-      card.appendChild(chg);
-      card.appendChild(sparkPath(sym, d.chg));
-      hbox.appendChild(card);
+    // ---------- settled and live strips ----------
+    /* How long ago this instrument last printed. The whole point of splitting
+       the strips is that "when did this last move" is information, so it is on
+       the card rather than inferred from the section it sits in. */
+    function tickAge(sym) {
+      const it = INTRA[sym];
+      const t = (it && it.meta && it.meta.regularMarketTime) ||
+                (it && it.pts.length && it.pts[it.pts.length - 1][0]);
+      return t ? Math.max(0, nowSec() - t) : null;
+    }
+    function ageLabel(secs) {
+      if (secs == null) return null;
+      const m = Math.round(secs / 60);
+      if (m < 60) return m + "m ago";
+      const hrs = Math.round(m / 60);
+      return hrs < 48 ? hrs + "h ago" : Math.round(hrs / 24) + "d ago";
+    }
+
+    const onFloor_ = !!window.PRICEFLOOR_ACTIVE;
+    const floorAge = (onFloor_ && window.PRICEFLOOR_AT)
+      ? Math.max(0, nowSec() - Math.floor(new Date(window.PRICEFLOOR_AT).getTime() / 1000))
+      : null;
+
+    function strip(box, list, withAge) {
+      box.textContent = "";
+      for (const [sym, name, kind] of list) {
+        const d = dayOf(sym);
+        const card = h("div", "hcard");
+        card.appendChild(h("div", "hname", name));
+        if (!d) { card.appendChild(h("div", "hval", "–")); box.appendChild(card); continue; }
+        const isYield = kind === "yield";
+        card.appendChild(h("div", "hval", isYield ? fmt(d.last, 2) + "%" : fmt(d.last, 2)));
+        const chg = h("div", "hchg " + (d.chg >= 0 ? "up" : "down"));
+        chg.textContent = isYield
+          ? ((d.last - d.prev) >= 0 ? "+" : "") + fmt((d.last - d.prev) * 100, 0) + "bp"
+          : pct(d.chg);
+        card.appendChild(chg);
+        if (withAge) {
+          const live = tickAge(sym);
+          const secs = live != null ? live : floorAge;
+          const lbl = ageLabel(secs);
+          // An hour is generous for something that should be trading and blunt
+          // about something that is not.
+          if (lbl) card.appendChild(h("div", "hage" + (secs > 3600 ? " stale" : ""), lbl));
+        }
+        card.appendChild(sparkPath(sym, d.chg));
+        box.appendChild(card);
+      }
+    }
+    strip($("#settled"), SETTLED, false);
+    strip($("#heads"), LIVE, true);
+
+    /* Which feeds are actually behind the strip above, in the order the day
+       reaches them. Asked for directly: the page has to say what it is being
+       fed at the moment it is read, rather than leaving the reader to work out
+       from a flat sparkline that a market never opened. */
+    const fbox = $("#feeds");
+    fbox.textContent = "";
+    /* Intraday bars are the live path and the snapshot has none, so on the
+       floor tickAge knows nothing — and reporting "no data" above nine
+       populated cards would be the same kind of lie this page has just been
+       cleared of. When the floor is serving, the honest answer is the age of
+       the snapshot, which it now publishes. */
+    const onFloor = onFloor_;
+    const futAge = onFloor ? floorAge : tickAge("ES=F");
+    const feeds = [
+      { label: onFloor ? "US futures · snapshot" : "US futures",
+        on: futAge != null && futAge < 3600,
+        note: futAge != null ? ageLabel(futAge) : "no data" },
+    ];
+    for (const [label, sym] of SESSIONS) {
+      const d = DAILY[sym], st = d && sessionState(d.meta);
+      feeds.push({
+        label: label + " cash",
+        on: !!(st && st.open),
+        unknown: !st,
+        note: !st ? "hours unknown"
+          : st.open ? "open"
+          : (st.start - nowSec() > 0 ? "opens in " + dur(st.start - nowSec()) : "closed"),
+      });
+    }
+    for (const f of feeds) {
+      const el = h("div", "feed " + (f.unknown ? "" : f.on ? "on" : "off"));
+      el.appendChild(h("span", "dot"));
+      el.appendChild(h("b", null, f.label));
+      el.appendChild(document.createTextNode(f.note));
+      fbox.appendChild(el);
+    }
+
+    /* The settled strip is only "yesterday" in the loosest sense — read on a
+       Monday morning it is Friday, three days back. Naming the session costs
+       one line and removes the guesswork, and the date comes from the last
+       daily bar rather than from subtracting a day from today, which would be
+       wrong every Monday and every holiday. */
+    const spyBars = DAILY["SPY"] && DAILY["SPY"].pts;
+    if (spyBars && spyBars.length) {
+      const when = new Date(spyBars[spyBars.length - 1][0] * 1000);
+      $("#settledlede").textContent =
+        "The cash session that closed " +
+        when.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }) +
+        ", on the instruments that set the tone. These do not move again until New York reopens.";
     }
 
     // ---------- read of the session ----------
