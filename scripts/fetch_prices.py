@@ -63,6 +63,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import quality  # noqa: E402 - needs the path above
@@ -85,23 +86,61 @@ def universe():
     """
     syms = set()
 
-    js = (DOCS / "universe.js").read_text()
+    # Scanning every page also harvests the page furniture. Period buttons
+    # ("1D", "3M", "YTD"), moving-average lengths ("50", "200") and bare
+    # numbers all pass a ticker-shaped test, and the ten that sorted first went
+    # out as one batch and made Yahoo 404 the entire request — taking four real
+    # symbols down with them, because a batch is all-or-nothing. Junk in a
+    # symbol list is not merely noise; it costs the symbols it travels with.
+    JUNK = re.compile(r"^(\d+|\d+[DWMY]|YTD|MAX)$")
 
-    # Flat lists of plain strings are labels, not instruments — REGIONS is
-    # ["Americas", "Europe", ...] and its first element looks exactly like a
-    # ticker to the pattern below. "Americas" was being fetched on every run and
-    # reported as a symbol without a quote, which is a warning that means
-    # nothing and trains the eye to skip warnings.
-    js = re.sub(r"const REGIONS = \[[^\]]*\];", "", js)
+    # universe.js is not the whole universe. It was treated as though it were,
+    # and the Today page defines its own lists inline — so every non-US index
+    # it draws (Nikkei, FTSE, DAX, Hang Seng, KOSPI, Bovespa and twenty more)
+    # was absent from the snapshot entirely. Nobody noticed while the live feed
+    # answered, because those symbols were fetched in the browser; the moment
+    # the page fell back to the snapshot the whole "Around the world" section
+    # and every session clock had nothing to draw. A file listing the symbols
+    # to fetch that silently omits a third of them is worse than no list.
+    #
+    # So every page is scanned, on the same literal-tuple pattern. Reading the
+    # pages is what keeps this correct when a page adds a market: the
+    # alternative is a hand-kept list that drifts, which is the bug being
+    # fixed here.
+    sources = [(DOCS / "universe.js").read_text()]
+    sources += [f.read_text() for f in sorted(DOCS.glob("*.html"))]
 
-    # ["SYM", "Label", ...] — first string of each literal tuple
-    for m in re.finditer(r'\[\s*"([^"]{1,15})"\s*,\s*"', js):
-        s = m.group(1)
-        # Labels also sit first in some nested tuples; a symbol never contains
-        # a space and always carries a ticker's alphabet.
-        if " " not in s and re.fullmatch(r"[\^A-Za-z0-9.=\-]+", s):
-            syms.add(s)
+    for js in sources:
+        # Flat lists of plain strings are labels, not instruments — REGIONS is
+        # ["Americas", "Europe", ...] and its first element looks exactly like
+        # a ticker to the pattern below.
+        js = re.sub(r"const REGIONS = \[[^\]]*\];", "", js)
 
+        # ["SYM", "Label", ...] — the leading string of each literal tuple, and
+        # the second one too, because the session list is written the other way
+        # round as ["Tokyo", "^N225"].
+        # The second group is left unbounded and length-checked below: capping
+        # it in the pattern made the whole match fail whenever the label was
+        # long, which quietly dropped ["^BVSP", "Brazil · Bovespa"] and every
+        # other tuple with a label over fifteen characters.
+        for m in re.finditer(r'\[\s*"([^"]{1,15})"\s*,\s*"([^"]*)"', js):
+            for cand in m.groups():
+                if len(cand) > 15:
+                    continue
+                # Case is what separates a ticker from a place. Every symbol on
+                # this site is upper case — SPY, ^N225, FTSEMIB.MI, 000300.SS,
+                # 7936.T — and the labels sitting in the same position are
+                # words: Tokyo, London, Frankfurt. Allowing lower case here
+                # meant fetching cities on every run and printing a warning
+                # for each, which is how real warnings stop being read.
+                if cand and " " not in cand and re.fullmatch(r"[\^A-Z0-9.=\-]+", cand) \
+                        and not JUNK.match(cand):
+                    syms.add(cand)
+
+    # These three are lists of instruments by definition, so anything in them
+    # that fails to quote is a real failure worth hearing about.
+    authoritative = set(re.findall(r'\[\s*"([^"]{1,15})"\s*,\s*"',
+                                   (DOCS / "universe.js").read_text()))
     for f, key in (("watchlist.json", "sym"), ("portfolio.json", None)):
         p = DOCS / "data" / f
         if not p.exists():
@@ -111,8 +150,16 @@ def universe():
             s = r.get(key) if key else (r.get("y") or r.get("sym"))
             if s:
                 syms.add(s)
+                authoritative.add(s)
+    authoritative &= syms
 
-    return sorted(syms)
+    # Everything the page scan proposed that no authoritative list confirms.
+    # "KOSPI", "KOSDAQ" and "VIX" are labels sitting where a ticker sits, and
+    # nothing about their shape says so — the real symbols are ^KS11 and ^VIX.
+    # They cost one lookup each and resolve to nothing, which is fine; what is
+    # not fine is reporting them as symbols that failed, because a warning that
+    # fires every run for a non-problem is how a real one gets missed.
+    return sorted(syms), sorted(syms - authoritative)
 
 
 # The three timeframes the site reads, with the windows each one needs. Spark
@@ -160,6 +207,37 @@ def fetch(symbols, rng, interval):
     return out
 
 
+def session_hours(meta):
+    """The exchange's regular session as local wall-clock minutes past midnight.
+
+    Returns (timezone name, open, close), or None when Yahoo does not give
+    enough to be sure. Storing the local clock rather than the epochs Yahoo
+    sends is what makes this survive being read the next day, and storing the
+    timezone name rather than a UTC offset is what makes it survive the clocks
+    changing: London is +1 today and +0 in November, and a stored offset would
+    silently move the London open by an hour for four months of the year.
+
+    A session that appears to end before it starts has crossed local midnight,
+    which no cash equity session here does. Rather than guess, nothing is
+    stored and the reader falls back to saying it does not know.
+    """
+    tz = meta.get("exchangeTimezoneName")
+    reg = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
+    start, end = reg.get("start"), reg.get("end")
+    if not tz or start is None or end is None:
+        return None
+    try:
+        zone = ZoneInfo(tz)
+    except Exception:                         # noqa: BLE001 - unknown zone name
+        return None
+    lo = datetime.fromtimestamp(start, zone)
+    hi = datetime.fromtimestamp(end, zone)
+    o, c = lo.hour * 60 + lo.minute, hi.hour * 60 + hi.minute
+    if c <= o:
+        return None
+    return [tz, o, c]
+
+
 def fetch_quotes(symbols):
     """Live price and the true previous close, ten symbols at a time.
 
@@ -181,6 +259,14 @@ def fetch_quotes(symbols):
 
     regularMarketPrice comes back here too and is fresher than the last daily
     bar, so it becomes the tip's current price.
+
+    The exchange's trading hours are taken here as well, because this is the
+    only place they are available. Yahoo gives the session as a pair of epochs
+    for the day of the request, which is useless a few hours later, so they are
+    converted to the exchange's own local clock — 09:00 to 15:30 in Tokyo — and
+    that is what gets stored. Local opening hours are a property of the
+    exchange rather than of the day, so the client can rebuild the session
+    boundaries for whatever day it is being read on.
     """
     out = {}
     for i in range(0, len(symbols), 10):
@@ -204,6 +290,9 @@ def fetch_quotes(symbols):
                 rec["p"] = round(prev, 6)
             if m.get("regularMarketTime"):
                 rec["t"] = m["regularMarketTime"]
+            hours = session_hours(m)
+            if hours:
+                rec["z"] = hours
             out[row["symbol"]] = rec
         time.sleep(0.35)
     return out
@@ -211,7 +300,7 @@ def fetch_quotes(symbols):
 
 def main_latest():
     """The quarter-hourly path: current price and true previous close."""
-    syms = universe()
+    syms, speculative = universe()
     tip = fetch_quotes(syms)
 
     # Whatever the quote call missed falls back to daily bars, which are right
@@ -220,7 +309,12 @@ def main_latest():
     # quote call almost always covers anyway.
     missing = [s for s in syms if s not in tip]
     if missing:
-        print(f"  {len(missing)} without a quote; falling back to daily bars")
+        spec = set(speculative)
+        real = [s for s in missing if s not in spec]
+        print(f"  {len(missing)} without a quote "
+              f"({len(real)} from the instrument lists); falling back to daily bars")
+        if real:
+            print(f"    {', '.join(real)}")
         for sym, rec in fetch(missing, "5d", "1d").items():
             c, t = rec["c"], rec["t"]
             if not c:
@@ -233,8 +327,24 @@ def main_latest():
 
     if not tip:
         sys.exit("aborting: no prices fetched")
+    # The hours are shared: a few dozen exchanges stand behind a few hundred
+    # symbols. Held inline they would add about half again to a file that is
+    # committed every fifteen minutes, so they are deduplicated into a table
+    # and each symbol keeps an index into it.
+    table, index = [], {}
+    for rec in tip.values():
+        h = rec.pop("z", None)
+        if not h:
+            continue
+        key = "|".join(map(str, h))
+        if key not in index:
+            index[key] = len(table)
+            table.append(h)
+        rec["z"] = index[key]
+
     out = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "source": "Yahoo Finance, fetched server-side",
+           "sessions": table,
            "latest": tip}
     cov = len(tip) / max(1, len(syms))
     old_cov = lambda old: len(old.get("latest") or {}) / max(1, len(syms))
@@ -246,7 +356,7 @@ def main_latest():
 
 
 def main():
-    syms = universe()
+    syms, _speculative = universe()
     print(f"universe: {len(syms)} symbols")
 
     prices = fetch(syms, "1y", "1d")

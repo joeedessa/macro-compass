@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260823a">
+<link rel="stylesheet" href="styles.css?v=20260831a">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -311,13 +311,13 @@
   #sigscan .switch .manote { font-size:11.5px; color:var(--text-muted); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260823a">
-<script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260830b"></script>
-<script src="links.js?v=20260830b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831a">
+<script src="mobile.js?v=20260831a" defer></script>
+<script src="pricefloor.js?v=20260831a"></script>
+<script src="links.js?v=20260831a"></script>
 </head>
 <body>
-<script src="ma.js?v=20260830b"></script>
+<script src="ma.js?v=20260831a"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -1637,11 +1637,12 @@
         const ratio = e.atr ? e.div_amount / e.atr : null;
         const days = Math.round(
           (new Date(e.ex_div) - new Date(new Date().toISOString().slice(0, 10))) / 864e5);
-        /* Inside a month. A dividend a hundred days out is not something to act
-           on today, and an alert strip that lists it every morning for three
-           months is one you stop reading — which costs you the one that matters.
+        /* Inside a week. A month was still too long: it filled the strip with
+           dividends three and four weeks out, and an alert you scroll past is
+           an alert you have stopped reading — which costs you the one that
+           matters. Seven days is about when the stop actually has to move.
            The column carries the date regardless; this is only the nudge. */
-        if (ratio != null && ratio >= 0.25 && days <= 30) {
+        if (ratio != null && ratio >= 0.25 && days <= 7) {
           const st2 = stopFor(p, r.live);
           items.push(["warn", p.sym + " goes ex-dividend " +
             (days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + " days") +

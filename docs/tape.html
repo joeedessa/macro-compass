@@ -60,6 +60,11 @@
   .sess.open { border-color:var(--up); background:var(--on-bg); }
   .sess .sname { font-size:12px; color:var(--text-secondary); display:flex; align-items:center;
     gap:6px; }
+  /* Closed is red, open is green. It was grey for closed, which reads as "no
+     information" rather than "shut" — and the card that mattered was doing
+     exactly that while a market was trading. */
+  .sess.shut .dot { background:var(--down); }
+  .sess.shut { border-color:color-mix(in srgb, var(--down) 35%, var(--border)); }
   .sess .dot { width:7px; height:7px; border-radius:50%; background:var(--text-muted);
     flex:none; }
   .sess.open .dot { background:var(--up); }
@@ -170,10 +175,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260823a">
-<script src="mobile.js?v=20260823a" defer></script>
-<script src="pricefloor.js?v=20260830b"></script>
-<script src="links.js?v=20260830b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831a">
+<script src="mobile.js?v=20260831a" defer></script>
+<script src="pricefloor.js?v=20260831a"></script>
+<script src="links.js?v=20260831a"></script>
 </head>
 <body>
 <div class="wrap">
@@ -307,6 +312,26 @@
       ["^TWII", "Taiwan · TAIEX"], ["^NSEI", "India · Nifty 50"],
       ["^AXJO", "Australia · ASX 200"], ["^STI", "Singapore · STI"],
     ] },
+    /* Between Asia and Europe, because that is when it trades: Riyadh and
+       Istanbul both open around 07:00 UTC, an hour ahead of Frankfurt.
+
+       Saudi, Turkey and Israel are the real thing — local index, local
+       currency, local session. The UAE and Qatar are not: Yahoo carries no
+       working index for either, and none of the local tickers tried
+       (^ADSMI, ^DFMGI, ^QSI, EMAAR.DU, IHC.AD and the rest) return a series.
+       What does work is the US-listed country ETF, so that is what these two
+       are, and the label says so — they are quoted in dollars on New York
+       hours, which means they show how New York repriced the Gulf rather than
+       how the Gulf traded. Useful, but not the same claim the other cards
+       make, and worth reading differently — which is why "(US)" is in their
+       names and why the shared description above is left alone. The Gulf is a
+       secondary read here and does not get to qualify a sentence that is true
+       of every other market on the page. */
+    { name: "Middle East", clock: "^TASI.SR", members: [
+      ["^TASI.SR", "Saudi · Tadawul"], ["XU100.IS", "Turkey · BIST 100"],
+      ["^TA125.TA", "Israel · TA-125"],
+      ["UAE", "UAE · MSCI ETF (US)"], ["QAT", "Qatar · MSCI ETF (US)"],
+    ] },
     { name: "Europe", clock: "^GDAXI", members: [
       ["^STOXX50E", "Euro area · Euro Stoxx 50"], ["^GDAXI", "Germany · DAX"],
       ["^FCHI", "France · CAC 40"], ["^FTSE", "UK · FTSE 100"],
@@ -404,7 +429,12 @@
     const reg = meta?.currentTradingPeriod?.regular;
     if (!reg) return null;
     const n = nowSec();
-    return { open: n >= reg.start && n < reg.end, start: reg.start, end: reg.end };
+    return { open: n >= reg.start && n < reg.end, start: reg.start, end: reg.end,
+             /* True when the hours were rebuilt from the snapshot rather than
+                read live, which means holidays are not accounted for. Carried
+                to the card so the page can say so instead of implying it
+                watched the bell. */
+             derived: !!meta.sessionDerived };
   }
   const clock = epoch => new Date(epoch * 1000)
     .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -530,11 +560,11 @@
     // ---------- sessions ----------
     const sbox = $("#sessions");
     sbox.textContent = "";
-    let anyOpen = false;
+    let anyOpen = false, anyState = false, anyDerived = false;
     for (const [name, sym] of SESSIONS) {
       const d = DAILY[sym];
       const st = d && sessionState(d.meta);
-      const card = h("div", "sess" + (st && st.open ? " open" : ""));
+      const card = h("div", "sess" + (st ? (st.open ? " open" : " shut") : ""));
       const nm = h("div", "sname");
       nm.appendChild(h("span", "dot"));
       nm.appendChild(document.createTextNode(name));
@@ -543,16 +573,18 @@
         card.appendChild(h("div", "sstate", "–"));
         card.appendChild(h("div", "stime", "no session data"));
       } else if (st.open) {
-        anyOpen = true;
+        anyOpen = true; anyState = true; anyDerived = anyDerived || st.derived;
         card.appendChild(h("div", "sstate", "Open"));
         card.appendChild(h("div", "stime", "closes in " + dur(st.end - nowSec()) +
-          " · " + clock(st.end)));
+          " · " + clock(st.end) + (st.derived ? " · scheduled hours" : "")));
       } else {
+        anyState = true;
         const ahead = st.start - nowSec();
         card.appendChild(h("div", "sstate", "Closed"));
-        card.appendChild(h("div", "stime", ahead > 0
+        card.appendChild(h("div", "stime", (ahead > 0
           ? "opens in " + dur(ahead) + " · " + clock(st.start)
-          : "closed " + dur(nowSec() - st.end) + " ago"));
+          : "closed " + dur(nowSec() - st.end) + " ago") +
+          (st.derived ? " · scheduled hours" : "")));
       }
       sbox.appendChild(card);
     }
@@ -740,7 +772,18 @@
     $("#stamp").textContent = "Fetched " +
       new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · " +
       rows.length + " instruments · " +
-      (anyOpen ? "a session is open, figures are live" : "all cash sessions closed, figures are the last completed session");
+      /* "Live" has to mean live. With the feed down these figures come off the
+         snapshot, and a session being open does not make them any fresher —
+         saying so was the same mistake as the sessions line, one clause over. */
+      (anyOpen ? (anyDerived ? "a session is open, figures are the last snapshot"
+                             : "a session is open, figures are live")
+        : anyState ? "all cash sessions closed, figures are the last completed session"
+        /* Not the same sentence as "everything is shut". Without session data
+           the page knows nothing about the bell, and saying so is the only
+           honest option — it read "all cash sessions closed" through a Tokyo
+           morning once, which is worse than an empty clock because a reader
+           has no reason to doubt it. */
+        : "trading hours unavailable");
   }
 
   // ---------- calendar from the watchlist events feed ----------

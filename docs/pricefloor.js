@@ -125,7 +125,8 @@
     const [hist, tip] = await Promise.all([load(), loadTip()]);
     if (!hist) return null;
     return { prices: hist.prices, generated_at: hist.generated_at,
-             tip: tip && tip.latest, tip_at: tip && tip.generated_at };
+             tip: tip && tip.latest, tip_at: tip && tip.generated_at,
+             sessions: (tip && tip.sessions) || [] };
   }
 
   /* The daily series with the freshest close spliced on. Same timestamp as the
@@ -184,6 +185,85 @@
   /* Rebuild the exact shape spark returns, so callers parse it unchanged. Only
      the fields anything on this site actually reads are populated: the close
      series, its timestamps, the currency and the previous close. */
+  /* Trading hours, rebuilt for the day this is being read on.
+
+     The tape page draws its session clocks from meta.currentTradingPeriod, and
+     the floor did not supply one. That did not make the clocks blank in the
+     way a missing number usually is — it made the page state, in prose, that
+     every cash session was closed, at a moment when Tokyo had been trading for
+     three hours. A page that says "no data" is useless for a second; a page
+     that says "all cash sessions closed" is believed and wrong.
+
+     The snapshot carries each exchange's opening hours on its own local clock.
+     Turning those into today's epochs is the whole job, and it has to be done
+     against the exchange's timezone rather than a stored offset, because
+     London is +1 in August and +0 in November — a stored offset would move the
+     open by an hour for four months of the year without ever looking broken.
+
+     What this cannot know is holidays. Derived hours will call a closed
+     exchange open on Christmas Day, so every session built here is flagged and
+     the page says where the figure came from. Weekends are handled, because
+     they are arithmetic rather than a calendar. */
+  function tzFields(tz, ms) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour12: false, weekday: "short",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(ms);
+    const o = {};
+    for (const p of parts) o[p.type] = p.value;
+    // Hour 24 is midnight in this formatter's output, not a 25th hour.
+    return { y: +o.year, mo: +o.month, d: +o.day, wd: o.weekday,
+             h: o.hour === "24" ? 0 : +o.hour, mi: +o.minute, s: +o.second };
+  }
+
+  /* Milliseconds to add to a UTC instant to read it as local time in tz. */
+  function tzOffset(tz, ms) {
+    const f = tzFields(tz, ms);
+    return Date.UTC(f.y, f.mo - 1, f.d, f.h, f.mi, f.s) - ms;
+  }
+
+  /* The instant at which the local clock in tz reads the given date and minute.
+     Applied twice: the first offset can be the wrong side of a clock change,
+     and re-reading it at the corrected instant settles it. */
+  function zonedEpoch(tz, y, mo, d, minute) {
+    const wall = Date.UTC(y, mo - 1, d, 0, minute);
+    let t = wall - tzOffset(tz, wall);
+    const off = tzOffset(tz, t);
+    t = wall - off;
+    return Math.floor(t / 1000);
+  }
+
+  /* The weekend is not Saturday and Sunday everywhere. Riyadh, Doha, Dubai,
+     Kuwait and Tel Aviv trade Sunday to Thursday and shut on Friday, so a
+     Sunday-is-closed assumption would call the Gulf shut on one of its five
+     trading days and open on one of its two closed ones — a card that is wrong
+     twice a week, every week, and confidently. Keyed by exchange timezone
+     because that is what the snapshot stores. */
+  const FRI_SAT = { "Asia/Riyadh": 1, "Asia/Qatar": 1, "Asia/Dubai": 1,
+                    "Asia/Bahrain": 1, "Asia/Kuwait": 1, "Asia/Muscat": 1,
+                    "Asia/Jerusalem": 1, "Asia/Tel_Aviv": 1 };
+  const SAT_SUN = { Sat: 1, Sun: 1 };
+  const FRI_SAT_DAYS = { Fri: 1, Sat: 1 };
+
+  function derivedPeriod(hours) {
+    if (!hours) return null;
+    const [tz, open, close] = hours;
+    const WEEKEND = FRI_SAT[tz] ? FRI_SAT_DAYS : SAT_SUN;
+    let ms = Date.now();
+    // Today if it is a weekday, otherwise roll forward to the next one. Two
+    // steps at most from Saturday, and the loop is bounded regardless.
+    for (let i = 0; i < 5; i++) {
+      const f = tzFields(tz, ms);
+      if (!WEEKEND[f.wd]) {
+        return { start: zonedEpoch(tz, f.y, f.mo, f.d, open),
+                 end: zonedEpoch(tz, f.y, f.mo, f.d, close) };
+      }
+      ms += 86400000;
+    }
+    return null;
+  }
+
   function sparkFrom(snapshot, symbols, tf) {
     const result = [];
     for (const sym of symbols) {
@@ -193,6 +273,10 @@
       let series = tf === "d" ? rec : rec[tf];
       if (!series || !series.c || !series.c.length) continue;
       const tipRec = tf === "d" ? (snapshot.tip && snapshot.tip[sym]) : null;
+      const liveRec = (snapshot.tip && snapshot.tip[sym]) || null;
+      const hours = (liveRec && liveRec.z != null)
+        ? snapshot.sessions[liveRec.z] : null;
+      const period = derivedPeriod(hours);
       if (tf === "d") series = withTip(snapshot, sym, series);
       result.push({
         symbol: sym,
@@ -209,6 +293,11 @@
                equity and fund, and those are most of the universe. */
             previousClose: (tipRec && tipRec.p != null) ? tipRec.p
               : (series.c.length > 1 ? series.c[series.c.length - 2] : null),
+            currentTradingPeriod: period ? { regular: period } : undefined,
+            // Built from opening hours, so it does not know about holidays.
+            // The page has to be able to say so rather than imply a live read.
+            sessionDerived: !!period,
+            exchangeTz: hours ? hours[0] : undefined,
             fromPriceFloor: true,
           },
           timestamp: series.t || [],
@@ -268,10 +357,18 @@
      eventual result is. Anything worth waiting for comes back in well under
      four seconds; past that the snapshot is the better answer.
 
+     Four seconds is what the constant says now. It read 1500 while this
+     paragraph claimed four, and the low number was tuned against the three
+     public proxies that fail slowly rather than against the worker that
+     answers in about six hundred milliseconds — leaving roughly two and a half
+     times headroom on a desktop, and none worth having on a phone. The
+     deadline is here to bound a hang, not to prefer a stale file to a live
+     one.
+
      Only proxy hosts get the deadline. The page's own files — prices.json
      among them — are on the same origin and must be allowed to take as long as
      they take. */
-  const PROXY_DEADLINE_MS = 1500;
+  const PROXY_DEADLINE_MS = 4000;
 
   function withDeadline(input, init, host) {
     if (!PROXY_HOSTS.includes(host)) return realFetch(input, init);
@@ -314,7 +411,26 @@
       try {
         const r = await withDeadline(u, { cache: "no-store" }, host);
         if (!r.ok) { dead.add(host); load(); }
-      } catch { dead.add(host); load(); }
+      } catch (e) {
+        /* A timeout is not a death. It used to be treated as one, and the
+           deadline was a second and a half against a worker that answers in
+           about six hundred milliseconds from a desktop — perfectly healthy,
+           and less than three times inside the limit. A phone on a slower link
+           crosses that on the handshake alone, and one late probe condemned
+           the worker for the whole page load: every price then came off the
+           snapshot behind the "live feed is unavailable" banner, on a feed
+           that was up the entire time.
+
+           So only a refusal counts. A host that answered wrongly, or could not
+           be reached at all, is dead, and skipping it saves the page seconds. A
+           host that merely did not finish this one small request in time keeps
+           its place and is judged on the real requests, which have their own
+           deadline and usually succeed. The cost of being wrong in this
+           direction is one slow batch; in the other it was every price on the
+           page. */
+        if (e && e.name === "AbortError") { load(); return; }
+        dead.add(host); load();
+      }
     }));
   })();
 
