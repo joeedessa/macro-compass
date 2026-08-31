@@ -93,6 +93,11 @@
               letter-spacing:.01em; }
   .readhead:first-of-type { margin-top:4px; }
   .readhead .rstamp { font-weight:450; color:var(--text-muted); margin-left:6px; }
+  /* Freshness is a sentence, not a dot. Nothing here is coloured by state,
+     because it is not a state — it is how old the numbers are. */
+  .datafeed { font-size:11.5px; color:var(--text-secondary); margin:0 0 7px; }
+  .datafeed b { font-weight:600; color:var(--text-primary); }
+  .datafeed.stale { color:var(--down); }
   .feeds { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
   .feed { display:flex; align-items:center; gap:6px; font-size:11.5px; padding:4px 9px;
           border:1px solid var(--border); border-radius:999px; color:var(--text-secondary);
@@ -224,10 +229,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831h">
-<script src="mobile.js?v=20260831h" defer></script>
-<script src="pricefloor.js?v=20260831h"></script>
-<script src="links.js?v=20260831h"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831k">
+<script src="mobile.js?v=20260831k" defer></script>
+<script src="pricefloor.js?v=20260831k"></script>
+<script src="links.js?v=20260831k"></script>
 </head>
 <body>
 <div class="wrap">
@@ -288,6 +293,7 @@
     <p class="lede">What is trading right now. Index futures run almost around the clock, so this is
       a real read on the US session hours before it opens — the paths are five-minute bars against
       each contract's own previous settlement. Every card carries the age of its last tick.</p>
+    <div id="datafeed"></div>
     <div id="feeds" class="feeds"></div>
     <div class="heads" id="heads"></div>
 
@@ -733,6 +739,7 @@
   }
 
   function render() {
+    let futuresFresh = false, servingSnapshot = false;
     // ---------- sessions ----------
     const sbox = $("#sessions");
     sbox.textContent = "";
@@ -912,32 +919,56 @@
     }
     strip($("#heads"), LIVE, true);
 
-    /* Which feeds are actually behind the strip above, in the order the day
-       reaches them. Asked for directly: the page has to say what it is being
-       fed at the moment it is read, rather than leaving the reader to work out
-       from a flat sparkline that a market never opened. */
+    /* Two different questions, and they were being answered in one row of
+       identical pills.
+
+       "Is this data arriving?" and "is this market open?" are not the same
+       fact, and the futures pill was answering the first while every pill
+       beside it answered the second — same shape, same amber, same row. Worse,
+       the futures answer dressed as a session is close to meaningless: Yahoo
+       reports the ES contract's trading period as 04:00 Monday to 03:59
+       Tuesday, so "US futures: open" is true roughly twenty-three hours a day
+       and tells the reader nothing. What they actually need to know at six in
+       the morning is that the futures are quoting and the US cash market is
+       still seven hours away — two statements, not one.
+
+       So freshness is stated on its own line, in words, with no session dot;
+       the dots below it are market hours and nothing else. */
+    const onFloor = onFloor_;
+    const dbox = $("#datafeed");
+    dbox.textContent = "";
+    const futAge = onFloor ? floorAge : tickAge("ES=F");
+    /* Read again by the page summary below, which must agree with this line.
+       Only the live path counts as "still quoting": on the snapshot the same
+       age measures when the file was written, not when a contract last
+       traded, and calling that "still quoting" put "futures still quoting"
+       directly above "prices from the snapshot, taken 1h ago" — the identical
+       mistake one line further out. */
+    futuresFresh = !onFloor && futAge != null && futAge < 5400;
+    servingSnapshot = onFloor;
+    const fresh = h("div", "datafeed");
+    fresh.appendChild(h("b", null, onFloor ? "Prices from the snapshot" : "Prices live"));
+    fresh.appendChild(document.createTextNode(
+      futAge == null ? " — no data"
+        : onFloor ? " — taken " + ageLabel(futAge)
+        : " — futures last quoted " + ageLabel(futAge)));
+    // Loud only when it is actually stale; futures pause about an hour a day
+    // for the exchange's own maintenance break and that is not a fault.
+    if (futAge != null && futAge > 5400) fresh.className = "datafeed stale";
+    dbox.appendChild(fresh);
+
+    /* Market hours, and only market hours. */
     const fbox = $("#feeds");
     fbox.textContent = "";
-    /* Intraday bars are the live path and the snapshot has none, so on the
-       floor tickAge knows nothing — and reporting "no data" above nine
-       populated cards would be the same kind of lie this page has just been
-       cleared of. When the floor is serving, the honest answer is the age of
-       the snapshot, which it now publishes. */
-    const onFloor = onFloor_;
-    const futAge = onFloor ? floorAge : tickAge("ES=F");
-    const feeds = [
-      { label: onFloor ? "US futures · snapshot" : "US futures",
-        on: futAge != null && futAge < 3600,
-        note: futAge != null ? ageLabel(futAge) : "no data" },
-    ];
+    const feeds = [];
     for (const [label, sym] of SESSIONS) {
       const d = DAILY[sym], st = d && sessionState(d.meta);
       feeds.push({
-        label: label + " cash",
+        label: label,
         on: !!(st && st.open),
         unknown: !st,
         note: !st ? "hours unknown"
-          : st.open ? "open"
+          : st.open ? "open · closes in " + dur(st.end - nowSec())
           : (st.start - nowSec() > 0 ? "opens in " + dur(st.start - nowSec()) : "closed"),
       });
     }
@@ -1101,9 +1132,19 @@
       rows.length + " instruments · " +
       /* "Live" has to mean live. With the feed down these figures come off the
          snapshot, and a session being open does not make them any fresher —
-         saying so was the same mistake as the sessions line, one clause over. */
+         saying so was the same mistake as the sessions line, one clause over.
+
+         And a shut cash market no longer means stale numbers. This sentence
+         read "all cash sessions closed, figures are the last completed
+         session" directly above a line saying the futures had quoted ten
+         minutes earlier, because it was written when the page carried nothing
+         that trades overnight. Now that it leads with futures, the bell and
+         the freshness of the tape are two separate facts and the summary has
+         to carry both or it contradicts the section under it. */
       (anyOpen ? (anyDerived ? "a session is open, figures are the last snapshot"
                              : "a session is open, figures are live")
+        : anyState && futuresFresh ? "cash markets shut, futures still quoting"
+        : anyState && servingSnapshot ? "cash markets shut, prices from the last snapshot"
         : anyState ? "all cash sessions closed, figures are the last completed session"
         /* Not the same sentence as "everything is shut". Without session data
            the page knows nothing about the bell, and saying so is the only
