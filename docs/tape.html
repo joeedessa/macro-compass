@@ -230,10 +230,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831v">
-<script src="mobile.js?v=20260831v" defer></script>
-<script src="pricefloor.js?v=20260831v"></script>
-<script src="links.js?v=20260831v"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831x">
+<script src="mobile.js?v=20260831x" defer></script>
+<script src="pricefloor.js?v=20260831x"></script>
+<script src="links.js?v=20260831x"></script>
 </head>
 <body>
 <div class="wrap">
@@ -1169,6 +1169,7 @@
       return { chg, sigma: d.sd ? chg / d.sd : null };
     }
 
+    const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
     const size = x => {
       const a = Math.abs(x);
       return a < 0.15 ? "flat" : a < 0.5 ? (x > 0 ? "a shade higher" : "a shade lower")
@@ -1185,30 +1186,45 @@
       return v;
     }
 
-    /* ---- the session that closed ---- */
-    const spy = g("SPY"), iwm = g("IWM"), vixC = g("^VIX");
+    /* ---- the session that closed ----
+       Macro blocks only. This ranked the whole tape universe, which carries
+       twelve sectors, six miners and ten themes alongside the indices — so the
+       read led with "Nuclear -5.5%", a thematic ETF, as though that were the
+       story of the session. It is a fine line in Movers, which exists to find
+       exactly that, and it is not a macro read. Equities, rates, credit,
+       volatility and the dollar are what belongs here; sectors and themes have
+       their own section further down. */
+    const spy = g("SPY"), iwm = g("IWM"), vixC = g("^VIX"),
+          tnxD = dayOf("^TNX"), hyg = g("HYG"), tlt = g("TLT");
     const yTone = spy == null ? "" : spy > 0.15 ? "on" : spy < -0.15 ? "off" : "mixed";
     const yLines = [];
     if (spy == null) {
       yLines.push("No completed session to read.");
     } else {
-      yLines.push("The S&P closed " + pct(spy) + (usDay ? " on " + usDay : "") + ".");
-      // Who actually did the work, by each name's own volatility.
-      const ranked = tapeRows.filter(r => r.sigma != null)
-        .sort((a, b) => Math.abs(b.sigma) - Math.abs(a.sigma));
-      const up = ranked.find(r => r.chg > 0), dn = ranked.find(r => r.chg < 0);
+      const eq = [];
+      eq.push("S&P " + pct(spy));
+      if (iwm != null) eq.push("small caps " + pct(iwm));
+      yLines.push("US equities closed " + size(spy).replace("a shade ", "") + " on " +
+        (usDay || "the last session") + " — " + eq.join(", ") + ".");
+
+      // The rest of the macro board, and only what actually moved.
       const bits = [];
-      if (dn) bits.push(dn.name + " " + pct(dn.chg) + " (" + fmt(Math.abs(dn.sigma), 1) + "σ)");
-      if (up) bits.push(up.name + " " + pct(up.chg) + " (" + fmt(Math.abs(up.sigma), 1) + "σ)");
-      if (bits.length)
-        yLines.push("Furthest from its own normal day: " + bits.join(", and ") + ".");
-      if (iwm != null && spy != null && Math.abs(spy - iwm) > 1)
+      if (tnxD && tnxD.prev != null) {
+        const bp = Math.round((tnxD.last - tnxD.prev) * 100);
+        if (Math.abs(bp) >= 2)
+          bits.push("the 10-year " + (bp > 0 ? "rose " : "fell ") + Math.abs(bp) + "bp");
+      }
+      if (hyg != null && Math.abs(hyg) >= 0.15)
+        bits.push("high yield " + pct(hyg));
+      if (tlt != null && Math.abs(tlt) >= 0.3)
+        bits.push("long Treasuries " + pct(tlt));
+      if (vixC != null && Math.abs(vixC) >= 4)
+        bits.push("volatility " + (vixC > 0 ? "up " : "down ") + fmt(Math.abs(vixC), 1) + "%");
+      if (bits.length) yLines.push(cap(bits.join(", ")) + ".");
+
+      if (iwm != null && Math.abs(spy - iwm) > 1)
         yLines.push("Small caps and the index parted by " + fmt(Math.abs(spy - iwm), 1) +
           " points, so leadership " + (iwm > spy ? "broadened" : "narrowed") + ".");
-      if (vixC != null && Math.abs(vixC) > 5)
-        // pct() carries its own sign, so "rose +5.5%" signed the number twice.
-        yLines.push("Volatility " + (vixC > 0 ? "rose " : "fell ") +
-          fmt(Math.abs(vixC), 1) + "%, which is a real move in the hedge rather than a drift.");
     }
     readInto($("#verdict"), yLines, yTone);
 
@@ -1249,13 +1265,21 @@
       }
 
       // 3. What is next: the bell, and whatever the calendar has.
+      /* The next bell, excluding the US-listed proxies. The UAE and Qatar cards
+         are New York ETFs, so their session is the NYSE one — "UAE opens in
+         5m" would name a market that is not opening, and "MSCI ETF (US) opens
+         in 5m", which is what it actually printed, names nothing at all. Their
+         opening is already covered by the US entries.
+
+         The market rather than the index: "Brazil opens in 34m" reads as a
+         place, which is what a next-bell line is for. */
       const nextUp = allMarkets
-        .filter(m => m.st && !m.st.open && m.st.start > nowSec())
+        .filter(m => m.st && !m.st.open && m.st.start > nowSec() && !/\(US\)/.test(m.name))
         .sort((a, b) => a.st.start - b.st.start)[0];
       const nextLine = h("span", "vsub");
       nextLine.id = "nextline";
       nextLine.textContent = nextUp
-        ? "Next: " + nextUp.name.split(" · ").pop() + " opens in " +
+        ? "Next: " + nextUp.name.split(" · ")[0] + " opens in " +
           dur(nextUp.st.start - nowSec()) + "."
         : "Next: every market this page tracks is trading.";
       nextEl = nextLine;
