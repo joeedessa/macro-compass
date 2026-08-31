@@ -52,6 +52,9 @@ jobs:
       - name: Fetch AI credit, capex and concentration
         run: python3 scripts/fetch_ai.py || true         # FINRA and FRED rate-limit, and the scanner thins out; both keep the last good file
 
+      - name: Fetch Bloomberg market headlines
+        run: python3 scripts/fetch_news.py || true      # a quiet feed keeps the last good file rather than emptying the section
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"

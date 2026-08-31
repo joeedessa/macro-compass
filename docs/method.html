@@ -75,10 +75,10 @@
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
   footer a { color:var(--text-secondary); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831d">
-<script src="mobile.js?v=20260831d" defer></script>
-<script src="pricefloor.js?v=20260831d"></script>
-<script src="links.js?v=20260831d"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831f">
+<script src="mobile.js?v=20260831f" defer></script>
+<script src="pricefloor.js?v=20260831f"></script>
+<script src="links.js?v=20260831f"></script>
 </head>
 <body>
 <div class="wrap">
@@ -108,7 +108,7 @@
     <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a>
     <a href="#read">Above / below</a> <a href="#level">Level test</a> <a href="#crosses">Crosses</a>
     <a href="#align">Alignment read</a> <a href="#pages">Which page shows what</a>
-    <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#log">Change log</a>
+    <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#news">Where headlines come from</a> <a href="#log">Change log</a>
   </div>
 
   <h2 id="tf">1. Three timeframes, three questions</h2>
@@ -318,7 +318,23 @@
       price is the same error wearing a hat.</p>
   </div>
 
-  <h2 id="log">11. Change log</h2>
+  <h2 id="news">11. Where the headlines come from</h2>
+  <p>Bloomberg publishes RSS feeds at <code>feeds.bloomberg.com</code> that need no key and no
+    account. Two of them answer — <code>markets</code> and <code>economics</code>; the wealth feed
+    returns an empty channel and the older <code>/markets/rss</code> path answers 404 with a 300KB
+    HTML page. They carry about thirty headlines between them, current to the minute.</p>
+  <p>A public feed is not a licence to the articles, so what is stored is exactly what RSS is
+    for: <strong>the headline, the time and the link, and nothing else</strong>. No summaries, no
+    extracts, no body text. Every headline on the Today page is a link and the story is read on
+    Bloomberg.</p>
+  <p>Fetched server-side in the hourly job for the same two reasons as the prices: Bloomberg sends
+    no <code>access-control-allow-origin</code>, and a committed file means a bad feed leaves the
+    last good headlines on the page rather than an error. The economics feed also carries Bloomberg
+    Linea, so the same story arrives in Spanish and English with different links a minute apart —
+    deduplicating by URL does not catch it and there is no per-item language tag, so a two-word
+    test on Spanish and Portuguese function words drops the translation and keeps its twin.</p>
+
+  <h2 id="log">12. Change log</h2>
   <div class="tablewrap ref"><table>
     <thead><tr><th>Date</th><th>Change</th></tr></thead>
     <tbody>

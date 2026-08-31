@@ -71,6 +71,16 @@
   .sess .sstate { font-size:14.5px; font-weight:650; }
   .sess .stime { font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
   /* What is actually feeding the strip below, named rather than implied. */
+  .news { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:0 22px; }
+  .nitem { display:flex; gap:9px; align-items:baseline; padding:6px 0;
+           border-bottom:1px solid var(--border); }
+  .nitem:last-child { border-bottom:0; }
+  .nitem a { color:var(--text-primary); text-decoration:none; font-size:13px; line-height:1.35; }
+  .nitem a:hover { text-decoration:underline; }
+  .nwhen { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums;
+           white-space:nowrap; flex:none; min-width:52px; }
+  .nsec { font-size:10px; color:var(--text-muted); border:1px solid var(--border);
+          border-radius:999px; padding:1px 6px; flex:none; }
   .readhead { font-size:13px; font-weight:640; color:var(--text-secondary); margin:14px 0 6px;
               letter-spacing:.01em; }
   .readhead:first-of-type { margin-top:4px; }
@@ -111,6 +121,8 @@
           flex:none; display:inline-block; }
   .cdot.on { background:var(--up); }
   .cdot.off { background:var(--down); }
+  .rcard .rwhen { font-size:10.5px; color:var(--text-muted); font-variant-numeric:tabular-nums;
+                  margin-top:1px; }
   .rstate { font-size:11.5px; color:var(--text-muted); }
   .ravg { font-size:12.5px; font-weight:640; margin-left:auto;
     font-variant-numeric:tabular-nums; }
@@ -197,10 +209,10 @@
   #totop.show { display:flex; }
   #totop:hover { background:#fab219; border-color:#fab219; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260831d">
-<script src="mobile.js?v=20260831d" defer></script>
-<script src="pricefloor.js?v=20260831d"></script>
-<script src="links.js?v=20260831d"></script>
+<link rel="stylesheet" href="mobile.css?v=20260831f">
+<script src="mobile.js?v=20260831f" defer></script>
+<script src="pricefloor.js?v=20260831f"></script>
+<script src="links.js?v=20260831f"></script>
 </head>
 <body>
 <div class="wrap">
@@ -231,6 +243,20 @@
   <p id="status">Fetching live prices…</p>
 
   <div id="content" hidden>
+    <h2>Read of the session</h2>
+    <p class="lede">Two reads, because at most hours of the day they disagree: the session that has
+      finished, and the one already under way. The second is built only from instruments that are
+      trading at this moment and re-reads itself every minute.</p>
+    <h3 class="readhead" id="yhead">Yesterday</h3>
+    <div id="verdict"></div>
+    <h3 class="readhead" id="thead">Today so far</h3>
+    <div id="verdictlive"></div>
+
+    <h2>Market news</h2>
+    <p class="lede" id="newslede">Headlines from Bloomberg's public markets and economics feeds,
+      newest first. Titles and links only — the stories stay on Bloomberg.</p>
+    <div id="news" class="news"></div>
+
     <h2>Sessions</h2>
     <p class="lede">Which cash equity sessions are trading right now. Everything below is the
       current session where a market is open, and the last completed session where it is not —
@@ -250,14 +276,6 @@
     <div id="feeds" class="feeds"></div>
     <div class="heads" id="heads"></div>
 
-    <h2>Read of the session</h2>
-    <p class="lede">Two reads, because at most hours of the day they disagree: the session that has
-      finished, and the one already under way. The second is built only from instruments that are
-      trading at this moment and re-reads itself every minute.</p>
-    <h3 class="readhead" id="yhead">Yesterday</h3>
-    <div id="verdict"></div>
-    <h3 class="readhead" id="thead">Today so far</h3>
-    <div id="verdictlive"></div>
 
     <h2>Movers</h2>
     <p class="lede">Ranked by size of move against each instrument's own 60-day volatility, so a
@@ -549,6 +567,51 @@
     render();
   }
 
+  /* Headlines are their own request against a committed file, so a news
+     failure cannot take the prices down with it and a price failure cannot
+     blank the headlines. Nothing here is fetched from Bloomberg by the
+     browser — the file is built server-side, which is what keeps CORS and a
+     proxy out of the path. */
+  async function loadNews() {
+    let data;
+    try {
+      const r = await fetch("data/news.json", { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      data = await r.json();
+    } catch {
+      $("#newslede").textContent =
+        "Headlines are unavailable right now. Everything else on this page is unaffected.";
+      return;
+    }
+    const items = (data.items || []).slice(0, 24);
+    if (!items.length) return;
+    const box = $("#news");
+    box.textContent = "";
+    for (const it of items) {
+      const row = h("div", "nitem");
+      row.appendChild(h("span", "nwhen", it.at ? ago(it.at) : "–"));
+      const a = h("a", null, it.t);
+      a.href = it.u; a.target = "_blank"; a.rel = "noopener noreferrer";
+      row.appendChild(a);
+      row.appendChild(h("span", "nsec", it.s));
+      box.appendChild(row);
+    }
+    const a = data.generated_at ? ago(data.generated_at) : null;
+    const stamp = !a ? "" : a === "just now" ? " Pulled just now." : " Pulled " + a + " ago.";
+    $("#newslede").textContent =
+      "Headlines from Bloomberg's public markets and economics feeds, newest first. " +
+      "Titles and links only — the stories stay on Bloomberg." + stamp;
+  }
+
+  function ago(iso) {
+    const secs = Math.max(0, nowSec() - Math.floor(new Date(iso).getTime() / 1000));
+    const m = Math.round(secs / 60);
+    if (m < 1) return "just now";
+    if (m < 60) return m + "m";
+    const hrs = Math.round(m / 60);
+    return hrs < 48 ? hrs + "h" : Math.round(hrs / 24) + "d";
+  }
+
   /* The live read says it re-reads itself every minute, so it has to.
 
      Paused while the tab is hidden, because a backgrounded page polling a
@@ -564,6 +627,7 @@
     if (!document.hidden) load(true);
   });
   startAutoRefresh();
+  loadNews();
 
   /* Today's move against the previous close, plus how big that is relative to
      the instrument's own recent daily range. */
@@ -729,11 +793,19 @@
         // page has not established.
         nm.appendChild(h("span", "cdot" + (!r.st ? "" : r.st.open ? " on" : " off")));
         nm.appendChild(document.createTextNode(r.name));
-        if (r.st) nm.title = r.st.open
-          ? "Open — closes " + clock(r.st.end)
-          : (r.st.start - nowSec() > 0 ? "Closed — opens " + clock(r.st.start)
-                                       : "Closed");
         card.appendChild(nm);
+        /* The dot says open or shut; this says until when, or from when.
+           It was a title attribute, which is a tooltip — invisible on a phone,
+           which is where this page is mostly read, so on those screens the dot
+           was a colour with no way to find out what it meant. On the card
+           instead, in the same words the session cards use. */
+        if (r.st) {
+          const ahead = r.st.start - nowSec();
+          card.appendChild(h("div", "rwhen", r.st.open
+            ? "closes in " + dur(r.st.end - nowSec()) + " · " + clock(r.st.end)
+            : ahead > 0 ? "opens in " + dur(ahead) + " · " + clock(r.st.start)
+            : "closed " + dur(nowSec() - r.st.end) + " ago"));
+        }
         const line = h("div", "rline");
         line.appendChild(h("span", "rlast", fmt(r.last, 2)));
         line.appendChild(h("span", "rchg " + (r.chg >= 0 ? "up" : "down"), pct(r.chg)));
