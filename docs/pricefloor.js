@@ -440,6 +440,90 @@
     }));
   })();
 
+  /* When the newest price on this page was actually printed.
+
+     Every page stamped itself "Live prices fetched 08:21" — the time of the
+     request, not the age of what came back. So at half four in the morning,
+     eight hours after New York shut, all fourteen pages announced live prices
+     over Monday's closes. The numbers were right; the word was not.
+
+     Nothing needed to change per page to fix it, because this file already
+     wraps every fetch and therefore sees every response. The clone is parsed
+     off the critical path and its result is only ever read by a stamp, so a
+     failure here must cost nothing — it is caught and dropped. */
+  const seen = new Map();          // symbol -> { tick, open }
+
+  function noteQuoteTimes(res, url) {
+    /* innerUrl returns null for anything that is not a proxied call, so the
+       obvious two-condition test threw on every same-origin request — inside
+       the fetch wrapper, synchronously, which rejected the fetch itself. Pages
+       that ask for spark URLs short-circuited on the first condition and never
+       reached it; the AI and portfolio pages read their data from local JSON
+       and stopped loading entirely. A stamp broke two pages. */
+    const inner = innerUrl(url) || "";
+    if (url.indexOf("spark") === -1 && inner.indexOf("spark") === -1) return;
+    let clone;
+    try { clone = res.clone(); } catch { return; }
+    clone.json().then(j => {
+      const now = Math.floor(Date.now() / 1000);
+      for (const row of ((j.spark && j.spark.result) || [])) {
+        const m = ((row.response || [{}])[0] || {}).meta || {};
+        const t = m.regularMarketTime || null;
+        const reg = (m.currentTradingPeriod || {}).regular;
+        const open = !!(reg && reg.start <= now && now < reg.end && t && t >= reg.start);
+        const prior = seen.get(row.symbol);
+        if (!prior || (t && (!prior.tick || t > prior.tick))) seen.set(row.symbol, { tick: t, open });
+      }
+    }).catch(() => { /* a stamp is not worth an exception */ });
+  }
+
+  /* One sentence about where the numbers on this page came from, for the eight
+     pages that were each writing their own and all writing the same untruth. */
+  window.PRICESTAMP = function () {
+    const now = Math.floor(Date.now() / 1000);
+    const ago = secs => {
+      const m = Math.round(secs / 60);
+      if (m < 1) return "just now";
+      if (m < 60) return m + "m ago";
+      const hrs = Math.round(m / 60);
+      return hrs < 48 ? hrs + "h ago" : Math.round(hrs / 24) + "d ago";
+    };
+    if (window.PRICEFLOOR_ACTIVE && window.PRICEFLOOR_AT) {
+      const t = Math.floor(new Date(window.PRICEFLOOR_AT).getTime() / 1000);
+      return "Prices from the snapshot, taken " + ago(Math.max(0, now - t));
+    }
+    const rows = [...seen.values()].filter(r => r.tick);
+    if (!rows.length) return "Prices fetched " +
+      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    /* Counted, not sampled. The first version took the newest tick on the page
+       and called the whole thing live, so the Trend map — a hundred and
+       forty-two instruments, nearly all of them shut at half four in the
+       morning — reported "live, last tick just now" on the strength of a
+       single future still trading. One instrument does not describe a page.
+
+       So the split is stated. Everything trading, nothing trading, or the
+       count of each. */
+    const open = rows.filter(r => r.open);
+    const shut = rows.filter(r => !r.open);
+    const newestOpen = open.length ? Math.max(...open.map(r => r.tick)) : null;
+    const newestShut = shut.length ? Math.max(...shut.map(r => r.tick)) : null;
+    /* With the time, because the date alone is ambiguous by design: New York
+       closes at 20:00 UTC, which is midnight in the Gulf, so a stamp reading
+       "Tue, Sep 1" for Monday's US close is locally correct and reads as a day
+       out. The clock settles it. */
+    const closedDay = t => {
+      const d = new Date(t * 1000);
+      return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) +
+        " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    };
+
+    if (!shut.length) return "Prices live, last tick " + ago(now - newestOpen);
+    if (!open.length) return "Closing prices, newest from " + closedDay(newestShut);
+    return open.length + " of " + rows.length + " trading now · the rest closed, newest from " +
+      closedDay(newestShut);
+  };
+
   window.fetch = async function (input, init) {
     const url = typeof input === "string" ? input : (input && input.url) || "";
     const host = hostOf(url);
@@ -468,7 +552,7 @@
     let res = null, threw = null;
     try {
       res = await withDeadline(input, init, host);
-      if (res.ok) return res;
+      if (res.ok) { noteQuoteTimes(res, url); return res; }
       if (PROXY_HOSTS.includes(host)) dead.add(host);
     } catch (e) {
       threw = e;

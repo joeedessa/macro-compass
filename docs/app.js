@@ -514,8 +514,7 @@ function renderStamp(live) {
   const t = new Date();
   const bits = [];
   if (live) {
-    bits.push("Live prices fetched " + t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
-      " · " + live + " instruments");
+    bits.push(window.PRICESTAMP() + " · " + live + " instruments");
     /* Named for what it is. This date comes from SPY, so on a morning when
        London and Frankfurt were mid-session and New York had not opened, an
        unqualified "latest close 2026-08-27" read as though the whole page were

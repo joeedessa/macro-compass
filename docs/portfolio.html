@@ -210,11 +210,11 @@
   td.dim { color:var(--text-muted); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901b">
-<script src="mobile.js?v=20260901b" defer></script>
-<script src="pricefloor.js?v=20260901b"></script>
-<script src="quotes.js?v=20260901b"></script>
-<script src="links.js?v=20260901b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260901f">
+<script src="mobile.js?v=20260901f" defer></script>
+<script src="pricefloor.js?v=20260901f"></script>
+<script src="quotes.js?v=20260901f"></script>
+<script src="links.js?v=20260901f"></script>
 </head>
 <body>
 <div class="wrap">
@@ -975,7 +975,11 @@
   $("#stamp").textContent = P.length + " positions · " +
     new Set(P.map(p => p.ccy).filter(Boolean)).size + " currencies · " +
     (livePrices
-      ? "prices live for " + livePrices + " · "
+      /* "live for 397" counted how many symbols got a quote, not how fresh any
+         of them was — so it said live over Monday's closes all Tuesday
+         morning. The count is still worth having; the claim about freshness
+         comes from the shared stamp, which knows when the last tick was. */
+      ? window.PRICESTAMP().toLowerCase() + " for " + livePrices + " · "
       : "prices from the file · ") +
     "positions and fundamentals as of " +
     D.generated_at.slice(0, 16).replace("T", " ") + " UTC" +

@@ -238,15 +238,15 @@
   .note { font-size:11.5px; color:var(--text-muted); margin-top:7px; max-width:88ch;
     line-height:1.45; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901b">
-<script src="mobile.js?v=20260901b" defer></script>
-<script src="pricefloor.js?v=20260901b"></script>
-<script src="quotes.js?v=20260901b"></script>
-<script src="links.js?v=20260901b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260901f">
+<script src="mobile.js?v=20260901f" defer></script>
+<script src="pricefloor.js?v=20260901f"></script>
+<script src="quotes.js?v=20260901f"></script>
+<script src="links.js?v=20260901f"></script>
 </head>
 <body>
-<script src="universe.js?v=20260901b"></script>
-<script src="ma.js?v=20260901b"></script>
+<script src="universe.js?v=20260901f"></script>
+<script src="ma.js?v=20260901f"></script>
 <div class="wrap">
   <header>
     <div>
@@ -1135,8 +1135,7 @@
       return false;
     }
     status.hidden = true;
-    $("#stamp").textContent = "Live prices fetched " +
-      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) +
+    $("#stamp").textContent = window.PRICESTAMP() +
       (MACRO ? " · macro data " + MACRO.generated_at.slice(0, 10) : "") +
       " · " + KEYS.length + " subjects available" +
       (DROPPED.length ? " · no longer trading: " + DROPPED.join(", ") : "");

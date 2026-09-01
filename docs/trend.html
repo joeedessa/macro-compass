@@ -209,14 +209,14 @@
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901b">
-<script src="mobile.js?v=20260901b" defer></script>
-<script src="pricefloor.js?v=20260901b"></script>
-<script src="links.js?v=20260901b"></script>
+<link rel="stylesheet" href="mobile.css?v=20260901f">
+<script src="mobile.js?v=20260901f" defer></script>
+<script src="pricefloor.js?v=20260901f"></script>
+<script src="links.js?v=20260901f"></script>
 </head>
 <body>
-<script src="universe.js?v=20260901b"></script>
-<script src="ma.js?v=20260901b"></script>
+<script src="universe.js?v=20260901f"></script>
+<script src="ma.js?v=20260901f"></script>
 <div class="wrap">
   <header>
     <div>
@@ -989,8 +989,7 @@
     "within 2% of the average in the last 15 bars. On the shorter lengths almost everything " +
     "qualifies and the tag stops meaning anything.";
 
-  $("#stamp").textContent = "Live prices " +
-    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) +
+  $("#stamp").textContent = window.PRICESTAMP() +
     " · " + DATA.length + " instruments, no single stocks · daily, weekly and monthly";
 
   const totop = $("#totop");
