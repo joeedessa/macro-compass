@@ -217,17 +217,47 @@
                false positives. So the tail bar is dropped only when it is off
                the boundary AND repeats the prior close, which also keeps a
                genuinely flat final period that happens to land on a boundary. */
-            const onBoundary = (t) => {
+            /* The test is whether the tail bar covers a period already in the
+               series, not whether it repeats the previous close.
+
+               Requiring a repeated value was the original rule and it only
+               holds while the period is young enough that its running close
+               and the last trade are the same number. Once they diverge the
+               phantom survives, and it turns out that is the normal case, not
+               the edge: measured across twenty-five instruments on 5 September,
+               every single monthly series had an undropped phantom — the
+               September bar sat at one price and the padded Friday bar at
+               another — and seven of the weeklies did too. So the fix that was
+               supposed to have removed this bias was, for monthly averages,
+               doing nothing at all. Gold's 10-month was counting September
+               twice.
+
+               Value equality is fragile for a second reason: the FTSE's pair
+               read 10831.1 and 10831.09, the same close to a rounding error,
+               which is not equal.
+
+               Comparing the period is exact. A bar whose week — or whose month
+               — is the one the previous bar already represents is a duplicate
+               of that period whatever price it carries, and a bar opening a
+               genuinely new period never matches. */
+            const periodKey = (t) => {
               const d = new Date(t * 1000);
-              return interval === "1wk" ? d.getUTCDay() === 1 : d.getUTCDate() === 1;
+              if (interval === "1wk") {
+                const monday = new Date(d);
+                monday.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+                return monday.toISOString().slice(0, 10);
+              }
+              return d.toISOString().slice(0, 7);
             };
             const closes = [];
+            let lastKey = null;
             for (let i = 0; i < raw.length; i++) {
               if (raw[i] == null) continue;
+              const key = ts[i] ? periodKey(ts[i]) : null;
               const isLast = i === raw.length - 1;
-              const dupOfPrev = closes.length && raw[i] === closes[closes.length - 1];
-              if (isLast && dupOfPrev && ts[i] && !onBoundary(ts[i])) continue;
+              if (isLast && key && key === lastKey) continue;   // the padded bar
               closes.push(raw[i]);
+              lastKey = key;
             }
             if (closes.length) out[row.symbol] = closes;
           }
