@@ -31,13 +31,38 @@ jobs:
       # the quarter-hourly job keeps the current price fresh by splicing its
       # tip onto whatever history is on disk. A history a few hours old is not
       # stale, it is simply missing today's bar, which the tip supplies.
-      - name: Fetch price history (once daily, after the US close)
+      # Once a day, decided by how old the file is rather than by the clock.
+      #
+      # This used to run only when the UTC hour was 23, which assumed a run
+      # would happen every hour. It does not: this workflow fires four or five
+      # times a day at whatever hours the scheduler feels like, and across the
+      # last forty runs exactly two landed inside hour 23. The one before those
+      # wrote the history on 31 August and nothing hit the window again for
+      # four and a half days, so the file the fallback path reads was stale by
+      # most of a week while every other feed beside it refreshed hourly.
+      #
+      # The age is read from generated_at inside the file, not from its mtime,
+      # because checkout stamps every file with the moment it was checked out.
+      - name: Fetch price history (once a day)
         run: |
-          hour=$(date -u +%H)
-          if [ "$hour" = "23" ] || [ ! -f docs/data/prices.json ]; then
+          need=$(python3 - <<'EOF'
+          import json, datetime
+          try:
+              g = json.load(open("docs/data/prices.json"))["generated_at"]
+              t = datetime.datetime.strptime(g[:19], "%Y-%m-%dT%H:%M:%S").replace(
+                  tzinfo=datetime.timezone.utc)
+              age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+              print("1" if age >= 20 * 3600 else "0")
+              import sys; print(f"history is {age/3600:.1f}h old", file=sys.stderr)
+          except Exception as e:
+              print("1")
+              import sys; print(f"no readable history ({e}); fetching", file=sys.stderr)
+          EOF
+          )
+          if [ "$need" = "1" ]; then
             python3 scripts/fetch_prices.py || true
           else
-            echo "skipping price history (UTC hour $hour; refreshes at 23)"
+            echo "history is current; skipping"
           fi
 
       - name: Fetch 13F holdings
