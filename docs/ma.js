@@ -131,6 +131,62 @@
     return { ma: lastMa, dist, state, crossedAgo, above: isAbove, tol };
   }
 
+  /* Which way the average itself is heading, and whether it is turning.
+     "Above the 150-day" and "above a 150-day that has been falling for three
+     months" are different facts, and the table only carried the first.
+
+     Measured as the percentage the average has moved over a window, compared
+     with the window before it — so the second reading is what separates
+     "falling" from "flattening after a fall", which is the part worth having.
+
+     The flat threshold is scaled to how much the instrument actually moves,
+     the same way read() scales its level tolerance, because a fixed percentage
+     cannot serve gold and a corporate bond fund at once. Calibrated against
+     forty instruments: the ratio of a 150-day's move over twenty-five bars to
+     that instrument's typical daily move ran from 0.10 to 4.10, with the
+     genuinely flat cases — the VIX at 0.10, metals and mining at 0.16,
+     utilities at 0.30 — separating cleanly from the trending ones at 2.5 and
+     up. One typical daily move across the whole window is the line. Expressed
+     per bar so it holds when the window changes with the period.
+
+     The window is the period over six, floored at three and capped at
+     twenty-five: about five weeks for a 150-day, a fortnight for a 50-day,
+     three bars for a ten-month. */
+  const SLOPE_PER_BAR = 0.04;
+
+  function typicalMove(vals) {
+    let sumAbs = 0, cnt = 0;
+    for (let k = Math.max(1, vals.length - 40); k < vals.length; k++) {
+      if (!vals[k - 1]) continue;              // a zero print is not a price
+      sumAbs += Math.abs(vals[k] / vals[k - 1] - 1); cnt++;
+    }
+    return cnt ? sumAbs / cnt : 0.02;
+  }
+
+  function slope(vals, period) {
+    if (!vals || vals.length < period + 2) return null;
+    const ma = smaSeries(vals, period);
+    const W = Math.max(3, Math.min(25, Math.round(period / 6)));
+    if (ma.length < 2 * W + 1) return null;
+    const L = ma.length - 1;
+    if (!(ma[L - W] > 0) || !(ma[L - 2 * W] > 0)) return null;
+    const now = ma[L] / ma[L - W] - 1;
+    const prior = ma[L - W] / ma[L - 2 * W] - 1;
+    const thr = typicalMove(vals) * W * SLOPE_PER_BAR;
+    const sgn = x => x > thr ? 1 : x < -thr ? -1 : 0;
+    const a = sgn(now), b = sgn(prior);
+    let state, label, glyph;
+    if (a > 0 && b < 0)      { state = "turnup";   label = "turning up";           glyph = "⤴"; }
+    else if (a < 0 && b > 0) { state = "turndown"; label = "turning down";         glyph = "⤵"; }
+    else if (a > 0)          { state = "rising";   label = "rising";               glyph = "↑"; }
+    else if (a < 0)          { state = "falling";  label = "falling";              glyph = "↓"; }
+    else if (b < 0)          { state = "flatup";   label = "flattening from down"; glyph = "→"; }
+    else if (b > 0)          { state = "flatdown"; label = "flattening from up";   glyph = "→"; }
+    else                     { state = "flat";     label = "flat";                 glyph = "→"; }
+    return { pct: now * 100, priorPct: prior * 100, bars: W, thr: thr * 100,
+             state, label, glyph };
+  }
+
   async function fetchBars(symbols, range, interval) {
     const out = {};
     for (let i = 0; i < symbols.length; i += 10) {
@@ -595,9 +651,24 @@
        monthly 10/20. Tagging every column would bury them. */
     const n = +key.slice(4), tfk = key[3];
     const TAGGED = { d: [150, 200], w: [30, 40, 200], m: [10, 20] };
-    if (m.state && TAGGED[tfk].includes(n)) td.appendChild(el("span", "matag " + m.state, m.state));
+    const tagged = TAGGED[tfk].includes(n);
+    if (m.state && tagged) td.appendChild(el("span", "matag " + m.state, m.state));
+    /* Which way the average is going, on the same lines that carry the level
+       tag — the structural ones a chartist actually trades off. Every column
+       would be noise; a glyph on the 150 and 200 is the fact that changes what
+       being above them means. */
+    let sl = null;
+    if (tagged) {
+      const vals = tfk === "d" ? row.daily : bars(TF_OF[tfk], row.sym);
+      sl = slope(vals, n);
+      if (sl) td.appendChild(el("span", "maslope " + sl.state, sl.glyph));
+    }
     td.title = (m.above ? "Above" : "Below") + " the " + n + "-period average, "
-      + "which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
+      + "which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3)
+      + (sl ? " — the average is " + sl.label + " (" + (sl.pct > 0 ? "+" : "")
+              + fmt(sl.pct, 1) + "% over " + sl.bars + " bars, against "
+              + (sl.priorPct > 0 ? "+" : "") + fmt(sl.priorPct, 1) + "% the "
+              + sl.bars + " before)" : "");
     return td;
   }
 
@@ -639,7 +710,7 @@
     container.appendChild(sw);
   }
 
-  window.MA = { PERIODS, COL_PERIODS, PERIODS_BY_TF, smaSeries, emaSeries, read, load, bars, events,
+  window.MA = { PERIODS, COL_PERIODS, PERIODS_BY_TF, smaSeries, emaSeries, read, slope, load, bars, events,
                 breadth, panel, crosses, scan, TIERS, SCAN_TF, TF,
                 colDefs, colCell, colValue, colToggles, colRead, isColKey, COL_STATE };
 })();

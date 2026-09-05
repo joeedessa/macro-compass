@@ -203,20 +203,29 @@
     line-height:1.45; }
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:90ch; }
   footer a { color:var(--text-secondary); }
+  /* MA slope: direction of the average itself, beside its distance. Amber for
+     a turn because a turn is neither up nor down yet — it is the thing to look
+     at. */
+  .maslope { margin-left:5px; font-size:11px; opacity:.85; }
+  .maslope.rising  { color:var(--up); }
+  .maslope.falling { color:var(--down); }
+  .maslope.turnup, .maslope.turndown { color:var(--open, #c8890a); font-weight:700; opacity:1; }
+  .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
+
   #totop { position:fixed; right:18px; bottom:18px; z-index:40; width:40px; height:40px;
     border-radius:50%; border:1px solid #eda100; background:#eda100; color:#241a03;
     font-size:17px; font-weight:700; cursor:pointer; display:none; align-items:center;
     justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,0.28); }
   #totop.show { display:flex; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901f">
-<script src="mobile.js?v=20260901f" defer></script>
-<script src="pricefloor.js?v=20260901f"></script>
-<script src="links.js?v=20260901f"></script>
+<link rel="stylesheet" href="mobile.css?v=20260905c">
+<script src="mobile.js?v=20260905c" defer></script>
+<script src="pricefloor.js?v=20260905c"></script>
+<script src="links.js?v=20260905c"></script>
 </head>
 <body>
-<script src="universe.js?v=20260901f"></script>
-<script src="ma.js?v=20260901f"></script>
+<script src="universe.js?v=20260905c"></script>
+<script src="ma.js?v=20260905c"></script>
 <div class="wrap">
   <header>
     <div>
@@ -259,6 +268,17 @@
       eight equal boxes — they are the stages a trend passes through,
       and each has a name a trader would use and a thing they would do about it. Click a state to
       filter everything below to it.</p>
+    <p class="lede">Each moving-average column now also says which way that average is
+      <em>heading</em>, because being above a rising 150-day and above one that has been sliding
+      for three months are not the same position:
+      <span class="maslope rising">↑</span> rising ·
+      <span class="maslope falling">↓</span> falling ·
+      <span class="maslope flat">→</span> flat or flattening ·
+      <span class="maslope turnup">⤴</span> turning up ·
+      <span class="maslope turndown">⤵</span> turning down.
+      Hover any cell for the figures behind it. Flat is measured against how much that instrument
+      normally moves, so a quiet bond fund and a volatility index each get a threshold that means
+      something for them.</p>
     <div class="acards" id="acards"></div>
     <p class="note" id="anote"></p>
 
@@ -510,7 +530,15 @@
       const am = readAt(r.sym, "monthly", A_M);
       const w  = readAt(r.sym, "weekly", WK);
       const m  = readAt(r.sym, "monthly", MO);
-      return { ...r, d, aw, am, w, m, q: quadOf(w, m), a: alignOf(d, aw, am) };
+      /* Which way each average is heading, not just where price sits against
+         it. Above a rising 150-day and above a 150-day that has been falling
+         for three months are different situations and the table said the same
+         thing about both. */
+      const ds = MA.slope(DAILY[r.sym], DAILY_N);
+      const ws = MA.slope(MA.bars("weekly", r.sym), WK);
+      const ms = MA.slope(MA.bars("monthly", r.sym), MO);
+      return { ...r, d, aw, am, w, m, ds, ws, ms,
+               q: quadOf(w, m), a: alignOf(d, aw, am) };
     });
   }
   let DATA = build();
@@ -911,19 +939,27 @@
         const td = h("td", d.d.above ? "maup" : "madown");
         td.appendChild(h("span", "maside", d.d.above ? "▲" : "▼"));
         td.appendChild(document.createTextNode(" " + pct(d.d.dist)));
-        td.title = (d.d.above ? "Above" : "Below") + " the daily 50, which sits at " +
-          fmt(d.d.ma, Math.abs(d.d.ma) >= 100 ? 1 : 3);
+        if (d.ds) td.appendChild(h("span", "maslope " + d.ds.state, d.ds.glyph));
+        td.title = (d.d.above ? "Above" : "Below") + " the daily " + DAILY_N +
+          ", which sits at " + fmt(d.d.ma, Math.abs(d.d.ma) >= 100 ? 1 : 3) +
+          (d.ds ? " — the average is " + d.ds.label + " (" + pct(d.ds.pct) + " over " +
+                  d.ds.bars + " bars, against " + pct(d.ds.priorPct) + " the " +
+                  d.ds.bars + " before)" : "");
         tr.appendChild(td);
       }
-      for (const [m, tf] of [[d.w, "weekly"], [d.m, "monthly"]]) {
+      for (const [m, tf, sl] of [[d.w, "weekly", d.ws], [d.m, "monthly", d.ms]]) {
         if (!m) { tr.appendChild(h("td", "madim", "–")); continue; }
         const td = h("td", m.above ? "maup" : "madown");
         td.appendChild(h("span", "maside", m.above ? "▲" : "▼"));
         td.appendChild(document.createTextNode(" " + pct(m.dist)));
         const n = tf === "weekly" ? WK : MO;
         if (m.state && n >= 30) td.appendChild(h("span", "matag " + m.state, m.state));
+        if (sl) td.appendChild(h("span", "maslope " + sl.state, sl.glyph));
         td.title = (m.above ? "Above" : "Below") + " the " + tf + " " + n +
-          ", which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3);
+          ", which sits at " + fmt(m.ma, Math.abs(m.ma) >= 100 ? 1 : 3) +
+          (sl ? " — the average is " + sl.label + " (" + pct(sl.pct) + " over " +
+                sl.bars + " bars, against " + pct(sl.priorPct) + " the " +
+                sl.bars + " before)" : "");
         tr.appendChild(td);
       }
       tb.appendChild(tr);

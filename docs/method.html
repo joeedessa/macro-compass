@@ -75,10 +75,10 @@
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
   footer a { color:var(--text-secondary); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901f">
-<script src="mobile.js?v=20260901f" defer></script>
-<script src="pricefloor.js?v=20260901f"></script>
-<script src="links.js?v=20260901f"></script>
+<link rel="stylesheet" href="mobile.css?v=20260905c">
+<script src="mobile.js?v=20260905c" defer></script>
+<script src="pricefloor.js?v=20260905c"></script>
+<script src="links.js?v=20260905c"></script>
 </head>
 <body>
 <div class="wrap">
@@ -108,7 +108,7 @@
     <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a>
     <a href="#read">Above / below</a> <a href="#level">Level test</a> <a href="#crosses">Crosses</a>
     <a href="#align">Alignment read</a> <a href="#pages">Which page shows what</a>
-    <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#news">Where headlines come from</a> <a href="#log">Change log</a>
+    <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#slope">MA slope</a> <a href="#news">Where headlines come from</a> <a href="#log">Change log</a>
   </div>
 
   <h2 id="tf">1. Three timeframes, three questions</h2>
@@ -318,7 +318,40 @@
       price is the same error wearing a hat.</p>
   </div>
 
-  <h2 id="news">11. Where the headlines come from</h2>
+  <h2 id="slope">11. Which way an average is heading</h2>
+  <p>Every moving-average cell says how far price sits from the average. It now also says which way
+    the average itself is going, because <strong>above a rising 150-day and above a 150-day that has
+    been sliding for three months are not the same position</strong> — and the table said the same
+    thing about both. Bitcoin sitting 13.7% above a falling average is a rally into resistance;
+    clean energy 6.3% below a rising one is a pullback in an uptrend.</p>
+  <p>The average's move is measured over a window of the period divided by six — about five weeks
+    for a 150-day, a fortnight for a 50-day — and compared with the window before it. That second
+    reading is what separates <em>falling</em> from <em>flattening after a fall</em>, which is the
+    part worth having:</p>
+  <div class="tablewrap ref"><table>
+    <thead><tr><th>Reading</th><th>Latest window</th><th>Window before</th></tr></thead>
+    <tbody>
+      <tr><td>↑ rising</td><td>up</td><td>up or flat</td></tr>
+      <tr><td>↓ falling</td><td>down</td><td>down or flat</td></tr>
+      <tr><td>⤴ turning up</td><td>up</td><td>down</td></tr>
+      <tr><td>⤵ turning down</td><td>down</td><td>up</td></tr>
+      <tr><td>→ flattening from down</td><td>flat</td><td>down</td></tr>
+      <tr><td>→ flattening from up</td><td>flat</td><td>up</td></tr>
+      <tr><td>→ flat</td><td>flat</td><td>flat</td></tr>
+    </tbody>
+  </table></div>
+  <p>"Flat" is scaled to how much the instrument itself moves, on the same principle as the level
+    tolerance above: a fixed percentage cannot serve gold and a corporate bond fund at once. The
+    threshold is one typical daily move across the whole window. It was calibrated against forty
+    instruments rather than chosen — the ratio of a 150-day's move over twenty-five bars to that
+    instrument's typical daily move ran from 0.10 to 4.10, and the genuinely flat cases separated
+    cleanly at the bottom: the VIX at 0.10, metals and mining at 0.16, utilities at 0.30, against
+    the S&amp;P at 3.32 and energy at 4.10.</p>
+  <p>Shown on the lines a chartist treats as structure — daily 150 and 200, weekly 30, 40 and 200,
+    monthly 10 and 20 — because a glyph on every column would be noise. Hover any cell for the
+    figures behind the reading.</p>
+
+  <h2 id="news">12. Where the headlines come from</h2>
   <p>Bloomberg publishes RSS feeds at <code>feeds.bloomberg.com</code> that need no key and no
     account. Two of them answer — <code>markets</code> and <code>economics</code>; the wealth feed
     returns an empty channel and the older <code>/markets/rss</code> path answers 404 with a 300KB
@@ -334,7 +367,7 @@
     deduplicating by URL does not catch it and there is no per-item language tag, so a two-word
     test on Spanish and Portuguese function words drops the translation and keeps its twin.</p>
 
-  <h2 id="log">12. Change log</h2>
+  <h2 id="log">13. Change log</h2>
   <div class="tablewrap ref"><table>
     <thead><tr><th>Date</th><th>Change</th></tr></thead>
     <tbody>

@@ -80,6 +80,15 @@
   .trend { font-size:12px; }
   .trend.up { color:var(--up); } .trend.down { color:var(--down); }
   td svg { display:block; margin-left:auto; }
+  /* MA slope: direction of the average itself, beside its distance. Amber for
+     a turn because a turn is neither up nor down yet — it is the thing to look
+     at. */
+  .maslope { margin-left:5px; font-size:11px; opacity:.85; }
+  .maslope.rising  { color:var(--up); }
+  .maslope.falling { color:var(--down); }
+  .maslope.turnup, .maslope.turndown { color:var(--open, #c8890a); font-weight:700; opacity:1; }
+  .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
+
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:80ch; }
   footer a { color:var(--text-secondary); }
 
@@ -157,14 +166,14 @@
   .matag.lost, .matag.rejected { color:var(--down); }
   .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260901f">
-<script src="mobile.js?v=20260901f" defer></script>
-<script src="pricefloor.js?v=20260901f"></script>
-<script src="links.js?v=20260901f"></script>
+<link rel="stylesheet" href="mobile.css?v=20260905c">
+<script src="mobile.js?v=20260905c" defer></script>
+<script src="pricefloor.js?v=20260905c"></script>
+<script src="links.js?v=20260905c"></script>
 </head>
 <body>
-<script src="universe.js?v=20260901f"></script>
-<script src="ma.js?v=20260901f"></script>
+<script src="universe.js?v=20260905c"></script>
+<script src="ma.js?v=20260905c"></script>
 <div class="wrap">
   <header>
     <div>
