@@ -65,6 +65,32 @@ jobs:
             echo "history is current; skipping"
           fi
 
+      # Monthly, and gated on the age of the data rather than the clock — the
+      # same lesson as the price history above, which sat five days stale
+      # because it only refreshed when a run happened to land in hour 23.
+      # These figures barely move (one more day shifts the 200-day crossing
+      # rate by 0.00 a year), so monthly is generous; what matters is that they
+      # are dated and reproducible rather than pasted in by hand.
+      - name: Measure what each moving average is worth (monthly)
+        run: |
+          need=$(python3 - <<'EOF'
+          import json, datetime
+          try:
+              g = json.load(open("docs/data/ma-stats.json"))["generated_at"]
+              t = datetime.datetime.strptime(g[:19], "%Y-%m-%dT%H:%M:%S").replace(
+                  tzinfo=datetime.timezone.utc)
+              age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+              print("1" if age >= 30 * 24 * 3600 else "0")
+          except Exception:
+              print("1")
+          EOF
+          )
+          if [ "$need" = "1" ]; then
+            python3 scripts/measure_ma.py || true
+          else
+            echo "moving-average statistics are current; skipping"
+          fi
+
       - name: Fetch 13F holdings
         run: python3 scripts/fetch_letters.py || true   # quarterly data; a bad EDGAR day must not block the price refresh
 

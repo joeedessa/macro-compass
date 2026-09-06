@@ -75,10 +75,10 @@
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
   footer a { color:var(--text-secondary); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260905f">
-<script src="mobile.js?v=20260905f" defer></script>
-<script src="pricefloor.js?v=20260905f"></script>
-<script src="links.js?v=20260905f"></script>
+<link rel="stylesheet" href="mobile.css?v=20260906b">
+<script src="mobile.js?v=20260906b" defer></script>
+<script src="pricefloor.js?v=20260906b"></script>
+<script src="links.js?v=20260906b"></script>
 </head>
 <body>
 <div class="wrap">
@@ -181,13 +181,17 @@
     that any particular one should be traded. This section is the evidence, measured on forty
     instruments spanning equities, bonds, credit, metals, energy, agriculture and single countries
     — five years of daily bars, five of weekly, twenty-five of monthly.</p>
-  <div class="tablewrap ref"><table>
+  <p class="lede" id="mastamp">These figures are produced by
+    <code>scripts/measure_ma.py</code> and refreshed monthly. They move slowly by construction: one
+    more day shifts the 200-day figure by 0.00 crosses a year, a month by 0.16 — the bars go stale,
+    a twenty-five-year statistic does not.</p>
+  <div class="tablewrap ref"><table id="matable">
     <thead><tr><th>Line</th><th>Crosses a year</th><th>Reverse quickly</th><th>Time hugging the line</th><th>Lag behind price</th></tr></thead>
     <tbody>
       <tr><td>Daily 50</td><td>18.8</td><td>65%</td><td>13%</td><td>24 sessions (~1.2 months)</td></tr>
       <tr><td>Daily 150</td><td>11.3</td><td>81%</td><td>18%</td><td>74 sessions (~3.5 months)</td></tr>
       <tr><td>Daily 200</td><td>9.3</td><td><strong>83%</strong></td><td>19%</td><td>100 sessions (~4.7 months)</td></tr>
-      <tr><td>Weekly 10</td><td>9.2</td><td>50%</td><td>15%</td><td>4 weeks (~1.0 months)</td></tr>
+      <tr><td>Weekly 10</td><td>9.2</td><td>50%</td><td>15%</td><td>4 weeks (~1.0 month)</td></tr>
       <tr><td>Weekly 30</td><td>5.4</td><td>56%</td><td>12%</td><td>14 weeks (~3.3 months)</td></tr>
       <tr><td>Weekly 40</td><td>4.4</td><td>67%</td><td>15%</td><td>20 weeks (~4.5 months)</td></tr>
       <tr><td>Monthly 10</td><td><strong>1.9</strong></td><td>52%</td><td>14%</td><td>4 months (~4.5 months)</td></tr>
@@ -217,6 +221,45 @@
   <p><strong>Slower is not automatically cleaner.</strong> The weekly 40 reverses more often than the
     weekly 30 (67% against 56%) despite being slower, because it sits where price spends more of its
     time. Length buys lag reliably; it does not buy reliability reliably.</p>
+
+  <script>
+  /* The table above ships as HTML and is replaced with whatever the last
+     measurement produced, so the page is readable with no network and current
+     when there is one — the committed-file-as-floor pattern used everywhere
+     else here. The figures were hand-pasted before this; the script that
+     produced them lived in a shell, which is no provenance at all for a page
+     whose whole purpose is being checkable. */
+  (async () => {
+    try {
+      const r = await fetch("data/ma-stats.json?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!d.rows || !d.rows.length) return;
+      const tb = document.querySelector("#matable tbody");
+      if (!tb) return;
+      tb.textContent = "";
+      for (const x of d.rows) {
+        const tr = document.createElement("tr");
+        const cells = [x.line, x.crosses_per_year, x.reverse_pct + "%", x.chop_pct + "%",
+          x.lag_text];
+        cells.forEach((c, i) => {
+          const td = document.createElement("td");
+          // The two headline figures stay emphasised after the swap.
+          const bold = (x.line === "Daily 200" && i === 2) || (x.line === "Monthly 10" && i === 1);
+          if (bold) { const b = document.createElement("strong"); b.textContent = c; td.appendChild(b); }
+          else td.textContent = c;
+          tr.appendChild(td);
+        });
+        tb.appendChild(tr);
+      }
+      const when = new Date(d.generated_at).toLocaleDateString([],
+        { year: "numeric", month: "long", day: "numeric" });
+      const stamp = document.querySelector("#mastamp");
+      if (stamp) stamp.insertAdjacentHTML("beforeend",
+        " <strong>Last measured " + when + "</strong>, on " + d.sample + " instruments.");
+    } catch { /* the shipped table stands */ }
+  })();
+  </script>
 
   <h2 id="means">5. What the lines mean, in plain terms</h2>
   <p>The lengths table says what each average is. This says what being on one side of it tells you.</p>

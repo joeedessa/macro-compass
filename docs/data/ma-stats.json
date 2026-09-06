@@ -1,0 +1,128 @@
+{
+ "generated_at": "2026-09-06T13:07:16Z",
+ "sample": 40,
+ "windows": {
+  "daily": "5 years",
+  "weekly": "5 years",
+  "monthly": "25 years"
+ },
+ "rows": [
+  {
+   "instruments": 40,
+   "crosses_per_year": 18.8,
+   "reverse_pct": 65,
+   "chop_pct": 13,
+   "lag_bars": 24.5,
+   "line": "Daily 50",
+   "timeframe": "daily",
+   "period": 50,
+   "lag_unit": "sessions",
+   "lag_months": 1.2,
+   "lag_text": "24 sessions (~1.2 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 11.3,
+   "reverse_pct": 81,
+   "chop_pct": 18,
+   "lag_bars": 74.5,
+   "line": "Daily 150",
+   "timeframe": "daily",
+   "period": 150,
+   "lag_unit": "sessions",
+   "lag_months": 3.5,
+   "lag_text": "74 sessions (~3.5 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 9.3,
+   "reverse_pct": 83,
+   "chop_pct": 19,
+   "lag_bars": 99.5,
+   "line": "Daily 200",
+   "timeframe": "daily",
+   "period": 200,
+   "lag_unit": "sessions",
+   "lag_months": 4.7,
+   "lag_text": "100 sessions (~4.7 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 9.4,
+   "reverse_pct": 50,
+   "chop_pct": 15,
+   "lag_bars": 4.5,
+   "line": "Weekly 10",
+   "timeframe": "weekly",
+   "period": 10,
+   "lag_unit": "weeks",
+   "lag_months": 1.0,
+   "lag_text": "4 weeks (~1.0 month)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 5.4,
+   "reverse_pct": 56,
+   "chop_pct": 12,
+   "lag_bars": 14.5,
+   "line": "Weekly 30",
+   "timeframe": "weekly",
+   "period": 30,
+   "lag_unit": "weeks",
+   "lag_months": 3.3,
+   "lag_text": "14 weeks (~3.3 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 4.4,
+   "reverse_pct": 67,
+   "chop_pct": 16,
+   "lag_bars": 19.5,
+   "line": "Weekly 40",
+   "timeframe": "weekly",
+   "period": 40,
+   "lag_unit": "weeks",
+   "lag_months": 4.5,
+   "lag_text": "20 weeks (~4.5 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 1.9,
+   "reverse_pct": 52,
+   "chop_pct": 14,
+   "lag_bars": 4.5,
+   "line": "Monthly 10",
+   "timeframe": "monthly",
+   "period": 10,
+   "lag_unit": "months",
+   "lag_months": 4.5,
+   "lag_text": "4 months (~4.5 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 1.7,
+   "reverse_pct": 50,
+   "chop_pct": 12,
+   "lag_bars": 5.5,
+   "line": "Monthly 12",
+   "timeframe": "monthly",
+   "period": 12,
+   "lag_unit": "months",
+   "lag_months": 5.5,
+   "lag_text": "6 months (~5.5 months)"
+  },
+  {
+   "instruments": 40,
+   "crosses_per_year": 1.2,
+   "reverse_pct": 52,
+   "chop_pct": 10,
+   "lag_bars": 9.5,
+   "line": "Monthly 20",
+   "timeframe": "monthly",
+   "period": 20,
+   "lag_unit": "months",
+   "lag_months": 9.5,
+   "lag_text": "10 months (~9.5 months)"
+  }
+ ]
+}
