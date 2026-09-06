@@ -75,10 +75,10 @@
   footer { margin-top:46px; font-size:13px; color:var(--text-muted); max-width:86ch; }
   footer a { color:var(--text-secondary); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260905e">
-<script src="mobile.js?v=20260905e" defer></script>
-<script src="pricefloor.js?v=20260905e"></script>
-<script src="links.js?v=20260905e"></script>
+<link rel="stylesheet" href="mobile.css?v=20260905f">
+<script src="mobile.js?v=20260905f" defer></script>
+<script src="pricefloor.js?v=20260905f"></script>
+<script src="links.js?v=20260905f"></script>
 </head>
 <body>
 <div class="wrap">
@@ -105,7 +105,7 @@
   </nav>
 
   <div class="toc">
-    <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a>
+    <a href="#tf">Timeframes</a> <a href="#lengths">Lengths</a> <a href="#compare">Daily vs weekly vs monthly</a> <a href="#worth">What each line is worth</a> <a href="#means">What the lines mean</a>
     <a href="#read">Above / below</a> <a href="#level">Level test</a> <a href="#crosses">Crosses</a>
     <a href="#align">Alignment read</a> <a href="#pages">Which page shows what</a>
     <a href="#data">Data rules</a> <a href="#prices">Where prices come from</a> <a href="#slope">MA slope</a> <a href="#news">Where headlines come from</a> <a href="#log">Change log</a>
@@ -173,10 +173,86 @@
       trend, they are three different trends. A name can be below its daily 50, above its 30-week
       and above its 10-month at the same time — and that specific combination is a <em>pullback in an
       uptrend</em>, the swing trader's setup, not a contradiction. Reading them together is the point,
-      and section 7 does exactly that.</p>
+      and section 9 does exactly that.</p>
   </div>
 
-  <h2 id="read">4. Above or below: how a cell reads</h2>
+  <h2 id="worth">4. What each line is actually worth</h2>
+  <p>The lengths above are the ones practitioners read. That is a reason to use them, not evidence
+    that any particular one should be traded. This section is the evidence, measured on forty
+    instruments spanning equities, bonds, credit, metals, energy, agriculture and single countries
+    — five years of daily bars, five of weekly, twenty-five of monthly.</p>
+  <div class="tablewrap ref"><table>
+    <thead><tr><th>Line</th><th>Crosses a year</th><th>Reverse quickly</th><th>Time hugging the line</th><th>Lag behind price</th></tr></thead>
+    <tbody>
+      <tr><td>Daily 50</td><td>18.8</td><td>65%</td><td>13%</td><td>24 sessions (~1.2 months)</td></tr>
+      <tr><td>Daily 150</td><td>11.3</td><td>81%</td><td>18%</td><td>74 sessions (~3.5 months)</td></tr>
+      <tr><td>Daily 200</td><td>9.3</td><td><strong>83%</strong></td><td>19%</td><td>100 sessions (~4.7 months)</td></tr>
+      <tr><td>Weekly 10</td><td>9.2</td><td>50%</td><td>15%</td><td>4 weeks (~1.0 months)</td></tr>
+      <tr><td>Weekly 30</td><td>5.4</td><td>56%</td><td>12%</td><td>14 weeks (~3.3 months)</td></tr>
+      <tr><td>Weekly 40</td><td>4.4</td><td>67%</td><td>15%</td><td>20 weeks (~4.5 months)</td></tr>
+      <tr><td>Monthly 10</td><td><strong>1.9</strong></td><td>52%</td><td>14%</td><td>4 months (~4.5 months)</td></tr>
+      <tr><td>Monthly 12</td><td>1.7</td><td>50%</td><td>11%</td><td>6 months (~5.5 months)</td></tr>
+      <tr><td>Monthly 20</td><td>1.2</td><td>51%</td><td>9%</td><td>10 months (~9.5 months)</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>"Reverse quickly"</strong> means the new side lasted less than 15% of the averaging
+    window before price crossed back — thirty sessions on a 200-day, three months on a 10-month. The
+    threshold is proportional because a fortnight means something different to a 50-day than to a
+    20-month; comparing a fixed number of bars across lines would flatter the slow ones.
+    <strong>Lag</strong> is arithmetic, not measured: the mean age of the data inside an
+    <em>n</em>-period average is (<em>n</em>−1)/2 bars, so that is how far behind price the line
+    sits by construction.</p>
+  <p>Three things fall out of this table, and they are the reason the site is built the way it is.</p>
+  <p><strong>The 200-day cross is not a signal.</strong> It happens nine times a year on the average
+    instrument and <strong>83% of those reverse inside thirty sessions</strong> — the worst record of
+    any line here. That is why nothing on this site fires an alert on it. It is drawn as a level,
+    tagged when price tests it, and read as context; the trading decision lives on the alignment of
+    three timeframes, not on one line being crossed.</p>
+  <p><strong>The daily 200 and the monthly 10 are the same line.</strong> Section 2 asserts it — ten
+    months is roughly two hundred sessions — and the lag column measures it: 4.7 months against 4.5.
+    They differ in what they do with it. The daily version crosses 9.3 times a year with 83% noise;
+    the monthly version crosses <strong>1.9 times a year with 52%</strong>. Same information,
+    sampled monthly, and most of the whipsaw disappears. If you find yourself reacting to a 200-day
+    cross, the 10-month is the same question asked at a frequency you can actually act on.</p>
+  <p><strong>Slower is not automatically cleaner.</strong> The weekly 40 reverses more often than the
+    weekly 30 (67% against 56%) despite being slower, because it sits where price spends more of its
+    time. Length buys lag reliably; it does not buy reliability reliably.</p>
+
+  <h2 id="means">5. What the lines mean, in plain terms</h2>
+  <p>The lengths table says what each average is. This says what being on one side of it tells you.</p>
+  <div class="tablewrap ref"><table>
+    <thead><tr><th>Line</th><th>What it represents</th><th>What crossing it means</th><th>Use it for</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Daily 50</strong></td>
+        <td>Roughly a quarter of trading. The line a swing trader treats as the edge of the current move.</td>
+        <td>The swing is over or has resumed. Nineteen times a year, so it is a frequent, low-conviction statement.</td>
+        <td>Entries, stops, judging whether a pullback is still orderly.</td></tr>
+      <tr><td><strong>Daily 150 / 200</strong></td>
+        <td>Where the last two-thirds of a year of buyers sit on average. The most watched line in the market, which is most of why it works: it is a level because everyone treats it as one.</td>
+        <td>On its own, very little — 83% of crosses reverse. It matters as support and resistance, not as a trigger.</td>
+        <td>A level to lean on, and to size around. Not a decision on its own.</td></tr>
+      <tr><td><strong>Weekly 30</strong></td>
+        <td>Seven months of weekly closes. Weinstein's stage line — the boundary his four-stage model is built around.</td>
+        <td>The intermediate trend has changed. This is the honest dividing line between a dip and a break.</td>
+        <td>Position trading. Below it you are not long; above it, dips are buyable.</td></tr>
+      <tr><td><strong>Monthly 10</strong></td>
+        <td>The 200-day expressed in months, and the length Faber's tactical allocation work is built on. Ten monthly closes — a little under a year of decisions by people who make them once a month.</td>
+        <td>The primary trend has changed. Under twice a year, so it is rare enough to be worth acting on.</td>
+        <td>In or out. Allocation, not trading. This is the line that decides whether you own the asset class at all.</td></tr>
+      <tr><td><strong>Monthly 20</strong></td>
+        <td>Nearly two years. A cycle line rather than a trend line.</td>
+        <td>The regime has changed. Once every ten months on average.</td>
+        <td>Context for the 10-month, and for judging how far into a cycle something is.</td></tr>
+    </tbody>
+  </table></div>
+  <p>So the honest answer to "what does the 10-month really mean": it is a slow, deliberate vote on
+    whether an asset is in an uptrend, taken twelve times a year, that has historically kept holders
+    out of the worst of large drawdowns at the cost of re-entering late. It says nothing about the
+    next month and it is not trying to. Being below it is not a sell signal for a position you are
+    trading on the daily — it is a statement that the thing you are trading is inside a downtrend,
+    which should change your size and your patience rather than your entry.</p>
+
+  <h2 id="read">6. Above or below: how a cell reads</h2>
   <p>Every moving-average cell on the site says three things: <b>▲ or ▼</b> for which side of the
     average price is on, the <b>distance</b> as a percentage, and on the slow lines a <b>level tag</b>
     when the average is being tested. The caret is there because a signed percentage in a table full
@@ -184,7 +260,7 @@
     and the returns columns beside it use the same sign for something else entirely.</p>
   <p>Distance is <code>close / average − 1</code>. Hover any cell for the average's actual level.</p>
 
-  <h2 id="level">5. The level test — held · rejected · reclaimed · lost</h2>
+  <h2 id="level">7. The level test — held · rejected · reclaimed · lost</h2>
   <p>Shown only on the lines a chartist treats as support and resistance: <b>daily 150 and 200</b>,
     <b>weekly 30, 40 and 200</b>, <b>monthly 10 and 20</b>. Tagging every column would bury them.</p>
   <ul>
@@ -202,7 +278,7 @@
     beside VIX at −26%: technically true, since VIX had come within 1.9% four weeks earlier, and
     useless, since VIX moves twenty per cent in a week.</p>
 
-  <h2 id="crosses">6. Crosses</h2>
+  <h2 id="crosses">8. Crosses</h2>
   <p>A cross is a sign change in <code>fast − slow</code> between two consecutive bars. Two ladders exist
     and they answer different questions.</p>
   <h3>The scan ladder (Markets, Themes, Countries, Watchlist, Lookup)</h3>
@@ -231,7 +307,7 @@
   <p>Why: a first pass over a full year turned up 226 price-through-10-month crosses across 142
     names, more than half of them whipsawed. Arithmetically right, useless to read.</p>
 
-  <h2 id="align">7. The alignment read — three timeframes, one sentence</h2>
+  <h2 id="align">9. The alignment read — three timeframes, one sentence</h2>
   <p>On the trend map. Each instrument sits above or below its <b>daily 50</b>, its <b>30-week</b>
     and its <b>10-month</b>, and the eight combinations are the stages a trend passes through. The
     lines are <b>fixed</b> — this is a statement of fact about the instrument and it does not move
@@ -252,7 +328,7 @@
   <p>The states are descriptions of where price sits, not forecasts. The sentence says what a trader
     typically does there; the trader still decides.</p>
 
-  <h2 id="pages">8. Which page shows what</h2>
+  <h2 id="pages">10. Which page shows what</h2>
   <div class="tablewrap ref"><table>
     <thead><tr><th>Page</th><th>Daily columns</th><th>Weekly / monthly</th><th>Crosses</th><th>Notes</th></tr></thead>
     <tbody>
@@ -264,7 +340,7 @@
     </tbody>
   </table></div>
 
-  <h2 id="data">9. Data rules that took a bug to learn</h2>
+  <h2 id="data">11. Data rules that took a bug to learn</h2>
   <ul>
     <li><b>The phantom bar.</b> Yahoo pads a trailing bar onto every weekly and monthly series, stamped
       with the last trade and repeating the close of the period in progress. Left in, the current
@@ -286,7 +362,7 @@
       ranks the whole universe against itself, which is converted once and labelled (USD).</li>
   </ul>
 
-  <h2 id="prices">10. Where the prices come from</h2>
+  <h2 id="prices">12. Where the prices come from</h2>
   <p>Yahoo sends no <code>access-control-allow-origin</code>, so a static page cannot call it
     directly. Everything below exists because of that one fact.</p>
   <div class="tablewrap ref"><table>
@@ -318,7 +394,7 @@
       price is the same error wearing a hat.</p>
   </div>
 
-  <h2 id="slope">11. Which way an average is heading</h2>
+  <h2 id="slope">13. Which way an average is heading</h2>
   <p>Every moving-average cell says how far price sits from the average. It now also says which way
     the average itself is going, because <strong>above a rising 150-day and above a 150-day that has
     been sliding for three months are not the same position</strong> — and the table said the same
@@ -351,7 +427,7 @@
     monthly 10 and 20 — because a glyph on every column would be noise. Hover any cell for the
     figures behind the reading.</p>
 
-  <h2 id="news">12. Where the headlines come from</h2>
+  <h2 id="news">14. Where the headlines come from</h2>
   <p>Bloomberg publishes RSS feeds at <code>feeds.bloomberg.com</code> that need no key and no
     account. Two of them answer — <code>markets</code> and <code>economics</code>; the wealth feed
     returns an empty channel and the older <code>/markets/rss</code> path answers 404 with a 300KB
@@ -367,7 +443,7 @@
     deduplicating by URL does not catch it and there is no per-item language tag, so a two-word
     test on Spanish and Portuguese function words drops the translation and keeps its twin.</p>
 
-  <h2 id="log">13. Change log</h2>
+  <h2 id="log">15. Change log</h2>
   <div class="tablewrap ref"><table>
     <thead><tr><th>Date</th><th>Change</th></tr></thead>
     <tbody>
