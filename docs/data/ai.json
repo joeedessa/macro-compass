@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-19T00:23:24+00:00",
+ "generated_at": "2026-09-19T05:55:28+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -936,9 +936,9 @@
  },
  "fx": {
   "USD": 1.0,
-  "KRW": 0.00072153,
   "TWD": 0.03148317,
-  "JPY": 0.00637531
+  "JPY": 0.00637531,
+  "KRW": 0.00072202
  },
  "names": [
   {
@@ -1462,11 +1462,11 @@
    "ebitda": 177359000000,
    "fcf": 53273000000,
    "capex_ttm": 132402000000,
-   "capex_ntm": 271440684810,
+   "capex_ntm": 268676278881,
    "cfo": 185675000000,
    "capex_cfo": 71.3,
-   "capex_cfo_fwd": 146.2,
-   "capex_growth": 105.0,
+   "capex_cfo_fwd": 144.7,
+   "capex_growth": 102.9,
    "debt": 117348446000,
    "net_debt": -125125554000,
    "nd_ebitda": -0.39,
@@ -1768,11 +1768,11 @@
    "ebitda": 38186000,
    "fcf": -2337535700,
    "capex_ttm": 4649234303.26709,
-   "capex_ntm": 14194803417,
+   "capex_ntm": 17614295017,
    "cfo": 2199072979.4219003,
    "capex_cfo": 211.4,
-   "capex_cfo_fwd": 645.5,
-   "capex_growth": 205.3,
+   "capex_cfo_fwd": 801.0,
+   "capex_growth": 278.9,
    "debt": 7839526000.03698,
    "net_debt": 273683000.001283,
    "nd_ebitda": 7.17,
@@ -1802,11 +1802,11 @@
    "ebitda": -62853000,
    "fcf": -1652805000,
    "capex_ttm": 1396315000,
-   "capex_ntm": 2987054833,
+   "capex_ntm": 2988480786,
    "cfo": -256490000,
    "capex_cfo": null,
    "capex_cfo_fwd": null,
-   "capex_growth": 113.9,
+   "capex_growth": 114.0,
    "debt": 5586800000,
    "net_debt": 1528717000,
    "nd_ebitda": 12.81,
@@ -2516,11 +2516,11 @@
    "ebitda": -216661000,
    "fcf": -275816000,
    "capex_ttm": 158897000,
-   "capex_ntm": 576249000,
+   "capex_ntm": 587832000,
    "cfo": -116919000,
    "capex_cfo": null,
    "capex_cfo_fwd": null,
-   "capex_growth": 262.7,
+   "capex_growth": 269.9,
    "debt": 4146000,
    "net_debt": -2469412000,
    "nd_ebitda": null,
@@ -2686,11 +2686,11 @@
    "ebitda": 68364000000,
    "fcf": 26172000000,
    "capex_ttm": 25260000000,
-   "capex_ntm": 44891063637,
+   "capex_ntm": 43999700000,
    "cfo": 51432000000,
    "capex_cfo": 49.1,
-   "capex_cfo_fwd": 87.3,
-   "capex_growth": 77.7,
+   "capex_cfo_fwd": 85.5,
+   "capex_growth": 74.2,
    "debt": 6376000000,
    "net_debt": -19673000000,
    "nd_ebitda": 0.27,
@@ -2770,12 +2770,12 @@
    "gm": 56.93,
    "ytd": 117.14,
    "y1": 229.96,
-   "cap_usd": 1158387646936,
-   "rev_usd": 350136752408,
-   "ebitda_usd": 164787902161,
-   "fcf_usd": 104425583174,
-   "debt_usd": 16168491648,
-   "net_debt_usd": -120920889642
+   "cap_usd": 1159182208860,
+   "rev_usd": 350376918412,
+   "ebitda_usd": 164900933574,
+   "fcf_usd": 104497210830,
+   "debt_usd": 16179581949,
+   "net_debt_usd": -121003831769
   },
   {
    "tv": "KRX:000660",
@@ -2804,12 +2804,12 @@
    "gm": 75.86,
    "ytd": 185.25,
    "y1": 448.6,
-   "cap_usd": 917688415895,
-   "rev_usd": 136491659151,
-   "ebitda_usd": 103595343266,
-   "fcf_usd": 66159504311,
-   "debt_usd": 15233694578,
-   "net_debt_usd": -48246938201
+   "cap_usd": 918317877263,
+   "rev_usd": 136585281588,
+   "ebitda_usd": 103666401444,
+   "fcf_usd": 66204884477,
+   "debt_usd": 15244143682,
+   "net_debt_usd": -48280031769
   },
   {
    "tv": "TWSE:2330",
@@ -2885,7 +2885,7 @@
    "name": "Disco",
    "layer": "memory",
    "currency": "JPY",
-   "cap": 5488576922836,
+   "cap": 5489426831131,
    "rev": 461283000000,
    "ebitda": 213974000000,
    "fcf": null,
@@ -2906,7 +2906,7 @@
    "gm": 70.63,
    "ytd": 4.9,
    "y1": 15.34,
-   "cap_usd": 34991405584,
+   "cap_usd": 34996824017,
    "rev_usd": 2940824328,
    "ebitda_usd": 1364151605,
    "fcf_usd": null,
@@ -3471,7 +3471,7 @@
  "funding": {
   "hyperscaler": {
    "capex_ttm": 586363000000,
-   "capex_ntm": 990255623997.0,
+   "capex_ntm": 987491218068.0,
    "cfo": 707254000000,
    "net_debt": 198990446000,
    "cap": 12800089712165.89,
@@ -3479,7 +3479,7 @@
   },
   "neocloud": {
    "capex_ttm": 33422697303.26709,
-   "capex_ntm": 100780052665,
+   "capex_ntm": 104200970218,
    "cfo": 9184433979.4219,
    "net_debt": 55085758000.00154,
    "cap": 154090008738.64496,
@@ -3502,9 +3502,9 @@
    "CORZ"
   ],
   "hyper_gap_now": -120891000000,
-  "hyper_gap_fwd": 283001623997.0,
+  "hyper_gap_fwd": 280237218068.0,
   "hyper_ratio_now": 82.9,
-  "hyper_ratio_fwd": 140.0
+  "hyper_ratio_fwd": 139.6
  },
  "concentration": {
   "universe_n": 500,
@@ -3561,7 +3561,7 @@
  "nvda_gdp": 16.5,
  "korea": {
   "universe_n": 500,
-  "universe_cap": 5640111458630681.0,
+  "universe_cap": 5640052763921534.0,
   "memory_cap": 2877337619281006,
   "memory_pct": 51.0
  }
