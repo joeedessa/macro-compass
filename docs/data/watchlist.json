@@ -1679,5 +1679,21 @@
   "duration_m": 3,
   "exchange": "ASX",
   "country": "Australia"
+ },
+ {
+  "sym": "BYD",
+  "dir": "short",
+  "alertOp": "<",
+  "alert": 74.5,
+  "breakthrough": 74.5,
+  "target": 66.0,
+  "negation": null,
+  "note": "Boyd Gaming Corp.",
+  "created": "2026-09-17",
+  "pattern": "Rectangle",
+  "duration_m": 12,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US",
+  "confirmed": "2026-09-17"
  }
 ]
