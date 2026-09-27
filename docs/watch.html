@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260906c">
+<link rel="stylesheet" href="styles.css?v=20260927a">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -344,13 +344,13 @@
   .maslope.turnup, .maslope.turndown { color:var(--open, #c8890a); font-weight:700; opacity:1; }
   .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260906c">
-<script src="mobile.js?v=20260906c" defer></script>
-<script src="pricefloor.js?v=20260906c"></script>
-<script src="links.js?v=20260906c"></script>
+<link rel="stylesheet" href="mobile.css?v=20260927a">
+<script src="mobile.js?v=20260927a" defer></script>
+<script src="pricefloor.js?v=20260927a"></script>
+<script src="links.js?v=20260927a"></script>
 </head>
 <body>
-<script src="ma.js?v=20260906c"></script>
+<script src="ma.js?v=20260927a"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -361,6 +361,7 @@
     <nav class="pages">
       <a href="./">Overview</a>
       <a href="tape.html">Today</a>
+      <a href="watch.html" class="here">Watchlist</a>
       <a href="portfolio.html">Portfolio</a>
       <a href="markets.html">Markets</a>
       <a href="trend.html">Trend map</a>
@@ -370,7 +371,6 @@
       <a href="themes.html">Themes</a>
       <a href="macro.html">Macro &amp; flows</a>
       <a href="letters.html">Letters &amp; 13F</a>
-      <a href="watch.html" class="here">Watchlist</a>
       <a href="lookup.html">Lookup</a>
       <a href="method.html">Method</a>
     </nav>
@@ -428,6 +428,12 @@
     <h3 class="alhead">Setup events<span class="alcount"></span><span class="alsub"> · your own levels — a trigger taken, a
       target reached, a negation hit</span></h3>
     <div id="alerts"></div>
+  </div>
+
+  <div class="algroup" id="grp-dividend" hidden>
+    <h3 class="alhead">Dividend flags<span class="alcount"></span><span class="alsub"> · an ex-date inside a week on
+      a position you hold — the stop needs widening before the drop, not explaining after it</span></h3>
+    <div id="dividends"></div>
   </div>
 
   <div class="algroup" id="grp-signals" hidden>
@@ -1678,6 +1684,13 @@
     const box = $("#alerts");
     box.textContent = "";
     const items = [];
+    /* Ex-dividend flags live apart from setup events. They were mixed into the
+       same list, which put "goes ex-dividend in 2 days" between a failed
+       breakout and a target reached — three different kinds of news competing
+       for the same glance. A setup event is something your level did; a
+       dividend flag is a calendar fact about a position you hold. Splitting
+       them lets either be skimmed without reading the other. */
+    const divs = [];
     for (const r of all) {
       const { p, st } = r;
       const lastSettledDate = r.prevDate;
@@ -1703,7 +1716,7 @@
            The column carries the date regardless; this is only the nudge. */
         if (ratio != null && ratio >= 0.25 && days <= 7) {
           const st2 = stopFor(p, r.live);
-          items.push(["warn", p.sym + " goes ex-dividend " +
+          divs.push(["warn", p.sym + " goes ex-dividend " +
             (days <= 0 ? "today" : days === 1 ? "tomorrow" : "in " + days + " days") +
             " (" + fmtD(e.ex_div) + "): " + fmt(e.div_amount) + " is " +
             Math.round(ratio * 100) + "% of one ATR, so a 2×ATR stop loses " +
@@ -1805,6 +1818,7 @@
     };
 
     const nSetup = draw(box, items, 12);
+    const nDiv = draw($("#dividends"), divs, 12);
     const nSignal = draw($("#signals"), struct.map(s => [s[2], s[3], s[4]]), 10);
 
     /* Each group carries its own count and hides itself when empty, so a quiet
@@ -1817,6 +1831,7 @@
         : shown ? " (" + shown + ")" : "";
     };
     label("#grp-setup", "#grp-setup .alhead", nSetup, items.length);
+    label("#grp-dividend", "#grp-dividend .alhead", nDiv, divs.length);
     label("#grp-signals", "#grp-signals .alhead", nSignal, struct.length);
   }
 
