@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico" sizes="any">
 <meta name="theme-color" content="#0f1b2d">
-<link rel="stylesheet" href="styles.css?v=20260927a">
+<link rel="stylesheet" href="styles.css?v=20260927b">
 <style>
   /* watchlist-specific */
   form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
@@ -344,13 +344,13 @@
   .maslope.turnup, .maslope.turndown { color:var(--open, #c8890a); font-weight:700; opacity:1; }
   .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
 </style>
-<link rel="stylesheet" href="mobile.css?v=20260927a">
-<script src="mobile.js?v=20260927a" defer></script>
-<script src="pricefloor.js?v=20260927a"></script>
-<script src="links.js?v=20260927a"></script>
+<link rel="stylesheet" href="mobile.css?v=20260927b">
+<script src="mobile.js?v=20260927b" defer></script>
+<script src="pricefloor.js?v=20260927b"></script>
+<script src="links.js?v=20260927b"></script>
 </head>
 <body>
-<script src="ma.js?v=20260927a"></script>
+<script src="ma.js?v=20260927b"></script>
 <div class="wrap">
   <header class="wrow">
     <h1>Watchlist</h1>
@@ -362,7 +362,7 @@
       <a href="./">Overview</a>
       <a href="tape.html">Today</a>
       <a href="watch.html" class="here">Watchlist</a>
-      <a href="benchmarks.html">Benchmarks</a>
+      <a href="watch.html?set=benchmarks">Benchmarks</a>
       <a href="portfolio.html">Portfolio</a>
       <a href="markets.html">Markets</a>
       <a href="trend.html">Trend map</a>
@@ -380,7 +380,7 @@
     <button id="exportbtn" type="button" class="chip">Export</button>
     <button id="importbtn" type="button" class="chip">Import</button>
     <input id="importfile" type="file" accept="application/json" hidden>
-    <details class="addwrap">
+    <details class="addwrap" id="addwrap">
       <summary>Add a setup</summary>
       <form class="add" id="addform">
     <label>Symbol<input id="f-sym" required placeholder="e.g. GDX" autocomplete="off"></label>
@@ -533,7 +533,34 @@
      localStorage holds a personal overlay keyed sym|dir — added setups, level
      overrides (trigger/negation/target), manual moves, hides. States are never
      stored: they are replayed from settled closes on every load. */
-  const KEY = "macro-compass-watch-overlay-v2";
+  /* One engine, two lists.
+     The benchmarks page asked for "the same format as the watchlist", and the
+     honest way to give it that is to run the same code rather than a copy of
+     it. This file is two and a half thousand lines of replay, state and
+     rendering; a second copy would drift the first time either was touched,
+     which is exactly how the moving-average slope reached five pages and
+     skipped this one. So the dataset is a parameter: watch.html?set=benchmarks
+     reads a different file, carries a different title, and keeps its own
+     localStorage overlay so edits to one list never land on the other.
+
+     Everything downstream — the replay, the sections, the negation rule, the
+     alerts — is untouched and shared. */
+  const SETS = {
+    watchlist: {
+      file: "data/watchlist.json",
+      title: "Watchlist",
+      key: "macro-compass-watch-overlay-v2",
+      extras: true,
+    },
+    benchmarks: {
+      file: "data/benchmarks.json",
+      title: "Benchmarks",
+      key: "macro-compass-benchmarks-overlay-v1",
+      extras: false,        // no trade log, calendar, import or add form
+    },
+  };
+  const SET = SETS[new URLSearchParams(location.search).get("set")] || SETS.watchlist;
+  const KEY = SET.key;
   const loadOverlay = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
     catch { return { added: [], over: {} }; }
@@ -2218,6 +2245,29 @@
     if (on && Object.keys(EVENTS || {}).length) renderCalendar();
     try { localStorage.setItem(CAL_KEY, on ? "1" : "0"); } catch { /* private mode */ }
   }
+  /* The trade log, the calendar, the import/export pair and the add form are
+     watchlist furniture. A benchmarks row is somebody else's published level,
+     not a position you take or a setup you author, so they are hidden rather
+     than left to sit there doing nothing. */
+  if (!SET.extras) {
+    document.title = SET.title + " — Macro Compass";
+    const hh = document.querySelector("header h1");
+    if (hh) hh.textContent = SET.title;
+    for (const sel of ["#calbtn", "#calwrap", "#exportbtn", "#importbtn", "#addwrap",
+                       "#s-log", "#logform", "#logsummary",
+                       "#sec-logopen", "#sec-logclosed", "#sec-logfills"]) {
+      const el = document.querySelector(sel);
+      if (el) el.hidden = true;
+    }
+    // The lede belongs to the trade-log heading and would otherwise be left
+    // stranded above the cross scan with nothing to introduce.
+    const logHead = document.querySelector("#s-log");
+    if (logHead && logHead.nextElementSibling &&
+        logHead.nextElementSibling.classList.contains("lede")) {
+      logHead.nextElementSibling.hidden = true;
+    }
+  }
+
   $("#calbtn").addEventListener("click", () =>
     setCalendar($("#calbtn").getAttribute("aria-pressed") !== "true"));
   try { if (localStorage.getItem(CAL_KEY) === "1") setCalendar(true); } catch { /* ignore */ }
@@ -2284,7 +2334,7 @@
   async function refresh() {
     $("#stamp").textContent = "Loading shared list and price history…";
     try {
-      const r = await fetch("data/watchlist.json?t=" + Date.now(), { cache: "no-store" });
+      const r = await fetch(SET.file + "?t=" + Date.now(), { cache: "no-store" });
       SHARED = r.ok ? await r.json() : [];
     } catch { SHARED = []; }
     try {
