@@ -1,14 +1,3 @@
 .claude/
 .DS_Store
 __pycache__/
-
-# Benchmarks levels, transcribed from the Tech Charts weekly PDF.
-#
-# Held back deliberately rather than forgotten. This repository is public and
-# its history is permanent, and this file is a subscription publication's
-# analysis for thirty-five instruments, refreshed weekly — a different order of
-# thing from the handful of levels in watchlist.json. Publishing it is a call
-# about someone else's paid work, so it is the owner's to make, not a side
-# effect of building the page. The page handles the file being absent and says
-# so. To publish, delete this line and commit the file.
-docs/data/benchmarks.json
