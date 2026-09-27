@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmarks — Macro Compass</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico" sizes="any">
+<meta name="theme-color" content="#0f1b2d">
+<link rel="stylesheet" href="styles.css?v=20260927a">
+<style>
+  /* watchlist-specific */
+  form.add { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); align-items:end; }
+  form.add label { display:flex; flex-direction:column; gap:4px; font-size:12px;
+    color:var(--text-secondary); }
+  form.add input, form.add select { font:inherit; font-size:13.5px; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:7px 10px;
+    min-width:0; }
+  form.add input:focus, form.add select:focus { outline:2px solid var(--series-1); outline-offset:0; }
+  form.add button { font:inherit; font-size:13.5px; font-weight:620; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--baseline); border-radius:8px;
+    padding:8px 16px; cursor:pointer; }
+  .alertfield { display:flex; gap:6px; }
+  .alertfield select { width:64px; flex:none; }
+  .alertfield input { flex:1; }
+
+  .pos { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; }
+  .pos.archived { opacity:0.85; }
+  .pos-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .pos-head .psym { font-size:16px; font-weight:650; }
+  .pos-head .pdir { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    border-radius:4px; padding:1px 7px; border:1px solid var(--border); }
+  .pdir.long { color:var(--up); } .pdir.short { color:var(--down); }
+  .pos-head .plast { margin-left:auto; font-variant-numeric:tabular-nums; font-size:14px; }
+  .pnote { font-size:12.5px; color:var(--text-secondary); margin-top:2px; }
+  .levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:10px; }
+  .lvl { border:1px solid var(--border); border-radius:9px; padding:7px 11px; font-size:12.5px; }
+  .lvl .lt { color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; }
+  .lvl .lv { font-variant-numeric:tabular-nums; font-weight:620; }
+  .lvl.hit { background:var(--on-bg); }
+  .lvl.bad { background:var(--off-bg); }
+  .lvl.warn { background:var(--mixed-bg); }
+  .lvl .ls { display:block; font-size:11.5px; color:var(--text-secondary); }
+  .pos-actions { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .pos-actions button { font:inherit; font-size:12px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:7px;
+    padding:4px 10px; cursor:pointer; }
+  .pos-actions button:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .archive-reason { font-size:12px; color:var(--text-muted); margin-top:6px; }
+  .toolbar { display:flex; gap:6px; margin:8px 0 16px; flex-wrap:wrap; }
+  .toolbar button { font:inherit; font-size:12.5px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px;
+    padding:5px 12px; cursor:pointer; }
+  .toolbar button:hover { color:var(--text-primary); }
+  .tablewrap.wl { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; margin-bottom:6px; }
+  table.wl { border-collapse:collapse; width:100%; font-size:13px; min-width:980px; }
+  table.wl th { font-size:11.5px; font-weight:600; color:var(--text-muted); text-transform:uppercase;
+    letter-spacing:0.03em; text-align:right; padding:9px 12px; border-bottom:1px solid var(--grid);
+    white-space:nowrap; cursor:pointer; user-select:none; }
+  table.wl th.left { text-align:left; }
+  table.wl th.nosort { cursor:default; }
+  table.wl th.active { color:var(--text-primary); }
+  table.wl th.active::after { content:" ▾"; }
+  table.wl th.active.asc::after { content:" ▴"; }
+  table.wl td { padding:8px 12px; border-bottom:1px solid var(--grid); text-align:right;
+    white-space:nowrap; font-variant-numeric:tabular-nums; vertical-align:top; }
+  table.wl td.left { text-align:left; }
+  table.wl tbody tr:last-child td { border-bottom:none; }
+  table.wl tbody tr:hover { background:var(--surface-2); }
+  .wsym { display:block; color:var(--text-primary); font-weight:620; text-decoration:none; }
+  .wsym:hover { text-decoration:underline; }
+  /* A held position's negation has already been broken; the cell has to look
+     different from one that is intact, or the table implies a level still
+     stands when it does not. */
+  .wname.held { color:var(--down); font-weight:640; }
+  .wname { display:block; font-size:11.5px; color:var(--text-muted); max-width:320px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .wdir { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; }
+  .wdir.long { color:var(--up); } .wdir.short { color:var(--down); }
+  .wstat { font-size:12px; color:var(--text-secondary); white-space:normal; min-width:150px; }
+  .wstat.good { color:var(--up); } .wstat.bad { color:var(--down); }
+  .wact { display:flex; gap:4px; justify-content:flex-end; }
+  .wact button { font:inherit; font-size:11.5px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 8px; cursor:pointer; }
+  .wact button:hover { color:var(--text-primary); border-color:var(--baseline); }
+  .epsbtn { font:inherit; font-size:10px; letter-spacing:-1px; margin-left:7px; padding:1px 5px;
+    border:1px solid var(--border); border-radius:5px; background:var(--surface-2); cursor:pointer;
+    vertical-align:1px; }
+  .epsbtn.up { color:var(--up); } .epsbtn.down { color:var(--down); }
+  .epsbtn:hover { border-color:var(--baseline); }
+  tr.epsrow td { background:var(--surface-2); font-size:12.5px; color:var(--text-secondary);
+    white-space:normal; }
+  td.soon { color:var(--series-2); font-weight:620; }
+  #alerts, #signals { display:flex; flex-direction:column; gap:6px; }
+  .algroup { margin-bottom:14px; }
+  .alhead { font-size:12px; font-weight:650; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--text-secondary); margin:0 0 6px; }
+  .alhead .alcount { font-weight:600; color:var(--text-muted); }
+  /* Which section the setup sits in. Kept monochrome on purpose — the box is
+     already coloured by whether the signal helps or hurts the position, and a
+     second colour scale in the same row would compete with that one. */
+  .albox .sttag { display:inline-block; font-size:10.5px; font-weight:650; letter-spacing:0.03em;
+    text-transform:uppercase; border:1px solid var(--baseline); border-radius:999px;
+    padding:1px 8px; margin-right:8px; color:var(--text-secondary);
+    background:var(--surface-1); vertical-align:1px; white-space:nowrap; }
+  .albox .sttag.st-breakout { border-color:var(--text-secondary); color:var(--text-primary); }
+  .alhead .alsub { font-weight:400; text-transform:none; letter-spacing:0;
+    color:var(--text-muted); font-size:12px; }
+  .albox { border:1px solid var(--border); border-radius:10px; padding:9px 14px; font-size:13px; }
+  .albox.new { background:var(--on-bg); }
+  .albox.warn { background:var(--mixed-bg); }
+  .albox.bad { background:var(--off-bg); }
+  .albox strong { font-weight:650; }
+  details.addwrap { margin:0 0 10px; }
+  details.addwrap summary { cursor:pointer; list-style:none; display:inline-block;
+    font-size:12.5px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:8px; padding:5px 12px; }
+  details.addwrap summary:hover { color:var(--text-primary); }
+  details.addwrap summary::before { content:"▸ "; color:var(--text-muted); }
+  details.addwrap[open] summary::before { content:"▾ "; }
+  details.addwrap form { margin-top:10px; }
+  h2.secline { font-size:15.5px; margin:26px 0 3px; }
+  h2.secline .cnt { color:var(--text-muted); font-weight:500; font-size:13px; }
+  .lede.tight { margin-bottom:9px; font-size:12.5px; }
+  .toolbar { margin:0 0 12px; }
+  .days { display:block; font-size:11px; font-variant-numeric:tabular-nums; }
+  .days.d7 { color:var(--down); font-weight:650; }
+  .days.d14 { color:#c98500; font-weight:620; }
+  .days.dfar { color:var(--text-muted); }
+  td.riskcell { color:var(--down); }
+  /* moving-average cells */
+  td.maup { color:var(--up); } td.madown { color:var(--down); }
+  td.dimcell { color:var(--text-muted); }
+  .matag { display:block; font-size:9.5px; font-weight:650; letter-spacing:0.02em; }
+  .matag.held { color:var(--up); } .matag.reclaimed { color:var(--up); }
+  .matag.rejected { color:var(--down); } .matag.lost { color:var(--down); }
+  .switch { display:flex; gap:6px; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
+  .switch .slabel { font-size:12px; color:var(--text-muted); }
+  .switch .mafixed { font-size:11.5px; color:var(--text-secondary); border:1px solid var(--border);
+    border-radius:8px; padding:4px 10px; background:var(--surface-1); }
+  .rangebtn { font:inherit; font-size:12.5px; color:var(--text-secondary); cursor:pointer;
+    background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:4px 12px; }
+  .rangebtn[aria-pressed="true"] { color:var(--text-primary); border-color:#eda100;
+    font-weight:640; }
+  .rangebtn:hover { color:var(--text-primary); }
+  .manote { font-size:11px; color:var(--text-muted); flex-basis:100%; }
+  /* frozen headers while the table is in view (JS-driven translateY) */
+  table.wl thead th { background:var(--surface-1); position:relative; z-index:4; }
+  table.wl thead th.left { z-index:6; }
+  /* filters live inside the header cells, shown on demand */
+  th .hlabel { cursor:pointer; display:block; }
+  th.nosort .hlabel { cursor:default; }
+  th .hfilter { margin-top:5px; }
+  th .hfilter input, th .hfilter select { font:inherit; font-size:11.5px; width:100%;
+    min-width:64px; max-width:150px; color:var(--text-primary); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:6px; padding:2px 6px;
+    font-weight:400; text-transform:none; letter-spacing:0; }
+  td input.cellEdit { font:inherit; font-size:12.5px; width:76px; text-align:right;
+    color:var(--text-primary); background:var(--surface-2); border:1px solid var(--baseline);
+    border-radius:6px; padding:2px 6px; }
+  /* wide-table ergonomics: top scroller synced with the table, sticky symbol column */
+  .tablewrap.wl { overflow:visible; border:none; background:none; }
+  /* Custom always-visible yellow scroller: native scrollbar styling is
+     unreliable (Chrome ignores ::-webkit-scrollbar once scrollbar-color is
+     set; macOS overlay bars auto-hide), so the track and thumb are plain
+     divs driven by JS. */
+  .topscroll { position:relative; height:14px; margin-bottom:6px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:7px; }
+  .topscroll .thumb { position:absolute; top:1px; bottom:1px; border-radius:6px;
+    background:#eda100; cursor:grab; min-width:40px; }
+  .topscroll .thumb:hover, .topscroll .thumb.drag { background:#fab219; cursor:grabbing; }
+  .topscroll.idle { display:none; }         /* hidden when the table fits */
+  .scrollbody { overflow-x:auto; background:var(--surface-1); border:1px solid var(--border);
+    border-radius:12px; scrollbar-color:#eda100 var(--surface-2); }
+  table.wl th.left, table.wl td.left { position:sticky; left:0; z-index:2;
+    background:var(--surface-1); box-shadow:2px 0 0 var(--grid); }
+  table.wl thead th.left { z-index:3; }
+  table.wl tbody tr:hover td.left { background:var(--surface-2); }
+
+  /* header row + nav row */
+  header.wrow { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+  header.wrow h1 { margin:0; }
+  header.wrow .stamp { margin:0; flex:1; min-width:200px; }
+  .navrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 16px; }
+  .navrow nav.pages { margin:0; }
+  .navrow .spacer { flex:1; }
+  .chip { font:inherit; font-size:12.5px; color:var(--text-secondary); background:var(--surface-1);
+    border:1px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; }
+  .chip:hover { color:var(--text-primary); }
+  details.addwrap[open] { flex-basis:100%; }
+  /* section pills: oval headers that ride the viewport top, frozen with the
+     table header, instead of plain h2 + description lines */
+  .secpill { position:relative; z-index:8; display:inline-block; margin:26px 0 10px;
+    font-size:14px; font-weight:650; color:var(--text-primary); background:var(--surface-1);
+    border:1px solid var(--baseline); border-radius:999px; padding:7px 18px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.25); }
+  .secpill .cnt { color:var(--text-muted); font-weight:500; font-size:12.5px; margin-left:6px; }
+  /* universe pulse gauge */
+  #gauge { margin:0 0 10px; }
+  .gpill { display:inline-block; border:1px solid var(--border); border-radius:999px;
+    padding:6px 14px; font-size:13px; background:var(--surface-1); }
+  .gpill strong { font-weight:700; }
+  .gpill.warn { background:var(--mixed-bg); }
+  .gpill.bad { background:var(--off-bg); }
+  /* zebra rows (sticky first column needs an opaque colour) */
+  table.wl tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
+  table.wl tbody tr:nth-child(even) td.left { background:color-mix(in srgb, var(--surface-1) 93%, #7d96b4); }
+  table.wl tbody tr:hover td { background:var(--surface-2); }
+  /* wrapped pattern text */
+  table.wl td.pat { white-space:normal; min-width:110px; max-width:150px; font-size:12px; }
+  /* header sub-hints (formula reminders live here, not in every cell) */
+  th .hsub { display:block; font-size:9.5px; letter-spacing:0; text-transform:none;
+    color:var(--text-muted); font-weight:500; margin-top:1px; }
+  table.wl th { vertical-align:bottom; }
+  /* relative-move columns */
+  td.relup { color:var(--up); font-weight:620; }
+  td.reldown { color:var(--down); font-weight:620; }
+  /* filter buttons + popovers */
+  .fbtn { display:block; width:100%; font:inherit; font-size:10.5px; text-transform:none;
+    letter-spacing:0; color:var(--text-muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:6px; padding:1px 6px; cursor:pointer; }
+  .fbtn:hover { color:var(--text-primary); }
+  .fbtn.on { color:#eda100; border-color:#eda100; font-weight:650; }
+  .fpop { position:absolute; top:100%; right:4px; z-index:20; min-width:180px; max-height:260px;
+    overflow:auto; background:var(--surface-1); border:1px solid var(--baseline); border-radius:10px;
+    padding:8px; text-align:left; text-transform:none; letter-spacing:0; font-weight:400;
+    box-shadow:0 8px 24px rgba(0,0,0,0.45); cursor:default; white-space:normal; }
+  th.left .fpop { left:4px; right:auto; }
+  .fpop input[type="text"] { width:100%; font:inherit; font-size:12px; color:var(--text-primary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:3px 8px; margin-bottom:6px; }
+  .fpop label.opt { display:flex; gap:7px; align-items:center; font-size:12px;
+    color:var(--text-secondary); padding:2px 0; cursor:pointer; }
+  .fpop label.opt:hover { color:var(--text-primary); }
+  .fpop .fclear { font:inherit; font-size:11px; margin-top:6px; color:var(--text-secondary);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:2px 10px; cursor:pointer; }
+  a.epsbtn { text-decoration:none; display:inline-block; }
+  /* earnings & news detail cards */
+  #details { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
+  .dcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:12px 14px; font-size:12.5px; scroll-margin-top:24px; }
+  .dcard h3 { margin:0 0 4px; font-size:14px; }
+  .dcard h3 .wname { font-weight:500; }
+  .dcard .dmeta { margin:3px 0; color:var(--text-secondary); }
+  .dcard .beat { color:var(--up); font-weight:650; }
+  .dcard .miss { color:var(--down); font-weight:650; }
+  .dblock { margin-top:9px; padding-top:8px; border-top:1px solid var(--grid); }
+  .dblock .dh { font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--text-muted); font-weight:650; margin-bottom:3px; }
+  .dblock .dh .dwhen { text-transform:none; letter-spacing:0; font-weight:500; }
+  .dblock .dh .days { display:inline; margin-left:2px; }
+  .dline { margin:2px 0; color:var(--text-secondary); }
+  .dline .k { color:var(--text-muted); }
+  .dline b { color:var(--text-primary); font-weight:620; font-variant-numeric:tabular-nums; }
+  .cues { display:flex; gap:5px; flex-wrap:wrap; margin:1px 0 6px; }
+  .cue { font-size:10.5px; font-weight:650; border-radius:999px; padding:1px 8px;
+    border:1px solid var(--border); color:var(--text-secondary); }
+  .cue.good { color:var(--up); border-color:var(--up); }
+  .cue.bad { color:var(--down); border-color:var(--down); }
+  .heads { margin:0; padding:0; list-style:none; }
+  .heads li { padding:3px 0; border-top:1px dotted var(--grid); font-size:12px; line-height:1.35; }
+  .heads li:first-child { border-top:none; }
+  .heads a { color:var(--text-primary); text-decoration:none; }
+  .heads a:hover { text-decoration:underline; }
+  .heads .hsrc { color:var(--text-muted); font-size:10.5px; display:block; }
+  .dcard .dlinks { margin:10px 0 0; display:flex; gap:10px; flex-wrap:wrap; }
+  .dcard .dlinks a { font-size:12px; }
+  .dcard:target { outline:2px solid #eda100; }
+  /* back to top */
+  #totop { position:fixed; right:18px; bottom:18px; z-index:30; width:42px; height:42px;
+    border-radius:50%; font:inherit; font-size:18px; font-weight:700; color:#241a03;
+    background:#eda100; border:1px solid #eda100; cursor:pointer;
+    opacity:0; pointer-events:none; transition:opacity 0.2s; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
+  #totop.show { opacity:1; pointer-events:auto; }
+  #totop:hover { background:#fab219; border-color:#fab219; }
+
+  /* calendar */
+  .calgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
+  .calcard { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:11px 13px; }
+  .calcard h3 { font-size:12.5px; margin:0 0 6px; color:var(--text-secondary); }
+  .calcard ul { margin:0; padding:0; list-style:none; }
+  .calcard li { font-size:12.5px; padding:3px 0; border-top:1px solid var(--grid); }
+  .calcard li:first-child { border-top:none; }
+  .calcard li b { font-weight:640; }
+  .calcard li span { color:var(--text-muted); font-size:11px; }
+  .calcard .none { font-size:12px; color:var(--text-muted); }
+  .calcard li.soon b { color:var(--text-primary); }
+  .calcard li.soon { background:var(--mixed-bg); border-radius:6px;
+    margin:0 -6px; padding-left:6px; padding-right:6px; }
+  .calnow { grid-column:1/-1; font-size:12.5px; color:var(--text-secondary);
+    background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:9px 13px; }
+  .calnow.hit { background:var(--mixed-bg); color:var(--text-primary); font-weight:620; }
+  /* Pinned above the tables when on, gone when off. Off by default: it is a
+     lookahead, and most days nothing in the next fortnight is worth pushing
+     the watchlist down the page for. */
+  #calwrap { margin:0 0 20px; }
+  #calwrap h2 { font-size:16px; margin:0 0 4px; }
+  #calwrap .lede { margin:0 0 10px; font-size:13px; color:var(--text-secondary); max-width:84ch; }
+  #calbtn[aria-pressed="true"] { background:var(--mixed-bg); border-color:var(--open); }
+  /* ---- shared cross-scan grid (ma.js) ---- */
+  .sigblock { margin-bottom:14px; }
+  .sigblock > h3 { font-size:13.5px; margin:0 0 2px; display:flex; align-items:baseline; gap:8px;
+    flex-wrap:wrap; }
+  .sigblock.bull > h3 { color:var(--up); }
+  .sigblock.bear > h3 { color:var(--down); }
+  .sigblock > h3 .ladder { font-size:11px; font-weight:500; color:var(--text-muted); }
+  .sigcols { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+  @media (max-width:1100px) { .sigcols { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:620px) { .sigcols { grid-template-columns:1fr; } }
+  .sigcol { background:var(--surface-1); border:1px solid var(--border); border-radius:12px;
+    padding:0 0 8px; min-width:0; overflow:hidden; }
+  .sigcol .tierhead { font-size:14px; font-weight:680; margin:0; padding:10px 12px 1px;
+    color:var(--text-primary); letter-spacing:-0.01em; }
+  .sigblock.bull .sigcol .tierhead, .sigblock.bull .sigcol .sigsub {
+    background:color-mix(in srgb, var(--surface-2) 84%, var(--up)); }
+  .sigblock.bear .sigcol .tierhead, .sigblock.bear .sigcol .sigsub {
+    background:color-mix(in srgb, var(--surface-2) 84%, var(--down)); }
+  .sigblock.bull .sigcol .sigsub { border-bottom:1px solid var(--up); }
+  .sigblock.bear .sigcol .sigsub { border-bottom:1px solid var(--down); }
+  .sigcol .sigsub { font-size:11.5px; color:var(--text-secondary); margin:0; padding:0 12px 8px; }
+  .sigitem { padding:5px 12px; border-top:1px solid var(--grid); font-size:12.5px; }
+  .sigcol div.sigitem:first-of-type { border-top:none; padding-top:8px; }
+  .sigitem a { color:var(--text-primary); font-weight:600; text-decoration:none; }
+  .sigitem a:hover { text-decoration:underline; }
+  .sigitem .sighint { display:block; font-size:10.5px; color:var(--text-muted); white-space:normal; }
+  .sigitem .whiptag { color:var(--series-2); font-size:10px; border:1px solid var(--border);
+    border-radius:4px; padding:0 4px; margin-left:5px; }
+  .sigcol .signone { font-size:11.5px; color:var(--text-muted); margin:0; padding:9px 12px 2px; }
+  #sigscan .switch .manote { font-size:11.5px; color:var(--text-muted); }
+  .maside { font-size:9px; vertical-align:1px; opacity:0.85; }
+  /* MA slope: which way the average itself is going. Amber for a turn, because
+     a turn is neither up nor down yet — it is the thing to look at. */
+  .maslope { margin-left:5px; font-size:11px; opacity:.85; }
+  .maslope.rising  { color:var(--up); }
+  .maslope.falling { color:var(--down); }
+  .maslope.turnup, .maslope.turndown { color:var(--open, #c8890a); font-weight:700; opacity:1; }
+  .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
+</style>
+<link rel="stylesheet" href="mobile.css?v=20260927a">
+<script src="mobile.js?v=20260927a" defer></script>
+<script src="pricefloor.js?v=20260927a"></script>
+<script src="links.js?v=20260927a"></script>
+
+<style>
+  .bgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:10px; }
+  .bcardx { border:1px solid var(--border); border-radius:12px; padding:11px 13px;
+            background:var(--surface-1); }
+  .bcardx .bname { display:flex; align-items:baseline; gap:7px; font-weight:640; font-size:14px; }
+  .bcardx .bsym { font-size:11px; color:var(--text-muted); font-weight:450; }
+  .bcardx .bpx { font-size:19px; font-weight:680; font-variant-numeric:tabular-nums; margin-top:3px; }
+  .bcardx .bchg { font-size:12px; font-variant-numeric:tabular-nums; margin-left:7px; font-weight:600; }
+  .blad { margin-top:8px; display:grid; grid-template-columns:auto 1fr auto; gap:2px 8px;
+          font-size:11.5px; font-variant-numeric:tabular-nums; align-items:center; }
+  .blad .lk { color:var(--text-muted); }
+  .blad .lv { font-weight:620; }
+  .blad .ld { text-align:right; color:var(--text-muted); }
+  .blad .near { color:var(--open, #c8890a); font-weight:700; }
+  .bnote { margin-top:8px; font-size:11.5px; color:var(--text-secondary); line-height:1.45; }
+  .btrend { font-size:10px; font-weight:650; text-transform:uppercase; letter-spacing:.04em;
+            padding:1px 6px; border-radius:999px; border:1px solid var(--border); }
+  .btrend.up { color:var(--up); border-color:color-mix(in srgb,var(--up) 40%,var(--border)); }
+  .btrend.down { color:var(--down); border-color:color-mix(in srgb,var(--down) 40%,var(--border)); }
+  .btrend.neutral { color:var(--text-muted); }
+  .bgroup { font-size:13px; font-weight:650; margin:20px 0 8px; color:var(--text-secondary); }
+  .bmiss li { font-size:12.5px; color:var(--text-secondary); margin:3px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Benchmarks</h1>
+      <p class="stamp" id="stamp">Loading…</p>
+    </div>
+    <button class="refresh" id="refresh" type="button">Refresh prices</button>
+  </header>
+<nav class="pages">
+      <a href="./">Overview</a>
+      <a href="tape.html">Today</a>
+      <a href="watch.html">Watchlist</a>
+      <a href="benchmarks.html" class="here">Benchmarks</a>
+      <a href="portfolio.html">Portfolio</a>
+      <a href="markets.html">Markets</a>
+      <a href="trend.html">Trend map</a>
+      <a href="ai.html">AI</a>
+      <a href="commodities.html">Commodities</a>
+      <a href="countries.html">Countries</a>
+      <a href="themes.html">Themes</a>
+      <a href="macro.html">Macro &amp; flows</a>
+      <a href="letters.html">Letters &amp; 13F</a>
+      <a href="lookup.html">Lookup</a>
+      <a href="method.html">Method</a>
+    </nav>
+
+  <p class="lede">The indices, commodities and rates tracked in the weekly Global Equity Markets
+    review, with the levels that report sets against live prices. The levels are the publisher's and
+    change weekly; everything else on this page — price, the move on the day, how far each level
+    sits from here — is computed live and is not from the report.</p>
+
+  <p id="status">Fetching live prices…</p>
+  <div id="content" hidden>
+    <div id="groups"></div>
+
+    <h2>Not charted here</h2>
+    <p class="lede">The review covers these too. They have no symbol this site can quote, so the
+      levels are recorded without a live price rather than left out.</p>
+    <ul class="bmiss" id="missing"></ul>
+  </div>
+
+  <footer>
+    <p>Levels transcribed by hand from the weekly PDF and replaced wholesale each week. Prices via
+      the shared price layer, same as every other page.</p>
+  </footer>
+</div>
+
+<script src="pricefloor.js?v=20260927a"></script>
+<script src="links.js?v=20260927a"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const h = (t, c, txt) => { const e = document.createElement(t);
+    if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
+  const fmt = (n, d) => n == null ? "–" : n.toLocaleString(undefined,
+    { minimumFractionDigits: d != null ? d : (Math.abs(n) >= 1000 ? 0 : 2),
+      maximumFractionDigits: d != null ? d : (Math.abs(n) >= 1000 ? 0 : 2) });
+  const pct = n => n == null ? "–" : (n > 0 ? "+" : "") + n.toFixed(1) + "%";
+
+  const PROXIES = [
+    u => "https://macro-compass-proxy.joe-edessa.workers.dev/?url=" + encodeURIComponent(u),
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  ];
+
+  /* One batched spark call for the whole board. Ten symbols per request is
+     spark's limit; the price floor answers from the snapshot when the proxies
+     are down, exactly as it does everywhere else. */
+  async function quotes(symbols) {
+    const out = {};
+    for (let i = 0; i < symbols.length; i += 10) {
+      const chunk = symbols.slice(i, i + 10);
+      const url = "https://query1.finance.yahoo.com/v7/finance/spark?symbols=" +
+        chunk.map(encodeURIComponent).join(",") + "&range=5d&interval=1d";
+      for (const wrap of PROXIES) {
+        try {
+          const r = await fetch(wrap(url), { cache: "no-store" });
+          if (!r.ok) continue;
+          const j = await r.json();
+          for (const row of (j.spark?.result || [])) {
+            const resp = row.response?.[0];
+            const m = resp?.meta || {};
+            const c = (resp?.indicators?.quote?.[0]?.close || []).filter(x => x != null);
+            if (!c.length) continue;
+            const last = m.regularMarketPrice != null ? m.regularMarketPrice : c[c.length - 1];
+            const prev = m.previousClose != null ? m.previousClose
+              : (c.length > 1 ? c[c.length - 2] : null);
+            out[row.symbol] = { last, prev, ccy: m.currency,
+              chg: prev ? (last / prev - 1) * 100 : null };
+          }
+          break;
+        } catch { /* next proxy */ }
+      }
+    }
+    return out;
+  }
+
+  /* How far a level sits from here, and whether price is close enough to it to
+     matter. "Near" is scaled to the instrument rather than fixed: two per cent
+     is a lot for the dollar index and nothing for silver. */
+  function ladder(card, row, px) {
+    const box = h("div", "blad");
+    const legs = [["Support", row.support], ["Resistance", row.resistance],
+                  ["Target", row.target], ["200-day", row.ma200]];
+    let any = false;
+    for (const [label, v] of legs) {
+      if (v == null) continue;
+      any = true;
+      const away = px ? (v / px - 1) * 100 : null;
+      box.appendChild(h("span", "lk", label));
+      box.appendChild(h("span", "lv", fmt(v)));
+      const d = h("span", "ld" + (away != null && Math.abs(away) <= 2 ? " near" : ""),
+        away == null ? "" : pct(away));
+      if (away != null) d.title = label + " is " + Math.abs(away).toFixed(1) +
+        "% " + (away >= 0 ? "above" : "below") + " the current price";
+      box.appendChild(d);
+    }
+    if (any) card.appendChild(box);
+  }
+
+  async function load() {
+    $("#status").hidden = false;
+    $("#content").hidden = true;
+    let data;
+    try {
+      const r = await fetch("data/benchmarks.json?t=" + Date.now(), { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      data = await r.json();
+    } catch {
+      $("#status").textContent =
+        "No benchmarks file found. It is written from the weekly PDF into data/benchmarks.json.";
+      return;
+    }
+
+    const syms = data.rows.map(r => r.sym);
+    const Q = await quotes(syms);
+
+    const box = $("#groups");
+    box.textContent = "";
+    const order = [...new Set(data.rows.map(r => r.group))];
+    for (const g of order) {
+      box.appendChild(h("h2", "bgroup", g));
+      const grid = h("div", "bgrid");
+      for (const row of data.rows.filter(r => r.group === g)) {
+        const q = Q[row.sym] || {};
+        const card = h("div", "bcardx");
+        const nm = h("div", "bname");
+        const a = h("a", null, row.name);
+        a.href = window.YCHART ? window.YCHART(row.sym) : "#";
+        a.target = "_blank"; a.rel = "noopener noreferrer";
+        nm.appendChild(a);
+        nm.appendChild(h("span", "bsym", row.sym));
+        if (row.trend) nm.appendChild(h("span", "btrend " + row.trend, row.trend));
+        card.appendChild(nm);
+
+        const px = h("div", "bpx", q.last != null ? fmt(q.last) : "–");
+        if (q.chg != null) px.appendChild(h("span", "bchg " + (q.chg >= 0 ? "up" : "down"), pct(q.chg)));
+        card.appendChild(px);
+
+        ladder(card, row, q.last);
+        if (row.note) card.appendChild(h("div", "bnote", row.note));
+        grid.appendChild(card);
+      }
+      box.appendChild(grid);
+    }
+
+    const miss = $("#missing");
+    miss.textContent = "";
+    for (const m of (data.not_charted || [])) {
+      const li = h("li");
+      li.appendChild(h("b", null, m.name + " — "));
+      li.appendChild(document.createTextNode(m.note + " (" + m.why + ")"));
+      miss.appendChild(li);
+    }
+
+    const priced = Object.keys(Q).length;
+    $("#stamp").textContent = (window.PRICESTAMP ? window.PRICESTAMP() : "Prices fetched") +
+      " · " + data.rows.length + " tracked, " + priced + " priced · levels as of " + data.as_of;
+    $("#status").hidden = true;
+    $("#content").hidden = false;
+  }
+
+  $("#refresh").addEventListener("click", () => load());
+  load();
+})();
+</script>
+</body>
+</html>
