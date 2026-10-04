@@ -1009,7 +1009,11 @@
            reaches back over bars that predate the promotion. */
         confirmed: o.confirmed !== undefined ? o.confirmed : p.confirmed,
         hold: o.hold !== undefined ? o.hold : p.hold,
-        manualState: o.manualState || null, shared: true });
+        /* `removed` in the shared file is a setup the source has dropped from
+           its watchlist (dated by the report). It lands in Removed like a hand
+           removal; an explicit per-browser choice, including Restore, wins. */
+        manualState: "manualState" in o ? o.manualState : (p.removed ? "removed" : null),
+        shared: true });
     }
     for (const p of OV.added) list.push({ ...p, shared: false });
     return list;
@@ -1351,6 +1355,9 @@
       if (p.shared) {
         const o = OV.over[idOf(p)] || {};
         delete o.manualState; delete o.confirmed;
+        // Dropped by the source: restoring has to say so explicitly, or the
+        // shared flag puts it straight back in Removed.
+        if (p.removed) o.manualState = null;
         OV.over[idOf(p)] = o; saveOverlay();
       } else {
         const mine = OV.added.find(x => idOf(x) === idOf(p));
@@ -1767,7 +1774,9 @@
            months is a different proposition from one added last week, and the
            date alone does not make that obvious at a glance. */
         const days = -daysUntil(p.created);
-        if (days >= 0) {
+        if (p.removed && state === "removed") {
+          td.appendChild(h("span", "wname", "dropped by source " + fmtD(p.removed)));
+        } else if (days >= 0) {
           td.appendChild(h("span", "wname", days === 0 ? "today"
             : days === 1 ? "1 day ago" : days + " days ago"));
         }

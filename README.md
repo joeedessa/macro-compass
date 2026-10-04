@@ -83,6 +83,7 @@ A probe timeout marks a proxy slow, not dead. Only a refusal counts.
 
 ## Watchlist conventions
 
+- `removed: "YYYY-MM-DD"` marks a setup the weekly report has dropped from its watchlist. It moves to Removed on every browser, with the date shown; Restore still works per browser.
 - A row is `sym` + `dir`; the same symbol can carry a long and a short, so never key by symbol alone.
 - `breakthrough` is the **confirming close**, not the pattern boundary.
 - A negation is only tested **after** a setup triggers, against the day's low for a long and its high for a short.

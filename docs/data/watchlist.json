@@ -48,7 +48,8 @@
   "pattern": "H&S bottom",
   "duration_m": 4,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-10-03"
  },
  {
   "sym": "CGON",
@@ -114,7 +115,7 @@
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Ascending triangle",
-  "duration_m": 5,
+  "duration_m": 6,
   "exchange": "NYSE/Nasdaq",
   "country": "US"
  },
@@ -153,6 +154,22 @@
   "country": "US"
  },
  {
+  "sym": "BWMX",
+  "dir": "short",
+  "alertOp": "<",
+  "alert": 15.37,
+  "breakthrough": 15.37,
+  "target": 12.94,
+  "negation": null,
+  "note": "Betterware de Mexico",
+  "created": "2026-10-03",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 6,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
+ },
+ {
   "sym": "FCX",
   "dir": "long",
   "alertOp": ">",
@@ -184,7 +201,8 @@
   "pattern": "Rectangle",
   "duration_m": 10,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-10-03"
  },
  {
   "sym": "SL.MI",
@@ -218,7 +236,8 @@
   "pattern": "Cup & Handle continuation",
   "duration_m": 5,
   "exchange": "LSE",
-  "country": "UK"
+  "country": "UK",
+  "removed": "2026-10-03"
  },
  {
   "sym": "TRN.MI",
@@ -235,7 +254,8 @@
   "pattern": "Ascending triangle",
   "duration_m": 5,
   "exchange": "Borsa Italiana",
-  "country": "Italy"
+  "country": "Italy",
+  "removed": "2026-10-03"
  },
  {
   "sym": "HO.PA",
@@ -250,7 +270,7 @@
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 13,
+  "duration_m": 19,
   "exchange": "Euronext Paris",
   "country": "France"
  },
@@ -260,13 +280,13 @@
   "alertOp": "<",
   "alert": 209.5,
   "breakthrough": 209.5,
-  "target": 168.5,
+  "target": 174,
   "negation": null,
   "note": "Thales SA",
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 13,
+  "duration_m": 19,
   "exchange": "Euronext Paris",
   "country": "France"
  },
@@ -302,7 +322,8 @@
   "pattern": "Rectangle",
   "duration_m": 6,
   "exchange": "BME",
-  "country": "Spain"
+  "country": "Spain",
+  "removed": "2026-10-03"
  },
  {
   "sym": "MKS.L",
@@ -335,7 +356,8 @@
   "pattern": "Rectangle",
   "duration_m": 14,
   "exchange": "LSE",
-  "country": "UK"
+  "country": "UK",
+  "removed": "2026-10-03"
  },
  {
   "sym": "FSR.JO",
@@ -352,7 +374,8 @@
   "pattern": "Cup & Handle continuation",
   "duration_m": 5,
   "exchange": "JSE",
-  "country": "South Africa"
+  "country": "South Africa",
+  "removed": "2026-10-03"
  },
  {
   "sym": "THYAO.IS",
@@ -421,7 +444,8 @@
   "pattern": "Ascending triangle",
   "duration_m": 5,
   "exchange": "TSE",
-  "country": "Japan"
+  "country": "Japan",
+  "removed": "2026-10-03"
  },
  {
   "sym": "S32.AX",
@@ -455,7 +479,8 @@
   "pattern": "Rectangle",
   "duration_m": 4,
   "exchange": "TSE",
-  "country": "Japan"
+  "country": "Japan",
+  "removed": "2026-10-03"
  },
  {
   "sym": "0002.HK",
@@ -489,7 +514,8 @@
   "pattern": "Cup & Handle continuation",
   "duration_m": 4,
   "exchange": "TSE",
-  "country": "Japan"
+  "country": "Japan",
+  "removed": "2026-10-03"
  },
  {
   "sym": "8012.T",
@@ -504,7 +530,7 @@
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4,
+  "duration_m": 5,
   "exchange": "TSE",
   "country": "Japan"
  },
@@ -538,7 +564,7 @@
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 5,
+  "duration_m": 7,
   "exchange": "NSE",
   "country": "India"
  },
@@ -554,7 +580,7 @@
   "created": "2026-08-08",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 5,
+  "duration_m": 7,
   "exchange": "NSE",
   "country": "India"
  },
@@ -1294,7 +1320,7 @@
   "created": "2026-08-15",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 4,
+  "duration_m": 5,
   "exchange": "NYSE/Nasdaq",
   "country": "US"
  },
@@ -1313,7 +1339,8 @@
   "pattern": "Rectangle",
   "duration_m": 3,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-10-03"
  },
  {
   "sym": "VOE.VI",
@@ -1338,6 +1365,7 @@
   "alertOp": ">",
   "alert": 33.0,
   "breakthrough": 33.0,
+  "boundary": 32,
   "target": 38.0,
   "negation": null,
   "note": "Emirates NBD Bank PJSC",
@@ -1371,6 +1399,7 @@
   "alertOp": ">",
   "alert": 14.05,
   "breakthrough": 14.05,
+  "boundary": 13.65,
   "target": 17.3,
   "negation": null,
   "note": "First Watch Restaurant Group, Inc.",
@@ -1411,7 +1440,8 @@
   "pattern": "Rectangle",
   "duration_m": 5,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-10-03"
  },
  {
   "sym": "IPN.PA",
@@ -1427,7 +1457,8 @@
   "pattern": "Ascending triangle",
   "duration_m": 4,
   "exchange": "Euronext Paris",
-  "country": "France"
+  "country": "France",
+  "removed": "2026-10-03"
  },
  {
   "sym": "LIN.AX",
@@ -1443,7 +1474,8 @@
   "pattern": "Rectangle",
   "duration_m": 4,
   "exchange": "ASX",
-  "country": "Australia"
+  "country": "Australia",
+  "removed": "2026-10-03"
  },
  {
   "sym": "GIB-A.TO",
@@ -1509,7 +1541,7 @@
   "created": "2026-08-30",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 3,
+  "duration_m": 4,
   "exchange": "TSX",
   "country": "Canada"
  },
@@ -1560,7 +1592,7 @@
   "created": "2026-09-06",
   "state": "watch",
   "pattern": "Rectangle",
-  "duration_m": 3,
+  "duration_m": 4,
   "exchange": "NYSE/Nasdaq",
   "country": "US"
  },
@@ -1630,7 +1662,8 @@
   "pattern": "Ascending triangle",
   "duration_m": 6,
   "exchange": "EGX",
-  "country": "Egypt"
+  "country": "Egypt",
+  "removed": "2026-10-03"
  },
  {
   "sym": "TCS.NS",
@@ -1647,7 +1680,8 @@
   "pattern": "H&S bottom reversal",
   "duration_m": 4,
   "exchange": "NSE",
-  "country": "India"
+  "country": "India",
+  "removed": "2026-10-03"
  },
  {
   "sym": "KODK",
@@ -1780,7 +1814,7 @@
   "note": "Tamarack Valley Energy Ltd.",
   "created": "2026-09-20",
   "pattern": "Rectangle",
-  "duration_m": 3,
+  "duration_m": 4,
   "exchange": "TSX",
   "country": "Canada",
   "state": "watch"
@@ -1851,7 +1885,8 @@
   "duration_m": 6,
   "exchange": "TSE",
   "country": "Japan",
-  "state": "watch"
+  "state": "watch",
+  "removed": "2026-10-03"
  },
  {
   "sym": "TWN",
