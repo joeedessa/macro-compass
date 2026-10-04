@@ -149,6 +149,10 @@
     font-weight:640; }
   .rangebtn:hover { color:var(--text-primary); }
   .manote { font-size:11px; color:var(--text-muted); flex-basis:100%; }
+  /* The MA detail joins the toolbar's own flex row when shown, so the legend
+     still wraps to a line of its own. */
+  #ma-extra { display:contents; }
+  #ma-extra[hidden] { display:none; }
   /* frozen headers while the table is in view (JS-driven translateY) */
   table.wl thead th { background:var(--surface-1); position:relative; z-index:4; }
   table.wl thead th.left { z-index:6; }
@@ -403,8 +407,11 @@
     </details>
   </div>
 
-  <div class="switch" id="matoggles" role="group" aria-label="Moving average timeframes">
-    <span class="slabel">Moving averages</span>
+  <div class="switch" id="matoggles" role="group" aria-label="Column groups">
+    <span class="slabel">Show</span>
+    <button class="rangebtn" id="col-ma" type="button" aria-pressed="false">Moving averages</button>
+    <button class="rangebtn" id="col-rel" type="button" aria-pressed="false">Market signals</button>
+    <span id="ma-extra" hidden>
     <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
     <span class="mafixed">10 · 30 · 40 · 200 weekly · 10 · 12 · 20 monthly</span>
     <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
@@ -412,6 +419,7 @@
     <span class="manote">▲ above that average, ▼ below it; the number is how far. On the 150 and 200
       — and the weekly 30/40/200, monthly 10/20 — an arrow follows for the direction of the average
       itself: ↑ rising, ↓ falling, → flat, ⤴ turning up, ⤵ turning down. Hover for the figures.</span>
+    </span>
   </div>
 
   <div id="gauge"></div>
@@ -1094,7 +1102,17 @@
      cell builder below, so reordering is a data change. */
   const MA_PERIODS_TF = { d: MA_PERIODS, w: [10, 30, 40, 200], m: [10, 12, 20] };
   const MA_COLS = tf => MA_PERIODS_TF[tf].map(n => ["ma_" + tf + n, n + (tf === "d" ? "d" : tf)]);
-  const activeMaCols = () => MA_COLS("d")
+  /* Column groups, collapsed by default. The moving averages and the
+     relative-strength pair are context; the setup's own levels are the
+     decision, and with both groups open the levels sat twenty columns to the
+     right of the symbol. Remembered per browser. The data behind them is
+     loaded either way — the structure alerts read it with the columns shut. */
+  const COLS_KEY = "mc-watch-colgroups";
+  const COLGRP = (() => {
+    try { return { ma: false, rel: false, ...JSON.parse(localStorage.getItem(COLS_KEY) || "{}") }; }
+    catch { return { ma: false, rel: false }; }
+  })();
+  const activeMaCols = () => !COLGRP.ma ? [] : MA_COLS("d")
     .concat(TF.weekly.on ? MA_COLS("w") : [])
     .concat(TF.monthly.on ? MA_COLS("m") : []);
   const COLS = {
@@ -1130,7 +1148,7 @@
   /* The moving-average columns are spliced in after the price block so the
      table reads price, then structure, then the setup's own levels. */
   function colsFor(state) {
-    const base = COLS[state];
+    const base = COLGRP.rel ? COLS[state] : COLS[state].filter(c => c[0] !== "relm" && c[0] !== "rels");
     const at = base.findIndex(c => c[0] === "prev2");
     const mas = activeMaCols();
     return at < 0 ? base : base.slice(0, at + 1).concat(mas, base.slice(at + 1));
@@ -2126,7 +2144,7 @@
     pill.appendChild(h("strong", null, down + " of " + known.length));
     pill.appendChild(document.createTextNode(" active names down today (" + pctDown + "%) — " +
       (pctDown > 60 ? "broad risk-off: read individual weakness as market forces" :
-       pctDown > 40 ? "mixed tape: check Rel mkt / Rel sect before judging single names" :
+       pctDown > 40 ? "mixed tape: check Market signals (vs index, vs sector) before judging single names" :
        "tape supportive: moves are mostly stock-specific")));
     g.appendChild(pill);
   }
@@ -2576,6 +2594,21 @@
   };
   dirSel.addEventListener("change", syncDirWords);
   syncDirWords();
+
+  function syncColGroups() {
+    $("#col-ma").setAttribute("aria-pressed", String(COLGRP.ma));
+    $("#col-rel").setAttribute("aria-pressed", String(COLGRP.rel));
+    $("#ma-extra").hidden = !COLGRP.ma;
+  }
+  for (const [key, id] of [["ma", "#col-ma"], ["rel", "#col-rel"]]) {
+    $(id).addEventListener("click", () => {
+      COLGRP[key] = !COLGRP[key];
+      try { localStorage.setItem(COLS_KEY, JSON.stringify(COLGRP)); } catch { /* private mode */ }
+      syncColGroups();
+      render();
+    });
+  }
+  syncColGroups();
 
   for (const [key, id] of [["weekly", "#ma-weekly"], ["monthly", "#ma-monthly"]]) {
     $(id).addEventListener("click", () => {
