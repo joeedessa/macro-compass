@@ -825,9 +825,76 @@
     return st;
   }
 
+  /* The tight stop: the last full day's low (a long) or high (a short).
+     Tech Charts' definition, from the September 2026 quarterly review: once
+     a breakout is confirmed, take the full daily bar BEFORE the confirmation
+     day, and its low is the stop. It is anchored to the confirming close, not
+     to the first poke through the boundary — on a gap breakout the two are
+     the same day, which is where the confusion comes from. Weekly-scale
+     patterns use the daily bar all the same.
+
+     It sits between the boundary and the negation. Taking it out is not a
+     failure — the pattern stands until the negation — it is what separates a
+     type 2 breakout (held) from a type 3 (needed a second attempt). For a
+     trader running tight stops, it is the exit.
+
+     Source order: a level typed in from the report (`lfd`) wins, because the
+     report prints it and allows judgement the data cannot ("minor violations
+     are accepted"). Otherwise it is derived: the confirmation day is the
+     replay's own breakout close, or — for setups imported already confirmed,
+     whose date is the report's, often a Saturday — the most recent close
+     at or through the trigger within 40 sessions on or before that date.
+
+     Breach is a touch, on settled bars after the confirmation day, the same
+     test the negation uses. Returns null for a setup still waiting. */
+  const LFD_LOOKBACK = 40;
+  function lfdOf(p, st, hist, bars) {
+    if (st.state === "watch" && p.manualState !== "breakout") return null;
+    const long = p.dir === "long";
+    const dates = bars ? Object.keys(bars).sort() : [];
+    const lastSettled = hist && hist.settled.length ? hist.settled[hist.settled.length - 1][0] : null;
+    let conf = null;
+    if (st.breakout && st.breakout.close != null) conf = st.breakout.when;
+    else if (dates.length && p.breakthrough != null) {
+      const listed = p.confirmed || p.created || "9999";
+      const at = c => c != null && (long ? c >= p.breakthrough : c <= p.breakthrough);
+      let k = dates.length - 1;
+      while (k >= 0 && dates[k] > listed) k--;
+      for (let i = k; i > 0 && i > k - LFD_LOOKBACK; i--) {
+        if (at(bars[dates[i]][2]) && !at(bars[dates[i - 1]][2])) { conf = dates[i]; break; }
+      }
+    }
+    const out = { at: null, src: null, conf, bar: null, hit: null };
+    if (p.lfd != null) { out.at = p.lfd; out.src = "report"; }
+    else if (conf && dates.length) {
+      const i = dates.indexOf(conf);
+      if (i > 0) {
+        out.bar = dates[i - 1];
+        out.at = bars[out.bar][long ? 0 : 1];
+        out.src = "derived";
+      }
+    }
+    /* A derived bar can be wider than the pattern itself: NWH.AX broke out
+       the day after a 6.69–7.70 range, putting its "tight" stop below the 7.19
+       negation. That is no stop at all, so it is shown as such and not tested.
+       A level from the report is taken as given. */
+    if (out.src === "derived" && p.negation != null &&
+        (long ? out.at <= p.negation : out.at >= p.negation)) { out.looser = true; return out; }
+    if (out.at == null || !dates.length) return out;
+    // Test from the day after confirmation; with no known confirmation day
+    // (a report level on an imported setup), from the listed date.
+    const from = conf || p.confirmed || p.created || "";
+    for (const d of dates) {
+      if (d <= from || (lastSettled && d > lastSettled)) continue;
+      const lvl = bars[d][long ? 0 : 1];
+      if (long ? lvl < out.at : lvl > out.at) { out.hit = { when: d, at: lvl }; break; }
+    }
+    return out;
+  }
+
   let OV = loadOverlay();
   let SHARED = [], HIST = {}, EVENTS = {};
-  /* Daily highs and lows, keyed sym -> { 'YYYY-MM-DD': [low, high] }.
+  /* Daily highs and lows, keyed sym -> { 'YYYY-MM-DD': [low, high, close] }.
      Empty until the second pass fills it; the replay falls back to closes. */
   const BARS = {};
   const EDITING = new Set();          // ids currently in edit mode
@@ -857,7 +924,9 @@
           for (let i = 0; i < res.timestamp.length; i++) {
             const lo = q.low[i], hi = q.high[i];
             if (lo == null || hi == null) continue;
-            map[new Date(res.timestamp[i] * 1000).toISOString().slice(0, 10)] = [lo, hi];
+            // [low, high, close]: the close finds the confirmation day for the
+            // last-full-day stop on setups older than the 1y spark history.
+            map[new Date(res.timestamp[i] * 1000).toISOString().slice(0, 10)] = [lo, hi, q.close[i]];
           }
           if (Object.keys(map).length) out[sym] = map;
           return;
@@ -871,10 +940,12 @@
     return out;
   }
 
-  /* Second pass: which rows could a negation touch invalidate. */
+  /* Second pass: daily extremes for the negation touch and the LFD stop. */
   async function loadExtremes() {
     const want = workingList()
-      .filter(p => p.negation != null && p.manualState !== "removed" && p.manualState !== "failed")
+      // Not gated on a negation: the last-full-day stop needs the bars too,
+      // and a confirmed setup without a negation (ENERY.IS) still has one.
+      .filter(p => p.manualState !== "removed" && p.manualState !== "failed")
       .map(p => p.sym);
     if (!want.length) return;
     const got = await fetchExtremes(want);
@@ -889,6 +960,7 @@
       if (o.deleted) continue;
       list.push({ ...p,
         negation: o.negation !== undefined ? o.negation : p.negation,
+        lfd: o.lfd !== undefined ? o.lfd : p.lfd,
         breakthrough: o.breakthrough !== undefined ? o.breakthrough : p.breakthrough,
         target: o.target !== undefined ? o.target : p.target,
         ex_div: o.ex_div !== undefined ? o.ex_div : p.ex_div,
@@ -976,6 +1048,7 @@
       risk: (st.state !== "watch" && live && p.negation)
         ? pct1((p.dir === "long" ? 1 - p.negation / live : p.negation / live - 1) * 100)
         : null,
+      lfd: lfdOf(p, st, hist, BARS[p.sym]),
       earnings: ev.earnings || null,
       // A manually set ex-div (via Edit) outranks the feed and is shown as-is.
       exdiv: p.ex_div ? p.ex_div : ((ev.ex_div && ev.ex_div >= todayStr) ? ev.ex_div : null),
@@ -1000,7 +1073,7 @@
                ["","Actions","nosort"]],
     breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
                ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Confirmed"],
-               ["target","Target"],["upside","Upside"],["risk","Risk"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
+               ["target","Target"],["upside","Upside"],["risk","Risk"],["lfd","LFD stop"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
                ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
                ["negation","Negation"],["","Actions","nosort"]],
     target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
@@ -1065,6 +1138,7 @@
   const HSUB = (state, key) =>
     key === "upside" ? (state === "watch" ? "trigger → target" : "live → target") :
     key === "risk" ? "live → negation" :
+    key === "lfd" ? "last full day, live →" :
     key === "gap" ? "last close → trigger" :
     key === "gapAbs" ? "in listing currency" :
     key === "prev" ? "settled, drives the rules" :
@@ -1132,6 +1206,7 @@
     if (key === "relm") return r.relm;
     if (key === "rels") return r.rels;
     if (key === "risk") return r.risk;
+    if (key === "lfd") return lfdRisk(r);
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
     if (key === "exdiv") return r.exdiv || "9999";
@@ -1150,6 +1225,10 @@
   const maSlopeFromKey = (r, key) =>
     (window.MA && MA.slope) ? MA.slope(maSeriesFor(r, key), +key.slice(4)) : null;
 
+  /* Live → last-full-day stop, as a give-back, the same sign as Risk. */
+  const lfdRisk = r => (r.lfd && r.lfd.at != null && !r.lfd.looser && r.live)
+    ? pct1((r.p.dir === "long" ? 1 - r.lfd.at / r.live : r.lfd.at / r.live - 1) * 100) : null;
+
   function saveEdit(p, fields) {
     if (p.shared) {
       OV.over[idOf(p)] = { ...(OV.over[idOf(p)] || {}), ...fields };
@@ -1165,7 +1244,7 @@
     const box = h("div", "wact");
     const editing = EDITING.has(idOf(p));
     const edit = h("button", null, editing ? "Save" : "Edit");
-    edit.title = editing ? "Save and lock the row" : "Edit trigger, negation, target and ex-div in place";
+    edit.title = editing ? "Save and lock the row" : "Edit trigger, negation, LFD stop, target and ex-div in place";
     edit.addEventListener("click", () => {
       if (!editing) { EDITING.add(idOf(p)); render(); return; }
       const fields = {};
@@ -1480,6 +1559,46 @@
           : "Twice the 14-day ATR below the live price.";
         return td;
       }
+      case "lfd": {
+        const L = r.lfd;
+        if (editing) {
+          /* Blank means "derive it". Typing a level pins the one the report
+             prints, which can carry judgement the bars cannot. */
+          const td = h("td");
+          const inp = h("input", "cellEdit");
+          inp.type = "number"; inp.step = "any"; inp.dataset.field = "lfd";
+          if (p.lfd != null) inp.value = p.lfd;
+          if (L && L.src === "derived") inp.placeholder = fmt(L.at);
+          td.appendChild(inp);
+          return td;
+        }
+        if (!L || L.at == null) {
+          const td = h("td", null, "–");
+          td.title = "No close through the trigger within " + LFD_LOOKBACK +
+            " sessions of the listed date, or no daily bars yet. Edit the row to enter the level from the report.";
+          return td;
+        }
+        if (L.looser) {
+          const td = h("td", null, "–");
+          td.appendChild(h("span", "wname", "bar " + fmtD(L.bar) + " is past the negation"));
+          td.title = "The full day before the confirming close (" + L.bar + ") reached " + fmt(L.at) +
+            ", beyond the negation at " + fmt(p.negation) + " — no tighter than the pattern itself. " +
+            "Edit the row to enter the level from the report.";
+          return td;
+        }
+        const risk = lfdRisk(r);
+        const td = h("td", L.hit ? "riskcell" : null, fmt(L.at));
+        if (L.hit) td.appendChild(h("span", "wname held",
+          "hit " + fmt(L.hit.at) + " on " + fmtD(L.hit.when)));
+        else td.appendChild(h("span", "wname",
+          (risk != null ? "−" + fmt(Math.abs(risk)) + "% · " : "") +
+          (L.src === "report" ? "from report" : "bar " + fmtD(L.bar))));
+        td.title = (L.src === "report" ? "Entered from the report." :
+          "Derived: " + (p.dir === "long" ? "low" : "high") + " of " + L.bar +
+          ", the full day before the confirming close on " + L.conf + ".") +
+          (L.hit ? " Taken out on " + L.hit.when + " — the tight stop is gone; the pattern still stands until the negation (" + fmt(p.negation) + ")." : "");
+        return td;
+      }
       case "upside": return h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
       case "risk": return h("td", r.risk != null ? "riskcell" : null,
         r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
@@ -1773,6 +1892,21 @@
           " its trigger intraday (" + fmt(r.live) + " vs " + fmt(p.breakthrough) +
           "); a close " + side + " confirms the breakout"]);
       }
+      /* The tight stop, on the close and intraday. Ranked "bad" because for a
+         trader running last-full-day stops it is the exit; worded so it is
+         not mistaken for a failed pattern, which only the negation decides. */
+      if (r.lfd && r.lfd.hit && r.lfd.hit.when === lastSettledDate &&
+          (st.state === "breakout" || st.state === "target"))
+        items.push(["bad", p.sym + " " + p.dir + " — took out its last-full-day " +
+          (p.dir === "long" ? "low" : "high") + " on " + r.lfd.hit.when + " (" + fmt(r.lfd.hit.at) +
+          " vs " + fmt(r.lfd.at) + "): the tight stop is hit. The pattern stands until the negation at " +
+          fmt(p.negation)]);
+      else if (r.lfd && r.lfd.at != null && !r.lfd.hit && !r.lfd.looser && r.live != null &&
+          r.liveDate !== r.prevDate && (st.state === "breakout" || st.state === "target") &&
+          (p.dir === "long" ? r.live < r.lfd.at : r.live > r.lfd.at))
+        items.push(["bad", p.sym + " " + p.dir + " — trading " + (p.dir === "long" ? "below" : "above") +
+          " its last-full-day " + (p.dir === "long" ? "low" : "high") + " intraday (" + fmt(r.live) +
+          " vs " + fmt(r.lfd.at) + ")"]);
       /* The same warning on the other side of the trade, which matters more.
          A waiting setup trading through its trigger is an opportunity; a live
          position trading through its negation is money going wrong, and until
