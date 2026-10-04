@@ -1115,50 +1115,54 @@
   const activeMaCols = () => !COLGRP.ma ? [] : MA_COLS("d")
     .concat(TF.weekly.on ? MA_COLS("w") : [])
     .concat(TF.monthly.on ? MA_COLS("m") : []);
+  /* Ordered by the question each section answers. Identity first, then price,
+     then the levels that decide the trade, then the calendar, then where it
+     trades. Moving averages and market signals are context and open on demand
+     at the end, just before the actions.
+       Watchlist  — is it close, is it worth taking, where would I be wrong?
+       Confirmed  — am I still right, where are my exits, what is left?
+     No negation column while waiting: the source publishes one only once a
+     setup has broken out, so it was empty on every waiting row.
+     Merged pairs carry the second value on a sub-line: sorting and filtering
+     act on the main one. */
+  const ID = [["sym","Symbol","left"],["dir","Dir"],["pattern","Pattern"],["live","Live"],["prev","Last close"]];
+  const WHERE = [["market","Market"],["ccy","Ccy"],["added","Added"]];
   const COLS = {
-    watch:    [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["boundary","Boundary"],["breakthrough","Trigger"],["gap","% to trigger"],["gapAbs","Move"],
-               ["lfd","LFD stop"],["target","Target"],["upside","Upside"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
-               ["","Actions","nosort"]],
-    breakout: [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["boundary","Boundary"],["breakthrough","Trigger"],["when","Confirmed"],
-               ["target","Target"],["upside","Upside"],["risk","Risk"],["lfd","LFD stop"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
-               ["negation","Negation"],["","Actions","nosort"]],
-    target:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["when","Reached"],
-               ["target","Target"],["atr","ATR 14"],["stop","2×ATR stop"],["exdiv","Ex-div"],["earnings","Earnings"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
-               ["negation","Negation"],["","Actions","nosort"]],
-    failed:   [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],["breakthrough","Trigger"],
-               ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
-               ["","Actions","nosort"]],
+    watch:    [...ID, ["gap","To trigger"],["boundary","Boundary"],["breakthrough","Trigger"],
+               ["lfd","Tight stop (LFD)"],["target","Target"],["upside","Payoff"],["rr","Reward : risk"],
+               ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
+    breakout: [...ID, ["lfd","Tight stop (LFD)"],["negation","Negation"],["stop","Trailing stop"],["target","Target"],
+               ["breakthrough","Trigger"],["boundary","Boundary"],["when","Broke out"],
+               ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
+    target:   [...ID, ["when","Reached"],["stop","Trailing stop"],["target","Target"],
+               ["breakthrough","Trigger"],["boundary","Boundary"],["negation","Negation"],
+               ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
+    failed:   [...ID, ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
+               ["breakthrough","Trigger"],["boundary","Boundary"], ...WHERE, ["","Actions","nosort"]],
     /* Taken off the list by hand rather than by a rule, so the columns that
        describe how a trade resolved are dropped — there is no outcome to show.
        Price and the levels stay, because the question you ask of something you
        removed is whether removing it was right. */
-    removed:  [["sym","Symbol","left"],["ccy","Ccy"],["live","Live"],["prev","Last close"],["prev2","Close −1"],
-               ["relm","Rel mkt"],["rels","Rel sect"],["breakthrough","Trigger"],["gap","% to trigger"],["gapAbs","Move"],
-               ["target","Target"],["negation","Negation"],
-               ["dir","Dir"],["country","Country"],["exchange","Exch"],["pattern","Pattern"],["dur","Dur"],["added","Added"],
-               ["","Actions","nosort"]],
+    removed:  [...ID, ["gap","To trigger"],["boundary","Boundary"],["breakthrough","Trigger"],
+               ["target","Target"],["negation","Negation"], ...WHERE, ["","Actions","nosort"]],
   };
-  /* The moving-average columns are spliced in after the price block so the
-     table reads price, then structure, then the setup's own levels. */
+  /* The optional groups go in just before Actions: moving averages, then the
+     two market signals. */
+  const REL_COLS = [["relm","vs index"],["rels","vs sector"]];
   function colsFor(state) {
-    const base = COLGRP.rel ? COLS[state] : COLS[state].filter(c => c[0] !== "relm" && c[0] !== "rels");
-    const at = base.findIndex(c => c[0] === "prev2");
-    const mas = activeMaCols();
-    return at < 0 ? base : base.slice(0, at + 1).concat(mas, base.slice(at + 1));
+    const base = COLS[state];
+    const extra = activeMaCols().concat(COLGRP.rel ? REL_COLS : []);
+    const at = base.findIndex(c => c[1] === "Actions");
+    return at < 0 ? base.concat(extra) : base.slice(0, at).concat(extra, base.slice(at));
   }
   /* Every section in SECTIONS needs an entry here — buildTable destructures
      SORT[state], and a missing key throws mid-render, taking the rest of the
      page down with it silently. Removed sorts by distance to trigger, the same
      as the watchlist: the question you ask of something you dropped is how
      close it came. */
-  const SORT = { watch: ["gap", true], breakout: ["when", false], target: ["when", false],
+  // Confirmed sorts by distance to the tight stop, nearest (or already
+  // through it) first: the rows that need a decision come to the top.
+  const SORT = { watch: ["gap", true], breakout: ["lfd", true], target: ["when", false],
                  failed: ["when", false], removed: ["gap", true] };
   const FILTERS = {};
   const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
@@ -1186,15 +1190,17 @@
     return (hist.live / base[1] - 1) * 100;
   }
   const HSUB = (state, key) =>
-    key === "upside" ? (state === "watch" ? "trigger → target" : "live → target") :
-    key === "risk" ? "live → negation" :
-    key === "lfd" ? (state === "watch" ? "recorded at the boundary" : "last full day, live →") :
+    key === "upside" ? "trigger → target" :
+    key === "rr" ? "payoff ÷ risk to the stop" :
+    key === "lfd" ? (state === "watch" ? "set at the boundary close" : "last full day · live →") :
+    key === "negation" ? (state === "breakout" ? "live →" : null) :
+    key === "stop" ? "2×ATR below live" :
+    key === "target" ? (state === "breakout" ? "to go from live" : null) :
     key === "boundary" ? "pattern level" :
     key === "gap" ? "last close → trigger" :
-    key === "gapAbs" ? "in listing currency" :
     key === "prev" ? "settled, drives the rules" :
-    key === "prev2" ? "the session before" :
     key === "added" ? "on the list since" :
+    key === "market" ? "country · exchange" :
     key === "relm" ? "day % vs index" :
     key === "rels" ? "day % vs sector" : null;
   // Columns filterable via checkbox multi-select, and how to read their value.
@@ -1235,20 +1241,16 @@
   }
 
   function sortVal(r, key) {
-    if (key === "atr") return (EVENTS[r.p.sym] || {}).atr;
     if (key === "stop") { const st = stopFor(r.p, r.live); return st ? st.at : null; }
     if (key === "sym" || key === "dir") return r.p[key] || "";
-    if (key === "exchange" || key === "country") return r.p[key] || "";
+    if (key === "market") return (r.p.country || "") + " " + (r.p.exchange || "");
     if (key === "pattern") return r.p.pattern || "";
-    if (key === "dur") return r.p.duration_m;
     if (key === "added") return r.p.created || "";
     if (key === "breakthrough" || key === "negation" || key === "target" || key === "boundary") return r.p[key];
     if (key === "live") return r.live;
     if (key === "prev") return r.prevClose;
-    if (key === "prev2") return r.prevClose2;
     if (key === "ccy") return r.currency || "";
     if (key === "gap") return r.gap == null ? null : Math.abs(r.gap);
-    if (key === "gapAbs") return r.gapAbs == null ? null : Math.abs(r.gapAbs);
     if (key === "upside") return r.upside;
     if (key.startsWith("ma_")) {
       const m = maFromKey(r, key);
@@ -1256,7 +1258,7 @@
     }
     if (key === "relm") return r.relm;
     if (key === "rels") return r.rels;
-    if (key === "risk") return r.risk;
+    if (key === "rr") { const x = rrOf(r); return x ? x.ratio : null; }
     if (key === "lfd") return lfdRisk(r);
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
@@ -1279,6 +1281,22 @@
   /* Live → last-full-day stop, as a give-back, the same sign as Risk. */
   const lfdRisk = r => (r.lfd && r.lfd.at != null && !r.lfd.looser && r.live)
     ? pct1((r.p.dir === "long" ? 1 - r.lfd.at / r.live : r.lfd.at / r.live - 1) * 100) : null;
+
+  /* Reward : risk for a setup still waiting, as you would size it at the
+     trigger: payoff (trigger → target) over the distance from the trigger to
+     the stop. The tight stop where one is known and tighter than the pattern,
+     else the negation. */
+  function rrOf(r) {
+    const p = r.p, L = r.lfd;
+    if (p.breakthrough == null || p.target == null) return null;
+    const useLfd = L && L.at != null && !L.looser;
+    const stop = useLfd ? L.at : p.negation;
+    if (stop == null) return null;
+    const sgn = p.dir === "long" ? 1 : -1;
+    const reward = (p.target - p.breakthrough) * sgn, risk = (p.breakthrough - stop) * sgn;
+    if (!(reward > 0) || !(risk > 0)) return null;
+    return { ratio: reward / risk, vs: useLfd ? "tight stop" : "negation", stop };
+  }
 
   function saveEdit(p, fields) {
     if (p.shared) {
@@ -1508,14 +1526,6 @@
       return td;
     }
     switch (key) {
-      case "gapAbs": {
-        const td = h("td");
-        if (r.gapAbs == null) { td.textContent = "–"; return td; }
-        td.textContent = (r.gapAbs > 0 ? "+" : "") + fmt(r.gapAbs);
-        td.title = "Needs to move " + fmt(Math.abs(r.gapAbs)) + " " + (r.currency || "") +
-          " to reach the trigger";
-        return td;
-      }
       case "sym": {
         const td = h("td", "left");
         const symLine = h("span");
@@ -1551,13 +1561,8 @@
           td.appendChild(h("span", "days " + (r.prevChg >= 0 ? "" : "d7"),
             (r.prevChg > 0 ? "+" : "") + fmt(r.prevChg) + "% on the day"));
         }
-        if (r.prevDate) td.appendChild(h("span", "wname", fmtD(r.prevDate)));
-        return td;
-      }
-      case "prev2": {
-        const td = h("td");
-        td.textContent = fmt(r.prevClose2);
-        if (r.prevDate2) td.appendChild(h("span", "wname", fmtD(r.prevDate2)));
+        if (r.prevDate) td.appendChild(h("span", "wname", fmtD(r.prevDate) +
+          (r.prevClose2 != null ? " · prior " + fmt(r.prevClose2) : "")));
         return td;
       }
       case "breakthrough": return levelCell(p, "breakthrough", editing);
@@ -1571,22 +1576,32 @@
         if (p.hold && st && st.touched) {
           td.appendChild(h("span", "wname held",
             "touched " + fmt(st.touched.at) + " on " + fmtD(st.touched.when) + " · held"));
+        } else if (!editing && state === "breakout" && r.risk != null) {
+          td.classList.add("riskcell");
+          td.appendChild(h("span", "wname", "−" + fmt(Math.abs(r.risk)) + "% away"));
         }
         return td;
       }
-      case "target": return levelCell(p, "target", editing);
-      case "gap": return h("td", null, r.gap == null ? "–" : (r.gap > 0 ? "+" : "") + fmt(r.gap) + "%");
+      case "target": {
+        const td = levelCell(p, "target", editing);
+        if (!editing && state === "breakout" && r.upside != null)
+          td.appendChild(h("span", "wname", (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "% to go"));
+        return td;
+      }
+      case "gap": {
+        const td = h("td", null, r.gap == null ? "–" : (r.gap > 0 ? "+" : "") + fmt(r.gap) + "%");
+        /* The same distance in money: on 13.29 against a 14.15 trigger,
+           "0.86" is the number an order is set against. */
+        if (r.gapAbs != null) {
+          td.appendChild(h("span", "wname", (r.gapAbs > 0 ? "+" : "") + fmt(r.gapAbs) + " " + (r.currency || "")));
+          td.title = "Needs to move " + fmt(Math.abs(r.gapAbs)) + " " + (r.currency || "") + " to reach the trigger";
+        }
+        return td;
+      }
       case "relm": case "rels": {
         const v = r[key];
         const cls = v == null ? null : v >= 1.5 ? "relup" : v <= -1.5 ? "reldown" : null;
         return h("td", cls, v == null ? "–" : (v > 0 ? "+" : "") + fmt(v) + "pp");
-      }
-      case "atr": {
-        const e = EVENTS[p.sym] || {};
-        if (e.atr == null) return h("td", null, "–");
-        const td = h("td", null, fmt(e.atr));
-        if (e.atr_pct != null) td.appendChild(h("span", "wname", fmt(e.atr_pct, 1) + "% of price"));
-        return td;
       }
       case "stop": {
         /* A stock going ex-dividend falls by roughly the dividend that morning,
@@ -1603,8 +1618,8 @@
         const st = stopFor(p, r.live);
         if (!st) return h("td", null, "–");
         const td = h("td", st.widenedBy ? "riskcell" : null, fmt(st.at));
-        td.appendChild(h("span", "wname",
-          st.widenedBy ? "2×ATR + div " + fmt(st.widenedBy) : "2×ATR"));
+        td.appendChild(h("span", "wname", "ATR " + fmt(st.atr) +
+          (st.widenedBy ? " + div " + fmt(st.widenedBy) : "")));
         td.title = st.widenedBy
           ? "Widened by the " + fmt(st.widenedBy) + " dividend going ex on " +
             fmtD(st.exDiv) + ". Reverts to " + fmt(st.plain) + " once that has passed."
@@ -1670,8 +1685,6 @@
         return td;
       }
       case "upside": return h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
-      case "risk": return h("td", r.risk != null ? "riskcell" : null,
-        r.risk == null ? "–" : "−" + fmt(Math.abs(r.risk)) + "%");
       case "when": {
         if (state === "breakout") {
           const td = h("td", null, st.breakout ? fmtD(st.breakout.when)
@@ -1716,10 +1729,36 @@
         td.appendChild(h("span", "wdir " + p.dir, p.dir));
         return td;
       }
-      case "exchange": return h("td", null, p.exchange || "–");
-      case "country": return h("td", null, p.country || "–");
-      case "pattern": return h("td", "pat", p.pattern || "–");
-      case "dur": return h("td", null, p.duration_m != null ? p.duration_m + "m" : "–");
+      case "market": {
+        const td = h("td", null, p.country || "–");
+        if (p.exchange) td.appendChild(h("span", "wname", p.exchange));
+        return td;
+      }
+      case "pattern": {
+        const td = h("td", "pat", p.pattern || "–");
+        if (p.duration_m != null) td.appendChild(h("span", "wname",
+          p.duration_m + (p.duration_m === 1 ? " month" : " months")));
+        return td;
+      }
+      case "rr": {
+        const x = rrOf(r);
+        if (!x) {
+          const td = h("td", null, "–");
+          if (p.target != null && p.breakthrough != null) {
+            td.appendChild(h("span", "wname", "no stop yet"));
+            td.title = "Fills in once the stock closes past its boundary" +
+              (p.boundary != null ? " (" + fmt(p.boundary) + ")" : "") +
+              " and the tight stop is recorded — before the trigger, when the position is sized.";
+          }
+          return td;
+        }
+        const td = h("td", x.ratio < 1 ? "riskcell" : null, fmt(x.ratio, 1) + " : 1");
+        td.appendChild(h("span", "wname", "vs " + x.vs));
+        td.title = "Payoff " + fmt(Math.abs(p.target - p.breakthrough)) + " (trigger " + fmt(p.breakthrough) +
+          " → target " + fmt(p.target) + ") against " + fmt(Math.abs(p.breakthrough - x.stop)) +
+          " of risk to the " + x.vs + " at " + fmt(x.stop) + ".";
+        return td;
+      }
       case "added": {
         const td = h("td");
         if (!p.created) { td.textContent = "–"; return td; }
@@ -1777,8 +1816,10 @@
         SORT[state] = [key, cur[0] === key ? !cur[1] : (typeof sortVal(shown[0] || { p: {} }, key) === "string" || key === "gap")];
         render();
       });
-      const ctl = key ? headerFilter(state, key, rows, flt, th) : null;
-      if (ctl) {
+      // Market merges two columns and keeps both filters.
+      for (const fk of key === "market" ? ["country", "exchange"] : key ? [key] : []) {
+        const ctl = headerFilter(state, fk, rows, flt, th);
+        if (!ctl) continue;
         const box = h("div", "hfilter");
         box.appendChild(ctl);
         th.appendChild(box);
