@@ -86,7 +86,8 @@ A probe timeout marks a proxy slow, not dead. Only a refusal counts.
 - A row is `sym` + `dir`; the same symbol can carry a long and a short, so never key by symbol alone.
 - `breakthrough` is the **confirming close**, not the pattern boundary.
 - A negation is only tested **after** a setup triggers, against the day's low for a long and its high for a short.
-- The **LFD stop** is the tight stop: the low (long) or high (short) of the full daily bar *before the confirming close* — Tech Charts' definition, even for weekly patterns. Derived from the bars, or typed in from the report as `lfd`, which wins. Taking it out is not a failure; only the negation fails a pattern. It is marked on the row and alerted, and never moves the row.
+- `boundary` is the pattern level the report states ("neckline acting as resistance at 105.9"); `breakthrough` is the confirming close ("a daily close above 109"), usually the boundary plus the 3% Edwards & Magee filter.
+- The **LFD stop** is the tight stop: the low (long) or high (short) of the full daily bar *before the first close past the boundary* — the desk's rule. That close records the stop but confirms nothing; the row stays in the watchlist until the trigger closes. Tech Charts' own wording anchors to the confirming close instead; where the two differ the tooltip shows both. No boundary on file → the trigger is the anchor and the cell says so. A level typed in from the report (`lfd`) wins. Taking it out is not a failure — only the negation fails a pattern — so it marks the row and alerts, and never moves it.
 - A setup that already broke out needs `confirmed` set to the date it did. The replay starts at `confirmed || created` and ignores every bar before it — date it today and a live breakout sits in the watch list.
 
 ## Workflows
