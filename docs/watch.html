@@ -1181,6 +1181,13 @@
         st.targetHit = { when: date, close: c };
       }
     }
+    /* `reached` in the shared file: the source counts the target as met where
+       our closes fell just short (targets are guidelines — UNM peaked 0.03
+       under its 96.80). Dated by the closest approach; shown "per source". */
+    if (p.reached && st.state === "breakout") {
+      st.state = "target";
+      st.targetHit = { when: p.reached, close: null, bySource: true };
+    }
     return st;
   }
 
@@ -1262,6 +1269,7 @@
     // The confirmation-anchored reading, for the tooltip, where it differs.
     if (kind === "boundary" && ci > 0 && ci !== ai)
       out.alt = { bar: dates[ci - 1], at: bars[dates[ci - 1]][long ? 0 : 1] };
+    if (p.lfd === 0) { out.at = null; out.src = "none"; out.bar = null; out.alt = null; return out; }
     if (p.lfd != null) { out.at = p.lfd; out.src = "report"; }
     if (out.at == null) return out;
 
@@ -2027,6 +2035,12 @@
           td.appendChild(inp);
           return td;
         }
+        if (L && L.src === "none") {
+          const td = h("td", null, "–");
+          td.appendChild(h("span", "wname", "none in report"));
+          td.title = "The report gives no last full day for this breakout — it predates June, when Tech Charts started recording it.";
+          return td;
+        }
         if (!L || L.at == null) {
           const td = h("td", null, "–");
           if (state === "watch") {
@@ -2084,7 +2098,8 @@
         }
         if (state === "target") {
           const td = h("td", null, st.targetHit ? fmtD(st.targetHit.when) : "–");
-          if (st.targetHit) td.appendChild(h("span", "wname", "@ " + fmt(st.targetHit.close)));
+          if (st.targetHit) td.appendChild(h("span", "wname",
+            st.targetHit.bySource ? "per source" : "@ " + fmt(st.targetHit.close)));
           return td;
         }
         return h("td", null, st.failed ? fmtD(st.failed.when) : "–");
@@ -2389,7 +2404,7 @@
         items.push(["new", p.sym + " " + p.dir + " — BREAKOUT CONFIRMED: closed " +
           (p.dir === "long" ? "above" : "below") + " the trigger on " + st.breakout.when +
           " at " + fmt(st.breakout.close) + " (trigger " + fmt(p.breakthrough) + ")"]);
-      if (st.targetHit && st.targetHit.when === lastSettledDate)
+      if (st.targetHit && !st.targetHit.bySource && st.targetHit.when === lastSettledDate)
         items.push(["new", p.sym + " " + p.dir + " — reached its target on the " + st.targetHit.when +
           " close (" + fmt(st.targetHit.close) + " vs target " + fmt(p.target) + ")"]);
       if (st.failed && st.failed.when === lastSettledDate)

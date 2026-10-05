@@ -83,6 +83,8 @@ A probe timeout marks a proxy slow, not dead. Only a refusal counts.
 
 ## Watchlist conventions
 
+- `lfd` holds the last full day level from the breakout sheet (its LFDR column) and wins over the derived one; `lfd: 0` means the sheet gives none (breakouts before June 2026). No mechanical rule reproduces the sheet's choice every time (best fit 12–15 of 20), so the sheet is the source and the derivation only covers breakouts it has not reached yet.
+- `reached: "YYYY-MM-DD"` records a target the source counts as met where our closes fell just short; shown "per source".
 - `removed: "YYYY-MM-DD"` marks a setup the weekly report has dropped from its watchlist. It moves to Removed on every browser, with the date shown; Restore still works per browser.
 - A row is `sym` + `dir`; the same symbol can carry a long and a short, so never key by symbol alone.
 - `breakthrough` is the **confirming close**, not the pattern boundary.
