@@ -149,10 +149,6 @@
     font-weight:640; }
   .rangebtn:hover { color:var(--text-primary); }
   .manote { font-size:11px; color:var(--text-muted); flex-basis:100%; }
-  /* The MA detail joins the toolbar's own flex row when shown, so the legend
-     still wraps to a line of its own. */
-  #ma-extra { display:contents; }
-  #ma-extra[hidden] { display:none; }
   /* frozen headers while the table is in view (JS-driven translateY) */
   table.wl thead th { background:var(--surface-1); position:relative; z-index:4; }
   table.wl thead th.left { z-index:6; }
@@ -186,13 +182,6 @@
   table.wl thead th.left { z-index:3; }
   table.wl tbody tr:hover td.left { background:var(--surface-2); }
 
-  /* header row + nav row */
-  header.wrow { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
-  header.wrow h1 { margin:0; }
-  header.wrow .stamp { margin:0; flex:1; min-width:200px; }
-  .navrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 16px; }
-  .navrow nav.pages { margin:0; }
-  .navrow .spacer { flex:1; }
   .chip { font:inherit; font-size:12.5px; color:var(--text-secondary); background:var(--surface-1);
     border:1px solid var(--border); border-radius:8px; padding:5px 12px; cursor:pointer; }
   .chip:hover { color:var(--text-primary); }
@@ -211,9 +200,6 @@
   .gpill strong { font-weight:700; }
   .gpill.warn { background:var(--mixed-bg); }
   .gpill.bad { background:var(--off-bg); }
-  /* zebra rows (sticky first column needs an opaque colour) */
-  table.wl tbody tr:nth-child(even) td { background:rgba(125,150,180,0.055); }
-  table.wl tbody tr:nth-child(even) td.left { background:color-mix(in srgb, var(--surface-1) 93%, #7d96b4); }
   table.wl tbody tr:hover td { background:var(--surface-2); }
   /* wrapped pattern text */
   table.wl td.pat { white-space:normal; min-width:110px; max-width:150px; font-size:12px; }
@@ -349,6 +335,338 @@
   .maslope.flat, .maslope.flatup, .maslope.flatdown { color:var(--text-muted); }
 </style>
 <link rel="stylesheet" href="mobile.css?v=20260927b">
+<style id="design">
+  /* ==================================================================
+     Design pass — Watchlist and Benchmarks (one engine, one look).
+     Loaded after mobile.css so it wins equal-specificity ties without
+     !important. The colour tokens are the site's own (styles.css); this
+     only adds an accent for interactive state — blue, because amber means
+     "market open" everywhere else on the site — plus radii, hairlines and
+     elevation.
+     ================================================================== */
+  :root {
+    --accent: var(--series-1);
+    --radius: 14px;
+    --hair: color-mix(in srgb, var(--text-primary) 9%, transparent);
+    --card: var(--surface-1);
+    --fill: color-mix(in srgb, var(--text-primary) 6%, transparent);
+    --fill-2: color-mix(in srgb, var(--text-primary) 10%, transparent);
+    --shadow: 0 0 0 0.5px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
+    --pop: 0 0 0 0.5px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      --shadow: 0 0 0 0.5px rgba(255,255,255,0.06);
+      --pop: 0 0 0 0.5px rgba(255,255,255,0.10), 0 16px 48px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --shadow: 0 0 0 0.5px rgba(255,255,255,0.06);
+    --pop: 0 0 0 0.5px rgba(255,255,255,0.10), 0 16px 48px rgba(0,0,0,0.6);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  .wrap { max-width: 1320px; padding: 36px 28px 88px; }
+  :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+
+  /* ---------- buttons ---------- */
+  .tb, #refresh.tb { font: inherit; font-size: 13px; font-weight: 500; line-height: 1.2;
+    color: var(--text-primary); background: var(--fill); border: 0; border-radius: 999px;
+    padding: 7px 15px; cursor: pointer; transition: background .15s, opacity .15s; white-space: nowrap; }
+  .tb:hover, #refresh.tb:hover { background: var(--fill-2); color: var(--text-primary); }
+  .tb.primary, #refresh.tb.primary { background: var(--accent); color: #fff; }
+  .tb.primary:hover, #refresh.tb.primary:hover { background: var(--accent); opacity: .88; }
+  #calbtn.tb[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent); border: 0; }
+  .rangebtn { font: inherit; font-size: 12.5px; font-weight: 500; color: var(--text-secondary);
+    background: var(--fill); border: 0; border-radius: 999px; padding: 6px 13px; }
+  .rangebtn:hover { color: var(--text-primary); background: var(--fill-2); }
+  .rangebtn[aria-pressed="true"] { color: var(--accent); font-weight: 600; border: 0;
+    background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+  /* ---------- header ---------- */
+  header.hero { display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 14px 24px; flex-wrap: wrap; }
+  header.hero h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.08; }
+  header.hero .stamp { margin-top: 6px; font-size: 13px; color: var(--text-secondary); max-width: 70ch; }
+  .hero-actions { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  details.addwrap { margin: 0; }
+  details.addwrap[open] { flex-basis: auto; }
+  details.addwrap > summary { list-style: none; display: inline-block; }
+  details.addwrap > summary.tb { color: var(--text-primary); background: var(--fill); border: 0;
+    border-radius: 999px; padding: 7px 15px; font-size: 13px; }
+  details.addwrap > summary.tb:hover { background: var(--fill-2); }
+  details.addwrap > summary::-webkit-details-marker { display: none; }
+  details.addwrap > summary::before { content: none; }
+  details.addwrap[open] > summary { background: var(--fill-2); }
+  details.addwrap > form.add { position: absolute; right: 0; top: calc(100% + 10px); z-index: 50;
+    width: min(640px, calc(100vw - 32px)); margin: 0; padding: 18px; border: 0;
+    border-radius: 16px; background: var(--card); box-shadow: var(--pop); }
+
+  /* ---------- page navigation: one quiet strip ---------- */
+  nav.pages { margin: 22px 0 0; display: flex; gap: 2px; flex-wrap: nowrap; overflow-x: auto;
+    scrollbar-width: none; padding: 3px; width: max-content; max-width: 100%;
+    background: var(--fill); border-radius: 999px; }
+  nav.pages::-webkit-scrollbar { display: none; }
+  nav.pages a { flex: 0 0 auto; white-space: nowrap; font-size: 13px; color: var(--text-secondary);
+    border: 0; background: none; border-radius: 999px; padding: 6px 13px; }
+  nav.pages a:hover { color: var(--text-primary); background: none; border: 0; }
+  nav.pages a.here { color: var(--text-primary); font-weight: 600; border: 0;
+    background: var(--card); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.14); }
+
+  /* ---------- morning brief ---------- */
+  .brief { margin: 28px 0 0; display: grid; gap: 12px; }
+  #gauge:empty { display: none; }
+  #gauge { margin: 0; }
+  .gpill, .gpill.warn, .gpill.bad { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    border: 0; border-radius: var(--radius); padding: 13px 18px; background: var(--card);
+    box-shadow: var(--shadow); font-size: 13.5px; color: var(--text-secondary); }
+  .gpill strong { color: var(--text-primary); font-weight: 600; margin-right: -6px; }
+  .gmeter { flex: none; width: 72px; height: 6px; border-radius: 3px; overflow: hidden;
+    background: color-mix(in srgb, var(--up) 55%, transparent); }
+  .gmeter i { display: block; height: 100%; background: var(--down); }
+  .algroup { margin: 0; background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 4px 0; }
+  .alhead { display: flex; align-items: baseline; gap: 4px 8px; flex-wrap: wrap; margin: 0;
+    padding: 11px 18px 7px; font-size: 14px; font-weight: 600; text-transform: none;
+    letter-spacing: 0; color: var(--text-primary); }
+  .alhead .alcount { color: var(--text-muted); font-weight: 500; }
+  .alhead .alsub { font-size: 12.5px; font-weight: 400; color: var(--text-muted); }
+  details.algroup > summary.alhead { list-style: none; cursor: pointer; padding-bottom: 11px;
+    position: relative; padding-right: 44px; }
+  details.algroup > summary.alhead::-webkit-details-marker { display: none; }
+  details.algroup > summary.alhead::after { content: "›"; position: absolute; right: 18px; top: 10px;
+    font-size: 19px; line-height: 1; color: var(--text-muted); transition: transform .2s; }
+  details.algroup[open] > summary.alhead::after { transform: rotate(90deg); }
+  details.algroup[open] > summary.alhead { padding-bottom: 7px; }
+  #alerts, #signals, #dividends { display: flex; flex-direction: column; gap: 0; }
+  .albox, .albox.new, .albox.warn, .albox.bad { position: relative; border: 0; border-radius: 0;
+    border-top: 1px solid var(--hair); background: none; margin-left: 18px;
+    padding: 10px 18px 10px 18px; font-size: 13.5px; line-height: 1.42; }
+  .albox:first-child { border-top: 0; }
+  .albox > strong:first-child { display: none; }
+  .albox::before { content: ""; position: absolute; left: 0; top: 16px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--text-muted); }
+  .albox.new::before { background: var(--up); }
+  .albox.bad::before { background: var(--down); }
+  .albox.warn::before { background: var(--open); }
+  .albox .sttag { font: inherit; font-size: 11.5px; font-weight: 600; text-transform: none;
+    letter-spacing: 0; color: var(--text-secondary); background: var(--fill); border: 0;
+    border-radius: 999px; padding: 2px 9px; margin: 0 8px 0 0; cursor: pointer; vertical-align: 0; }
+  .albox .sttag:hover { color: var(--accent); }
+  .albox .sttag.st-breakout { color: var(--accent); border: 0;
+    background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+  /* ---------- calendar ---------- */
+  #calwrap { margin: 28px 0 0; }
+  #calwrap h2 { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .calcard, .calnow { border: 0; border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
+  .calnow.hit { background: var(--mixed-bg); }
+
+  /* ---------- segment bar (sticky) ---------- */
+  .segbar { position: sticky; top: 0; z-index: 25; display: flex; align-items: center;
+    gap: 10px 16px; flex-wrap: wrap; margin: 32px -28px 0; padding: 10px 28px;
+    background: color-mix(in srgb, var(--page) 80%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 0.5px solid transparent; transition: border-color .2s; }
+  .segbar.stuck { border-bottom-color: var(--hair); }
+  .seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--fill);
+    overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { font: inherit; font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    background: none; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer;
+    white-space: nowrap; transition: background .15s, color .15s; }
+  .seg button:hover { color: var(--text-primary); }
+  .seg button .n { margin-left: 7px; font-size: 12px; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; }
+  .seg button[aria-selected="true"] { color: var(--text-primary); font-weight: 600;
+    background: var(--card); box-shadow: 0 0 0 0.5px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.16); }
+  .segtools { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  #matoggles { margin: 0; gap: 6px; }
+  #q { font: inherit; font-size: 13px; color: var(--text-primary); width: 210px;
+    background: var(--fill) no-repeat 10px 50% / 14px
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='5' fill='none' stroke='%238e8e93' stroke-width='1.8'/%3E%3Cpath d='M11 11l3.5 3.5' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+    border: 0; border-radius: 10px; padding: 7px 12px 7px 31px; }
+  #q::placeholder { color: var(--text-muted); }
+  #q:focus { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 0; }
+  .maextra { margin: 12px 0 0; }
+  #ma-extra { display: flex; }
+  #ma-extra[hidden] { display: none; }
+  .switch .mafixed { border: 0; background: var(--fill); border-radius: 999px; padding: 5px 11px; }
+
+  /* One section on screen at a time. */
+  .wrap[data-seg] .tablewrap.wl[id^="sec-"]:not([id^="sec-log"]),
+  .wrap[data-seg] p[id^="empty-"] { display: none; }
+  .wrap[data-seg="watch"] #sec-watch, .wrap[data-seg="breakout"] #sec-breakout,
+  .wrap[data-seg="target"] #sec-target, .wrap[data-seg="failed"] #sec-failed,
+  .wrap[data-seg="removed"] #sec-removed { display: block; }
+  .wrap[data-seg="watch"] #empty-watch:not([hidden]), .wrap[data-seg="breakout"] #empty-breakout:not([hidden]),
+  .wrap[data-seg="target"] #empty-target:not([hidden]), .wrap[data-seg="failed"] #empty-failed:not([hidden]),
+  .wrap[data-seg="removed"] #empty-removed:not([hidden]) { display: block; }
+  p[id^="empty-"] { margin: 18px 0 0; padding: 28px; text-align: center; border-radius: var(--radius);
+    background: var(--card); box-shadow: var(--shadow); max-width: none; }
+
+  /* ---------- tables ---------- */
+  .tablewrap.wl[id^="sec-"] { margin: 14px 0 0; }
+  .scrollbody { background: var(--card); border: 0; border-radius: var(--radius);
+    box-shadow: var(--shadow); scrollbar-color: auto; }
+  .topscroll { height: 6px; margin: 0 6px 8px; background: var(--fill); border: 0; border-radius: 3px; }
+  .topscroll .thumb { top: 0; bottom: 0; border-radius: 3px; min-width: 40px;
+    background: color-mix(in srgb, var(--text-primary) 26%, transparent); }
+  .topscroll .thumb:hover, .topscroll .thumb.drag {
+    background: color-mix(in srgb, var(--text-primary) 42%, transparent); }
+  table.wl { font-size: 13.5px; }
+  table.wl th { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0;
+    color: var(--text-secondary); padding: 12px 14px 10px; border-bottom: 1px solid var(--hair);
+    background: var(--card); }
+  table.wl th.active { color: var(--accent); }
+  th .hsub { font-size: 11px; font-weight: 400; color: var(--text-muted); margin-top: 2px; }
+  table.wl td { padding: 12px 14px; border-bottom: 1px solid var(--hair); }
+  table.wl tbody tr td, table.wl tbody tr td.left { background: var(--card); }
+  table.wl tbody tr:hover td, table.wl tbody tr:hover td.left {
+    background: color-mix(in srgb, var(--card) 95%, var(--text-primary)); }
+  table.wl th.left, table.wl td.left { box-shadow: 1px 0 0 var(--hair); }
+  .wsym { font-size: 14px; font-weight: 600; }
+  .wname { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+  .wdir { display: inline-block; font-size: 11.5px; font-weight: 600; text-transform: capitalize;
+    letter-spacing: 0; padding: 2px 9px; border-radius: 999px; }
+  .wdir.long { color: var(--up); background: var(--on-bg); }
+  .wdir.short { color: var(--down); background: var(--off-bg); }
+  table.wl td.pat { font-size: 13px; min-width: 150px; max-width: 190px; }
+  .epsbtn { border: 0; background: var(--fill); border-radius: 6px; }
+  /* filters: a small chevron under the column name, a count when active */
+  th .hfilter { margin-top: 3px; }
+  table.wl th.left .hfilter { display: none; }      /* the search field above replaces it */
+  .fbtn { display: inline-block; width: auto; border: 0; background: none; padding: 0 3px;
+    font-size: 11px; color: var(--text-muted); border-radius: 4px; }
+  .fbtn::after { content: "▾"; margin-left: 2px; }
+  .fbtn:hover { color: var(--text-primary); background: var(--fill); }
+  .fbtn.on { color: var(--accent); border: 0; font-weight: 650; }
+  .fpop { border: 0; border-radius: 12px; box-shadow: var(--pop); padding: 10px; }
+  .fpop input[type="text"] { border: 0; background: var(--fill); border-radius: 8px; padding: 5px 9px; }
+  td input.cellEdit { border: 1px solid var(--accent); border-radius: 8px; background: var(--card); padding: 3px 7px; }
+  .wact button { font: inherit; font-size: 12.5px; font-weight: 500; color: var(--text-primary);
+    background: var(--fill); border: 0; border-radius: 999px; padding: 4px 11px; }
+  .wact button:hover { background: var(--fill-2); color: var(--text-primary); }
+
+  /* ---------- row actions: ⋯ menu ---------- */
+  .rowmenu { position: relative; display: inline-block; }
+  .rowmenu > summary { list-style: none; cursor: pointer; width: 30px; height: 30px; margin: -5px -6px -5px 0;
+    display: grid; place-items: center; border-radius: 50%; color: var(--text-secondary);
+    font-size: 17px; font-weight: 700; line-height: 1; letter-spacing: 1px; user-select: none; }
+  .rowmenu > summary::-webkit-details-marker { display: none; }
+  .rowmenu > summary:hover, .rowmenu[open] > summary { background: var(--fill-2); color: var(--text-primary); }
+  .rowmenu[open] > summary::before { content: ""; position: fixed; inset: 0; z-index: 60; cursor: default; }
+  .rowmenu > .wact { display: none; }
+  .rowmenu[open] > .wact { position: fixed; z-index: 61; display: flex; flex-direction: column;
+    align-items: stretch; gap: 0; min-width: 196px; padding: 5px; border-radius: 12px;
+    background: var(--card); box-shadow: var(--pop); }
+  .rowmenu .wact button { text-align: left; background: none; border-radius: 8px;
+    padding: 8px 12px; font-size: 13.5px; }
+  .rowmenu .wact button:hover { background: var(--accent); color: #fff; }
+
+  /* ---------- folded panels ---------- */
+  details.panel { margin: 16px 0 0; background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); }
+  #dz-log { margin-top: 44px; }
+  .wrap:has(#dz-log[hidden]) #dz-scan { margin-top: 44px; }
+  details.panel > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline;
+    gap: 4px 12px; flex-wrap: wrap; padding: 17px 48px 17px 20px; position: relative; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary h2.secline { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+  details.panel > summary .psum { font-size: 13px; color: var(--text-muted); flex: 1; }
+  details.panel > summary::after { content: "›"; position: absolute; right: 20px; top: 50%;
+    margin-top: -12px; font-size: 22px; line-height: 1; color: var(--text-muted); transition: transform .2s; }
+  details.panel[open] > summary::after { transform: rotate(90deg); }
+  .panelbody { padding: 0 20px 20px; }
+  .panelbody .lede { max-width: 82ch; }
+  #dz-log .secpill { display: block; position: static; margin: 20px 0 8px; padding: 0; border: 0;
+    background: none; box-shadow: none; font-size: 14px; }
+  .panelbody .scrollbody { box-shadow: 0 0 0 1px var(--hair); }
+  .dcard, .sigcol { border: 0; background: var(--surface-2); border-radius: 12px; }
+  .dcard h3 { font-size: 14.5px; }
+
+  /* ---------- forms ---------- */
+  form.add { border: 0; border-radius: var(--radius); background: var(--surface-2); }
+  .panelbody form.add { background: var(--fill); }
+  form.add input, form.add select { border: 0; border-radius: 9px; background: var(--card);
+    padding: 8px 11px; box-shadow: 0 0 0 0.5px var(--hair); }
+  form.add input:focus, form.add select:focus { outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  form.add button { border: 0; border-radius: 999px; background: var(--accent); color: #fff; padding: 9px 18px; }
+  form.add button:hover { opacity: .88; }
+
+  /* ---------- odds and ends ---------- */
+  footer p { font-size: 12px; color: var(--text-muted); max-width: 90ch; }
+  footer { margin-top: 40px; }
+  #totop { width: 44px; height: 44px; font-size: 17px; font-weight: 500; color: var(--text-primary);
+    background: color-mix(in srgb, var(--card) 72%, transparent);
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border: 0; box-shadow: var(--pop); }
+  #totop:hover { background: var(--card); border: 0; }
+
+  /* ==================================================================
+     Phone: every row becomes a card.
+     Symbol and direction head the card, the section's primary numbers sit
+     in a three-column grid under it, and "More" shows the rest. Only the
+     five section tables — the trade log keeps its plain table.
+     ================================================================== */
+  @media (max-width: 700px) {
+    .wrap { padding: 20px 16px 72px; }
+    header.hero h1 { font-size: 30px; }
+    .hero-actions { width: 100%; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      margin: 0 -16px; padding: 2px 16px; width: calc(100% + 32px); }
+    .hero-actions::-webkit-scrollbar { display: none; }
+    .hero-actions > * { flex: none; }
+    .hero-actions #refresh { order: -1; }
+    details.addwrap > form.add { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px;
+      width: auto; max-height: 80vh; overflow: auto; }
+    nav.pages { margin-top: 18px; }
+    .segbar { margin: 24px -16px 0; padding: 10px 16px; }
+    .seg { width: 100%; }
+    .seg button { flex: 1 0 auto; padding: 6px 10px; }
+    .segtools { width: calc(100% + 32px); margin: 0 -16px; padding: 0 16px; flex-wrap: nowrap;
+      overflow-x: auto; scrollbar-width: none; }
+    .segtools::-webkit-scrollbar { display: none; }
+    .segtools > * { flex: none; }
+    #matoggles { flex-wrap: nowrap; }
+    #q { flex: 1 0 150px; width: auto; }
+    .tablewrap.wl[id^="sec-"]:not(.ref) { margin: 12px 0 0; width: auto; }
+    .tablewrap.wl[id^="sec-"] .scrollbody { border-radius: var(--radius); overflow: visible; }
+    .tablewrap.wl[id^="sec-"] .topscroll { display: none; }
+    table.wl.sect { display: block; min-width: 0; font-size: 14px; }
+    table.wl.sect thead { display: none; }
+    table.wl.sect tbody { display: block; }
+    table.wl.sect tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 14px; padding: 14px 16px 12px; position: relative; border-bottom: 1px solid var(--hair); }
+    table.wl.sect tbody tr:last-child { border-bottom: 0; }
+    table.wl.sect tbody tr td, table.wl.sect tbody tr:hover td, table.wl.sect tbody tr td.left {
+      display: block; padding: 0; border: 0; background: none; text-align: left; white-space: normal;
+      min-width: 0; transform: none; }
+    table.wl.sect tbody td::before { content: attr(data-label); display: block; font-size: 11.5px;
+      color: var(--text-muted); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    table.wl.sect tbody td.left:first-child { grid-column: 1 / -1; position: static; max-width: none;
+      box-shadow: none; padding-right: 100px; }
+    table.wl.sect tbody td.left::before, table.wl.sect tbody td.act::before,
+    table.wl.sect tbody td.dircell::before { content: none; }
+    table.wl.sect tbody td.dircell { position: absolute; top: 16px; right: 52px; }
+    table.wl.sect tbody td.act { position: absolute; top: 11px; right: 12px; }
+    table.wl.sect tbody tr:not(.open) td:not(.pri):not(.act):not(.left):not(.dircell) { display: none; }
+    table.wl.sect tbody tr::after { content: "More"; grid-column: 1 / -1; font-size: 13px;
+      color: var(--accent); margin-top: -2px; }
+    table.wl.sect tbody tr.open::after { content: "Less"; }
+    table.wl.sect .wname { white-space: normal; overflow: visible; }
+    table.wl.sect td.left .wname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    table.wl.sect td.pat { max-width: none; }
+    .rowmenu[open] > summary::before { background: rgba(0,0,0,0.38); }
+    .rowmenu[open] > .wact { left: 10px !important; right: 10px; top: auto !important;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      min-width: 0; padding: 6px; border-radius: 16px; }
+    .rowmenu .wact button { padding: 13px 14px; font-size: 16px; text-align: center; }
+    details.panel > summary { padding: 15px 44px 15px 16px; }
+    details.panel > summary::after { right: 16px; }
+    .panelbody { padding: 0 16px 16px; }
+  }
+</style>
 <script src="mobile.js?v=20260927b" defer></script>
 <script src="pricefloor.js?v=20260927b"></script>
 <script src="links.js?v=20260927b"></script>
@@ -356,36 +674,18 @@
 <body>
 <script src="ma.js?v=20260927b"></script>
 <div class="wrap">
-  <header class="wrow">
-    <h1>Watchlist</h1>
-    <p class="stamp" id="stamp"></p>
-    <button id="refresh" type="button">Refresh prices</button>
-  </header>
-  <div class="navrow">
-    <nav class="pages">
-      <a href="./">Overview</a>
-      <a href="tape.html">Today</a>
-      <a href="watch.html" class="here">Watchlist</a>
-      <a href="watch.html?set=benchmarks">Benchmarks</a>
-      <a href="portfolio.html">Portfolio</a>
-      <a href="markets.html">Markets</a>
-      <a href="trend.html">Trend map</a>
-      <a href="ai.html">AI</a>
-      <a href="commodities.html">Commodities</a>
-      <a href="countries.html">Countries</a>
-      <a href="themes.html">Themes</a>
-      <a href="macro.html">Macro &amp; flows</a>
-      <a href="letters.html">Letters &amp; 13F</a>
-      <a href="lookup.html">Lookup</a>
-      <a href="method.html">Method</a>
-    </nav>
-    <span class="spacer"></span>
-    <button id="calbtn" type="button" class="chip" aria-pressed="false">Calendar</button>
-    <button id="exportbtn" type="button" class="chip">Export</button>
-    <button id="importbtn" type="button" class="chip">Import</button>
-    <input id="importfile" type="file" accept="application/json" hidden>
-    <details class="addwrap" id="addwrap">
-      <summary>Add a setup</summary>
+  <header class="hero">
+    <div class="titlebox">
+      <h1>Watchlist</h1>
+      <p class="stamp" id="stamp"></p>
+    </div>
+    <div class="hero-actions">
+      <button id="calbtn" type="button" class="tb" aria-pressed="false">Calendar</button>
+      <button id="exportbtn" type="button" class="tb">Export</button>
+      <button id="importbtn" type="button" class="tb">Import</button>
+      <input id="importfile" type="file" accept="application/json" hidden>
+      <details class="addwrap" id="addwrap">
+        <summary class="tb">Add setup</summary>
       <form class="add" id="addform">
     <label>Symbol<input id="f-sym" required placeholder="e.g. GDX" autocomplete="off"></label>
     <label>Direction
@@ -404,25 +704,45 @@
     <label>Note<input id="f-note" placeholder="why this trade (optional)"></label>
     <button type="submit">Add</button>
   </form>
+      </details>
+      <button id="refresh" type="button" class="tb primary">Refresh</button>
+    </div>
+  </header>
+    <nav class="pages">
+      <a href="./">Overview</a>
+      <a href="tape.html">Today</a>
+      <a href="watch.html" class="here">Watchlist</a>
+      <a href="watch.html?set=benchmarks">Benchmarks</a>
+      <a href="portfolio.html">Portfolio</a>
+      <a href="markets.html">Markets</a>
+      <a href="trend.html">Trend map</a>
+      <a href="ai.html">AI</a>
+      <a href="commodities.html">Commodities</a>
+      <a href="countries.html">Countries</a>
+      <a href="themes.html">Themes</a>
+      <a href="macro.html">Macro &amp; flows</a>
+      <a href="letters.html">Letters &amp; 13F</a>
+      <a href="lookup.html">Lookup</a>
+      <a href="method.html">Method</a>
+    </nav>
+
+  <!-- The morning brief: breadth, then what your own levels did, then the
+       moving-average signals folded behind their count. -->
+  <section class="brief" id="brief">
+    <div id="gauge"></div>
+    <div class="algroup" id="grp-setup" hidden>
+      <h3 class="alhead">Setup events<span class="alcount"></span><span class="alsub">your own levels — a trigger taken, a target reached, a stop or negation hit</span></h3>
+      <div id="alerts"></div>
+    </div>
+    <div class="algroup" id="grp-dividend" hidden>
+      <h3 class="alhead">Dividend flags<span class="alcount"></span><span class="alsub">an ex-date inside a week on a position you hold — widen the stop before the drop</span></h3>
+      <div id="dividends"></div>
+    </div>
+    <details class="algroup" id="grp-signals" hidden>
+      <summary class="alhead">Structure signals<span class="alcount"></span><span class="alsub">price changing sides on the 150 or 200, slowest timeframe first</span></summary>
+      <div id="signals"></div>
     </details>
-  </div>
-
-  <div class="switch" id="matoggles" role="group" aria-label="Column groups">
-    <span class="slabel">Show</span>
-    <button class="rangebtn" id="col-ma" type="button" aria-pressed="false">Moving averages</button>
-    <button class="rangebtn" id="col-rel" type="button" aria-pressed="false">Market signals</button>
-    <span id="ma-extra" hidden>
-    <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
-    <span class="mafixed">10 · 30 · 40 · 200 weekly · 10 · 12 · 20 monthly</span>
-    <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
-    <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
-    <span class="manote">▲ above that average, ▼ below it; the number is how far. On the 150 and 200
-      — and the weekly 30/40/200, monthly 10/20 — an arrow follows for the direction of the average
-      itself: ↑ rising, ↓ falling, → flat, ⤴ turning up, ⤵ turning down. Hover for the figures.</span>
-    </span>
-  </div>
-
-  <div id="gauge"></div>
+  </section>
 
   <!-- Off by default and pinned above everything when on; the toggle sits with
        the other chips at the top. Moved here from the Today page, where it was
@@ -434,22 +754,26 @@
     <div class="calgrid" id="calendar"></div>
   </section>
 
-  <div class="algroup" id="grp-setup" hidden>
-    <h3 class="alhead">Setup events<span class="alcount"></span><span class="alsub"> · your own levels — a trigger taken, a
-      target reached, a negation hit</span></h3>
-    <div id="alerts"></div>
+  <!-- One section at a time. The bar sticks under the viewport top; the
+       table headers freeze beneath it. -->
+  <div class="segbar" id="segbar">
+    <div class="seg" id="seg" role="tablist" aria-label="Sections"></div>
+    <div class="segtools">
+      <input type="search" id="q" placeholder="Search" autocomplete="off" spellcheck="false" aria-label="Search by symbol or name">
+      <div class="switch" id="matoggles" role="group" aria-label="Column groups">
+        <button class="rangebtn" id="col-ma" type="button" aria-pressed="false">Moving averages</button>
+        <button class="rangebtn" id="col-rel" type="button" aria-pressed="false">Market signals</button>
+      </div>
+    </div>
   </div>
-
-  <div class="algroup" id="grp-dividend" hidden>
-    <h3 class="alhead">Dividend flags<span class="alcount"></span><span class="alsub"> · an ex-date inside a week on
-      a position you hold — the stop needs widening before the drop, not explaining after it</span></h3>
-    <div id="dividends"></div>
-  </div>
-
-  <div class="algroup" id="grp-signals" hidden>
-    <h3 class="alhead">Structure signals<span class="alcount"></span><span class="alsub"> · price changing sides on the 150 or
-      200, slowest timeframe first — nothing to do with your levels</span></h3>
-    <div id="signals"></div>
+  <div class="switch maextra" id="ma-extra" hidden>
+    <span class="mafixed">5 · 21 · 50 · 150 · 200 daily</span>
+    <span class="mafixed">10 · 30 · 40 · 200 weekly · 10 · 12 · 20 monthly</span>
+    <button class="rangebtn" id="ma-weekly" type="button" aria-pressed="false">+ Weekly</button>
+    <button class="rangebtn" id="ma-monthly" type="button" aria-pressed="false">+ Monthly</button>
+    <span class="manote">▲ above that average, ▼ below it; the number is how far. On the 150 and 200
+      — and the weekly 30/40/200, monthly 10/20 — an arrow follows for the direction of the average
+      itself: ↑ rising, ↓ falling, → flat, ⤴ turning up, ⤵ turning down. Hover for the figures.</span>
   </div>
 
   <p id="empty-watch" class="lede" hidden>Nothing waiting. The shared list lives in
@@ -471,7 +795,9 @@
     was right.</p>
   <div class="tablewrap wl" id="sec-removed"></div>
 
-  <h2 class="secline" id="s-log">Trade log</h2>
+  <details class="panel" id="dz-log">
+    <summary><h2 class="secline" id="s-log">Trade log</h2><span class="psum">Your actual entries and exits</span></summary>
+    <div class="panelbody">
   <p class="lede tight">An independent journal of actual entries and exits. Logging here never
     moves a setup between the tables above and the tables never write here — the Log button on any
     row only pre-fills this form. Price defaults to the settled close of the trade date and follows
@@ -500,7 +826,12 @@
   <div class="tablewrap wl" id="sec-logclosed"></div>
   <div class="tablewrap wl" id="sec-logfills"></div>
 
-  <h2 class="secline" id="s-scan">Cross scan</h2>
+    </div>
+  </details>
+
+  <details class="panel" id="dz-scan">
+    <summary><h2 class="secline" id="s-scan">Cross scan</h2><span class="psum">Moving-average crosses across the list, fastest to slowest</span></summary>
+    <div class="panelbody">
   <p class="lede tight">The same moving-average ladder used on Markets, Themes and Countries, run
     over the setups on this list. Left to right is the escalation order — each step costs time and
     buys confidence, and price leads its own averages arithmetically, so a name normally lights up
@@ -509,8 +840,12 @@
     years, on monthly bars about seventeen.</p>
   <div class="switch" id="scanscope"></div>
   <div id="sigscan"></div>
+    </div>
+  </details>
 
-  <h2 class="secline" id="s-details">Earnings &amp; news detail</h2>
+  <details class="panel" id="dz-details">
+    <summary><h2 class="secline" id="s-details">Earnings &amp; news detail</h2><span class="psum">Last report, next consensus and headlines, per name</span></summary>
+    <div class="panelbody">
   <p class="lede tight">Jump here from the ▮ icon on any row. What the last quarter delivered
     against expectations — including how the market traded it — plus the consensus for the coming
     report and the street's price target, plotted against your own. Where a name has reported
@@ -519,6 +854,8 @@
     from TradingView rather than company-issued figures, and everything stays in the instrument's
     listing currency.</p>
   <div id="details"></div>
+    </div>
+  </details>
 
   <footer>
     <p>Prices from Yahoo Finance, fetched live on each load (delayed, not real-time). Each instrument is quoted and evaluated in its own listing currency — nothing is converted. Rules are
@@ -538,6 +875,9 @@
     if (text !== undefined) n.textContent = text;
     return n;
   };
+  // The trade log, cross scan and earnings detail fold away; anything that
+  // points into one opens it first.
+  const openPanel = sel => { const d = document.querySelector(sel); if (d) d.open = true; };
   /* Storage model: the shared list ships in the repo (data/watchlist.json).
      localStorage holds a personal overlay keyed sym|dir — added setups, level
      overrides (trigger/negation/target), manual moves, hides. States are never
@@ -570,6 +910,16 @@
   };
   const SET = SETS[new URLSearchParams(location.search).get("set")] || SETS.watchlist;
   const KEY = SET.key;
+  /* One section on screen at a time, chosen from the segmented control.
+     Remembered per browser and per list. */
+  const SEG_KEY = "mc-seg-" + KEY;
+  const SEG_LABELS = { watch: "Watching", breakout: "Confirmed", target: "At target",
+                       failed: "Failed", removed: "Removed" };
+  let SEG = "watch", SEG_COUNTS = {};
+  try { const v = localStorage.getItem(SEG_KEY); if (v && SEG_LABELS[v]) SEG = v; } catch { /* private mode */ }
+  // Cards expanded on a phone, kept across the re-render a price refresh does.
+  const OPENROWS = new Set();
+  const NARROW = matchMedia("(max-width: 700px)");
   const loadOverlay = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
     catch { return { added: [], over: {} }; }
@@ -1169,6 +1519,16 @@
   const SORT = { watch: ["gap", true], breakout: ["lfd", true], target: ["when", false],
                  failed: ["when", false], removed: ["gap", true] };
   const FILTERS = {};
+  /* The fields a phone card shows before it is expanded: the price and the
+     levels that decide the section's question. Symbol, direction and actions
+     are always shown. */
+  const PRI = {
+    watch:    ["live", "gap", "breakthrough", "lfd", "target", "rr"],
+    breakout: ["live", "lfd", "negation", "stop", "target", "when"],
+    target:   ["live", "when", "stop", "target"],
+    failed:   ["live", "when", "negation"],
+    removed:  ["live", "gap", "breakthrough", "target"],
+  };
   const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
                    target: "Reached price target", failed: "Failed breakouts",
                    removed: "Removed from watchlist" };
@@ -1346,6 +1706,7 @@
       $("#l-date").value = new Date().toISOString().slice(0, 10);
       PRICE_TOUCHED = false;
       autoPrice();
+      openPanel("#dz-log");
       $("#s-log").scrollIntoView({ behavior: "smooth" });
     });
     box.appendChild(lg);
@@ -1426,7 +1787,26 @@
       });
       box.appendChild(del);
     }
-    td.appendChild(box);
+    if (editing) { td.appendChild(box); return td; }
+    /* One control per row instead of four. The list opens as a popover at the
+       button (a bottom sheet on a phone), positioned in viewport terms so the
+       table's own scroll box cannot clip it. */
+    const menu = h("details", "rowmenu");
+    const sum = h("summary", null, "⋯");
+    sum.title = "Actions";
+    sum.setAttribute("aria-label", "Actions for " + p.sym + " " + p.dir);
+    menu.appendChild(sum);
+    menu.appendChild(box);
+    menu.addEventListener("toggle", () => {
+      if (!menu.open) return;
+      document.querySelectorAll("details.rowmenu[open]").forEach(d => { if (d !== menu) d.open = false; });
+      const r = sum.getBoundingClientRect();
+      const below = r.bottom + 6 + box.offsetHeight < innerHeight - 8;
+      box.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - 6 - box.offsetHeight)) + "px";
+      box.style.left = Math.max(8, r.right - box.offsetWidth) + "px";
+    });
+    box.addEventListener("click", e => { if (e.target.closest("button")) menu.open = false; });
+    td.appendChild(menu);
     return td;
   }
 
@@ -1457,7 +1837,8 @@
     if (!(key in FKEYS)) return null;
     const cur = Array.isArray(flt[key]) ? flt[key] : [];
     const sk = state + "|" + key;
-    const btn = h("button", "fbtn" + (cur.length ? " on" : ""), cur.length ? cur.length + " selected" : "all");
+    const btn = h("button", "fbtn" + (cur.length ? " on" : ""), cur.length ? String(cur.length) : "");
+    btn.title = cur.length ? cur.length + " selected — click to change" : "Filter this column";
     btn.type = "button";
     btn.addEventListener("click", e => {
       e.stopPropagation();
@@ -1789,11 +2170,7 @@
   function buildTable(state, rows) {
     const wrap = $("#sec-" + state);
     wrap.textContent = "";
-    const pill = h("div", "secpill");
-    pill.appendChild(document.createTextNode(TITLES[state]));
-    pill.appendChild(h("span", "cnt", "(" + rows.length + ")"));
-    wrap.appendChild(pill);
-    if (!rows.length) return;
+    if (!rows.length) return 0;
     const flt = FILTERS[state] = FILTERS[state] || {};
     const shown = rows.filter(r => {
       if (flt.sym && !(r.p.sym + " " + (r.p.note || "")).toLowerCase().includes(flt.sym.toLowerCase())) return false;
@@ -1812,7 +2189,7 @@
       const cmp = typeof va === "string" ? va.localeCompare(vb) : va - vb;
       return asc ? cmp : -cmp;
     });
-    const table = h("table", "wl");
+    const table = h("table", "wl sect");
     const thead = h("thead"), hr = h("tr");
     for (const [key, label, cls] of colsFor(state)) {
       const th = h("th", (cls || "") + (key && key === sortKey ? " active" + (asc ? " asc" : "") : ""));
@@ -1842,12 +2219,22 @@
     for (const r of shown) {
       const { p, st } = r;
       const tr = h("tr");
+      const rid = state + "|" + idOf(p);
+      if (OPENROWS.has(rid) || EDITING.has(idOf(p))) tr.classList.add("open");
+      /* On a phone the row is a card showing its primary fields; a tap on
+         anything that is not itself a control shows the rest. */
+      tr.addEventListener("click", e => {
+        if (!NARROW.matches || e.target.closest("a, button, input, select, summary, details")) return;
+        tr.classList.toggle("open");
+        if (tr.classList.contains("open")) OPENROWS.add(rid); else OPENROWS.delete(rid);
+      });
       let reasonDone = false;
       for (const [key, label] of colsFor(state)) {
         if (key === "") {
           if (label === "Reason" && !reasonDone) {
             reasonDone = true;
-            const td = h("td");
+            const td = h("td", "pri");
+            td.dataset.label = "Reason";
             td.appendChild(h("span", "wstat bad",
               st.failed
               ? st.failed.reason + (st.failed.byTouch
@@ -1856,12 +2243,19 @@
               : "moved manually"));
             tr.appendChild(td);
           } else if (label === "Actions") {
-            tr.appendChild(actionsCell(p, tr, state));
+            const td = actionsCell(p, tr, state);
+            td.classList.add("act");
+            tr.appendChild(td);
           }
           continue;
         }
         const td = cellFor(key, state, r, tr);
-        if (td) tr.appendChild(td);
+        if (td) {
+          td.dataset.label = label;
+          if (key === "dir") td.classList.add("dircell");
+          if ((PRI[state] || []).includes(key)) td.classList.add("pri");
+          tr.appendChild(td);
+        }
       }
       tb.appendChild(tr);
     }
@@ -1896,20 +2290,18 @@
     body.addEventListener("scroll", layoutThumb, { passive: true });
     SIZERS.push(layoutThumb);
 
-    /* Freeze the section pill and the header row while the table body is in
-       view: sticky cannot escape the overflow-x container, so both are
-       translated — the pill rides the viewport top, headers just beneath it.
-       offsetTop distances are layout values, unaffected by the transforms. */
+    /* Freeze the header row while the table body is in view. Sticky cannot
+       escape the overflow-x container, so the cells are translated to sit
+       just under the segment bar, which is itself sticky. */
     const theadEl = table.tHead;
+    const segbar = $("#segbar");
     function freezeHead() {
       const rct = body.getBoundingClientRect();
-      const pillH = pill.offsetHeight + 6;
+      if (!rct.height) return;                       // section not on screen
+      const barH = segbar ? segbar.getBoundingClientRect().bottom : 0;
       const hh = theadEl.getBoundingClientRect().height;
-      const ended = rct.bottom < hh + pillH + 60;
-      const thOff = (!ended && rct.top < pillH) ? pillH - rct.top : 0;
-      const natural = rct.top - (body.offsetTop - pill.offsetTop);
-      const pillOff = (!ended && natural < 0) ? -natural : 0;
-      pill.style.transform = pillOff ? "translateY(" + pillOff + "px)" : "";
+      const ended = rct.bottom < hh + barH + 60;
+      const thOff = (!ended && rct.top < barH) ? barH - rct.top : 0;
       theadEl.querySelectorAll("th").forEach(th2 => {
         th2.style.transform = thOff ? "translateY(" + thOff + "px)" : "";
       });
@@ -1938,6 +2330,7 @@
       const maxScroll = body.scrollWidth - body.clientWidth;
       body.scrollLeft = ((e.clientX - rect.left) / rect.width) * maxScroll;
     });
+    return shown.length;
   }
 
   /* Two separate streams, deliberately not merged.
@@ -2096,8 +2489,10 @@
         const b = h("div", "albox " + cls);
         b.appendChild(h("strong", null, cls === "new" ? "▲ " : cls === "bad" ? "✕ " : "⚠ "));
         if (state && TITLES[state]) {
-          const tag = h("span", "sttag st-" + state, TITLES[state]);
-          tag.title = "This setup is in the " + TITLES[state] + " section below";
+          const tag = h("button", "sttag st-" + state, SEG_LABELS[state] || TITLES[state]);
+          tag.type = "button";
+          tag.title = "Show the " + TITLES[state] + " section";
+          tag.addEventListener("click", () => { setSeg(state); $("#segbar").scrollIntoView({ behavior: "smooth" }); });
           b.appendChild(tag);
         }
         b.appendChild(document.createTextNode(msg));
@@ -2191,6 +2586,11 @@
     const pctDown = Math.round(down / known.length * 100);
     const cls = pctDown > 60 ? "bad" : pctDown > 40 ? "warn" : "";
     const pill = h("div", "gpill" + (cls ? " " + cls : ""));
+    const meter = h("span", "gmeter");
+    meter.title = pctDown + "% of active names down on the day";
+    const fill = h("i"); fill.style.width = pctDown + "%";
+    meter.appendChild(fill);
+    pill.appendChild(meter);
     pill.appendChild(h("strong", null, down + " of " + known.length));
     pill.appendChild(document.createTextNode(" active names down today (" + pctDown + "%) — " +
       (pctDown > 60 ? "broad risk-off: read individual weakness as market forces" :
@@ -2514,7 +2914,13 @@
     document.title = SET.title + " — Macro Compass";
     const hh = document.querySelector("header h1");
     if (hh) hh.textContent = SET.title;
-    for (const sel of ["#calbtn", "#calwrap", "#exportbtn", "#importbtn", "#addwrap",
+    // Same file as the watchlist, so the nav has to be told which page this is.
+    const navHere = document.querySelector('nav.pages a[href="watch.html?set=benchmarks"]');
+    if (navHere) {
+      document.querySelectorAll("nav.pages a.here").forEach(a => a.classList.remove("here"));
+      navHere.classList.add("here");
+    }
+    for (const sel of ["#calbtn", "#calwrap", "#exportbtn", "#importbtn", "#addwrap", "#dz-log",
                        "#s-log", "#logform", "#logsummary",
                        "#sec-logopen", "#sec-logclosed", "#sec-logfills"]) {
       const el = document.querySelector(sel);
@@ -2576,10 +2982,13 @@
     const live = all.filter(r => r.section !== "failed" && r.section !== "removed");
     renderGauge(live);
     renderAlerts(all);
+    // Counts on the segments follow the search: what each section would show.
+    SEG_COUNTS = {};
     for (const state of SECTIONS) {
       $("#empty-" + state).hidden = items[state].length > 0;
-      buildTable(state, items[state]);
+      SEG_COUNTS[state] = buildTable(state, items[state]);
     }
+    paintSeg();
     renderScan(live);
     renderDetails(all.filter(r => r.section !== "removed"));
     const syms = [...new Set(list.map(p => p.sym))];
@@ -2644,6 +3053,49 @@
   };
   dirSel.addEventListener("change", syncDirWords);
   syncDirWords();
+
+  function paintSeg() {
+    const bar = $("#seg");
+    bar.textContent = "";
+    for (const st2 of SECTIONS) {
+      const b = h("button");
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", String(st2 === SEG));
+      b.appendChild(document.createTextNode(SEG_LABELS[st2]));
+      if (SEG_COUNTS[st2] != null) b.appendChild(h("span", "n", String(SEG_COUNTS[st2])));
+      b.addEventListener("click", () => setSeg(st2));
+      bar.appendChild(b);
+    }
+    document.querySelector(".wrap").dataset.seg = SEG;
+  }
+  function setSeg(st2) {
+    SEG = st2;
+    try { localStorage.setItem(SEG_KEY, st2); } catch { /* private mode */ }
+    paintSeg();
+    // The newly shown table was measured while hidden.
+    SIZERS.forEach(f => f()); FREEZERS.forEach(f => f());
+  }
+  paintSeg();
+
+  // One search for every section, instead of a box in each table's header.
+  $("#q").addEventListener("input", e => {
+    for (const st2 of SECTIONS) (FILTERS[st2] = FILTERS[st2] || {}).sym = e.target.value;
+    render();
+  });
+
+  // Earnings links (▮) jump into the folded detail panel.
+  document.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest('a[href^="#d-"]');
+    if (a) openPanel("#dz-details");
+  }, true);
+  if (location.hash.startsWith("#d-")) openPanel("#dz-details");
+
+  // A hairline under the segment bar only once it is riding the top.
+  addEventListener("scroll", () => {
+    const sb = $("#segbar");
+    sb.classList.toggle("stuck", sb.getBoundingClientRect().top <= 0.5);
+  }, { passive: true });
 
   function syncColGroups() {
     $("#col-ma").setAttribute("aria-pressed", String(COLGRP.ma));
@@ -2910,6 +3362,7 @@
     $("#l-pricenote").textContent = "Editing the " + f.side + " of " + f.sym + " on " +
       fmtD(f.date) + " — saving replaces it.";
     $("#logform").querySelector("button[type=submit]").textContent = "Save fill";
+    openPanel("#dz-log");
     $("#s-log").scrollIntoView({ behavior: "smooth" });
   }
 
