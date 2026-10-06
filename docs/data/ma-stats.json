@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-09-06T13:07:16Z",
+ "generated_at": "2026-10-06T15:12:54Z",
  "sample": 40,
  "windows": {
   "daily": "5 years",
@@ -9,7 +9,7 @@
  "rows": [
   {
    "instruments": 40,
-   "crosses_per_year": 18.8,
+   "crosses_per_year": 18.4,
    "reverse_pct": 65,
    "chop_pct": 13,
    "lag_bars": 24.5,
@@ -36,8 +36,8 @@
   {
    "instruments": 40,
    "crosses_per_year": 9.3,
-   "reverse_pct": 83,
-   "chop_pct": 19,
+   "reverse_pct": 82,
+   "chop_pct": 18,
    "lag_bars": 99.5,
    "line": "Daily 200",
    "timeframe": "daily",
@@ -48,7 +48,7 @@
   },
   {
    "instruments": 40,
-   "crosses_per_year": 9.4,
+   "crosses_per_year": 9.1,
    "reverse_pct": 50,
    "chop_pct": 15,
    "lag_bars": 4.5,
@@ -61,7 +61,7 @@
   },
   {
    "instruments": 40,
-   "crosses_per_year": 5.4,
+   "crosses_per_year": 5.5,
    "reverse_pct": 56,
    "chop_pct": 12,
    "lag_bars": 14.5,
@@ -76,7 +76,7 @@
    "instruments": 40,
    "crosses_per_year": 4.4,
    "reverse_pct": 67,
-   "chop_pct": 16,
+   "chop_pct": 15,
    "lag_bars": 19.5,
    "line": "Weekly 40",
    "timeframe": "weekly",
