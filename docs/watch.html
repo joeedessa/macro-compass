@@ -421,7 +421,7 @@
   .gpill, .gpill.warn, .gpill.bad { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     border: 0; border-radius: var(--radius); padding: 13px 18px; background: var(--card);
     box-shadow: var(--shadow); font-size: 13.5px; color: var(--text-secondary); }
-  .gpill strong { color: var(--text-primary); font-weight: 600; margin-right: -6px; }
+  .gpill strong { color: var(--text-primary); font-weight: 600; }
   .gmeter { flex: none; width: 72px; height: 6px; border-radius: 3px; overflow: hidden;
     background: color-mix(in srgb, var(--up) 55%, transparent); }
   .gmeter i { display: block; height: 100%; background: var(--down); }
@@ -604,67 +604,154 @@
     border: 0; box-shadow: var(--pop); }
   #totop:hover { background: var(--card); border: 0; }
 
+  /* Desktop: the card-only bits stay out of the table. */
+  .symdir, td .chg { display: none; }
+  .gtxt strong { margin-right: 8px; }
+  .gsub { color: var(--text-secondary); }
+
+  /* iOS before 16.2 has no color-mix(): every tint and hairline above would
+     resolve to nothing. Plain translucent greys keep the structure visible. */
+  @supports not (color: color-mix(in srgb, red, blue)) {
+    :root { --hair: rgba(128,128,128,0.22); --fill: rgba(128,128,128,0.14);
+      --fill-2: rgba(128,128,128,0.24); }
+    .segbar { background: var(--page); }
+    .rangebtn[aria-pressed="true"], #calbtn.tb[aria-pressed="true"] { background: var(--fill-2); }
+  }
+
   /* ==================================================================
-     Phone: every row becomes a card.
-     Symbol and direction head the card, the section's primary numbers sit
-     in a three-column grid under it, and "More" shows the rest. Only the
-     five section tables — the trade log keeps its plain table.
+     Phone — portrait, and landscape (short and wide). Built as an iOS
+     screen rather than the desktop page squeezed:
+       · large title with Refresh as a round button at the top right
+       · the breadth line first, alert lists without their explainer
+       · a segmented control that fits the width, count under each label
+       · each setup a card read like the Stocks app: symbol and direction
+         on the left, price and the day's move on the right, then the
+         section's numbers, "More" for the rest
+       · row actions as a bottom sheet
      ================================================================== */
-  @media (max-width: 700px) {
-    .wrap { padding: 20px 16px 72px; }
-    header.hero h1 { font-size: 30px; }
-    .hero-actions { width: 100%; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-      margin: 0 -16px; padding: 2px 16px; width: calc(100% + 32px); }
+  @media (max-width: 700px), (orientation: landscape) and (max-height: 500px) {
+    .wrap { padding: 14px 16px calc(64px + env(safe-area-inset-bottom)); }
+
+    /* header */
+    header.hero { position: relative; display: block; padding-right: 48px; }
+    header.hero h1 { font-size: 32px; letter-spacing: -0.02em; }
+    header.hero .stamp { font-size: 12.5px; margin-top: 4px; }
+    #refresh.tb.primary { position: absolute; top: 2px; right: 0; width: 38px; height: 38px; padding: 0;
+      border-radius: 50%; font-size: 0; display: grid; place-items: center; }
+    #refresh.tb.primary::before { content: "↻"; font-size: 19px; font-weight: 600; line-height: 1; }
+    /* static, so the round Refresh anchors to the header, not to this
+       scrolling row (which would clip it) */
+    .hero-actions { position: static; margin: 14px -16px 0; padding: 2px 16px; width: calc(100% + 32px);
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 6px; }
     .hero-actions::-webkit-scrollbar { display: none; }
     .hero-actions > * { flex: none; }
-    .hero-actions #refresh { order: -1; }
-    details.addwrap > form.add { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px;
-      width: auto; max-height: 80vh; overflow: auto; }
-    nav.pages { margin-top: 18px; }
-    .segbar { margin: 24px -16px 0; padding: 10px 16px; }
-    .seg { width: 100%; }
-    .seg button { flex: 1 0 auto; padding: 6px 10px; }
-    .segtools { width: calc(100% + 32px); margin: 0 -16px; padding: 0 16px; flex-wrap: nowrap;
-      overflow-x: auto; scrollbar-width: none; }
-    .segtools::-webkit-scrollbar { display: none; }
+    .tb, details.addwrap > summary.tb { font-size: 13.5px; padding: 7px 10px; }
+    details.addwrap > form.add { position: fixed; left: 10px; right: 10px; top: auto;
+      bottom: calc(10px + env(safe-area-inset-bottom)); width: auto; max-height: 78vh; overflow: auto;
+      border-radius: 18px; }
+    nav.pages { margin-top: 14px; }
+    nav.pages a { font-size: 14px; padding: 7px 14px; }
+
+    /* brief */
+    .brief { margin-top: 18px; gap: 10px; }
+    .gpill, .gpill.warn, .gpill.bad { padding: 13px 16px; gap: 12px; flex-wrap: nowrap; align-items: center; }
+    .gtxt { display: flex; flex-direction: column; min-width: 0; }
+    .gtxt strong { margin: 0; font-size: 15px; }
+    .gsub { font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+    .gmeter { width: 48px; }
+    .alhead { padding: 12px 16px 6px; font-size: 15px; }
+    .alhead .alsub { display: none; }
+    details.algroup > summary.alhead { padding-bottom: 12px; }
+    details.algroup > summary.alhead::after { right: 16px; top: 11px; }
+    .albox, .albox.new, .albox.warn, .albox.bad { margin-left: 16px; padding: 10px 16px 11px 18px;
+      font-size: 14px; }
+    .albox::before { top: 16px; }
+    .albox .sttag { font-size: 12px; }
+
+    /* segment bar: segments share the width; count sits under each label */
+    .segbar { margin: 22px -16px 0; padding: 8px 16px 10px; gap: 8px; }
+    .seg { display: flex; width: 100%; overflow: visible; border-radius: 11px; }
+    .seg button { flex: 1 1 0; min-width: 0; padding: 5px 2px 4px; border-radius: 9px;
+      display: flex; flex-direction: column; align-items: center; gap: 0; font-size: 12.5px; line-height: 1.25; }
+    .seg button .n { margin: 0; font-size: 11px; }
+    .segtools { width: 100%; margin: 0; padding: 0; gap: 6px; flex-wrap: nowrap; overflow: visible; }
     .segtools > * { flex: none; }
-    #matoggles { flex-wrap: nowrap; }
-    #q { flex: 1 0 150px; width: auto; }
-    .tablewrap.wl[id^="sec-"]:not(.ref) { margin: 12px 0 0; width: auto; }
+    #q { flex: 1 1 auto; min-width: 0; width: auto; font-size: 15px; padding: 7px 10px 7px 30px; }
+    #matoggles { flex-wrap: nowrap; gap: 6px; }
+    .rangebtn[data-short] { font-size: 0; padding: 7px 12px; }
+    .rangebtn[data-short]::after { content: attr(data-short); font-size: 13.5px; }
+    .maextra { margin-top: 10px; }
+
+    /* cards */
+    .tablewrap.wl[id^="sec-"]:not(.ref) { margin: 10px 0 0; width: auto; }
     .tablewrap.wl[id^="sec-"] .scrollbody { border-radius: var(--radius); overflow: visible; }
     .tablewrap.wl[id^="sec-"] .topscroll { display: none; }
-    table.wl.sect { display: block; min-width: 0; font-size: 14px; }
+    table.wl.sect { display: block; min-width: 0; font-size: 15px; }
     table.wl.sect thead { display: none; }
     table.wl.sect tbody { display: block; }
     table.wl.sect tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px 14px; padding: 14px 16px 12px; position: relative; border-bottom: 1px solid var(--hair); }
+      gap: 12px 12px; padding: 14px 48px 12px 16px; position: relative;
+      border-bottom: 1px solid var(--hair); }
     table.wl.sect tbody tr:last-child { border-bottom: 0; }
     table.wl.sect tbody tr td, table.wl.sect tbody tr:hover td, table.wl.sect tbody tr td.left {
       display: block; padding: 0; border: 0; background: none; text-align: left; white-space: normal;
       min-width: 0; transform: none; }
     table.wl.sect tbody td::before { content: attr(data-label); display: block; font-size: 11.5px;
-      color: var(--text-muted); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    table.wl.sect tbody td.left:first-child { grid-column: 1 / -1; position: static; max-width: none;
-      box-shadow: none; padding-right: 100px; }
+      color: var(--text-muted); margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* header row: symbol + direction | price + day move | ⋯ */
+    table.wl.sect tbody td.left:first-child { grid-row: 1; grid-column: 1 / span 2; position: static;
+      max-width: none; box-shadow: none; padding: 0; }
     table.wl.sect tbody td.left::before, table.wl.sect tbody td.act::before,
-    table.wl.sect tbody td.dircell::before { content: none; }
-    table.wl.sect tbody td.dircell { position: absolute; top: 16px; right: 52px; }
-    table.wl.sect tbody td.act { position: absolute; top: 11px; right: 12px; }
-    table.wl.sect tbody tr:not(.open) td:not(.pri):not(.act):not(.left):not(.dircell) { display: none; }
-    table.wl.sect tbody tr::after { content: "More"; grid-column: 1 / -1; font-size: 13px;
+    table.wl.sect tbody td[data-label="Live"]::before { content: none; }
+    table.wl.sect .wsym { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+    table.wl.sect .symdir { display: inline-block; margin-left: 8px; vertical-align: 2px;
+      font-size: 11px; padding: 1px 8px; }
+    table.wl.sect tbody td.dircell { display: none !important; }
+    table.wl.sect tbody td[data-label="Live"] { grid-row: 1; grid-column: 3; text-align: right;
+      font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    table.wl.sect td[data-label="Live"] .chg { display: inline-block; margin-top: 3px; font-size: 12.5px;
+      font-weight: 600; padding: 1px 7px; border-radius: 6px; color: #fff; }
+    table.wl.sect td[data-label="Live"] .chg.up { background: var(--up); }
+    table.wl.sect td[data-label="Live"] .chg.down { background: var(--down); }
+    /* the day-move pill already says the price is live */
+    table.wl.sect td[data-label="Live"] .wname { display: none; }
+    table.wl.sect tbody td.act { position: absolute; top: 13px; right: 10px; }
+    /* metrics */
+    table.wl.sect tbody td.pri:not([data-label="Live"]) { font-size: 15px; font-weight: 500; }
+    table.wl.sect tbody td.pri .wname, table.wl.sect tbody td.pri .days { font-weight: 400; }
+    table.wl.sect tbody tr:not(.open) td:not(.pri):not(.act):not(.left):not([data-label="Live"]) { display: none; }
+    table.wl.sect tbody tr::after { content: "More ›"; grid-column: 1 / -1; font-size: 14px;
       color: var(--accent); margin-top: -2px; }
-    table.wl.sect tbody tr.open::after { content: "Less"; }
-    table.wl.sect .wname { white-space: normal; overflow: visible; }
+    table.wl.sect tbody tr.open::after { content: "Less ‹"; }
+    table.wl.sect tbody tr.open { background: color-mix(in srgb, var(--card) 97%, var(--text-primary)); }
+    table.wl.sect .wname { white-space: normal; overflow: visible; font-size: 12.5px; }
     table.wl.sect td.left .wname { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    table.wl.sect td.pat { max-width: none; }
+    table.wl.sect td.pat { max-width: none; min-width: 0; }
+    table.wl.sect td input.cellEdit { width: 100%; font-size: 16px; padding: 6px 8px; }
+
+    /* action sheet */
+    .rowmenu > summary { width: 32px; height: 32px; margin: 0; }
     .rowmenu[open] > summary::before { background: rgba(0,0,0,0.38); }
     .rowmenu[open] > .wact { left: 10px !important; right: 10px; top: auto !important;
-      bottom: calc(10px + env(safe-area-inset-bottom));
-      min-width: 0; padding: 6px; border-radius: 16px; }
-    .rowmenu .wact button { padding: 13px 14px; font-size: 16px; text-align: center; }
+      bottom: calc(10px + env(safe-area-inset-bottom)); min-width: 0; padding: 6px; border-radius: 16px; }
+    .rowmenu .wact button { padding: 14px; font-size: 17px; text-align: center; }
+
+    /* panels */
     details.panel > summary { padding: 15px 44px 15px 16px; }
     details.panel > summary::after { right: 16px; }
+    details.panel > summary .psum { flex-basis: 100%; }
     .panelbody { padding: 0 16px 16px; }
+    #dz-log { margin-top: 28px; }
+    #totop { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
+  }
+  /* A phone on its side has width to spare: four numbers a row. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    /* height is what is short here: counts beside the labels, one line */
+    .seg button { flex-direction: row; justify-content: center; gap: 6px; padding: 6px 4px; }
+    .segbar { padding-top: 6px; padding-bottom: 6px; }
+    table.wl.sect tbody tr { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    table.wl.sect tbody td.left:first-child { grid-column: 1 / span 3; }
+    table.wl.sect tbody td[data-label="Live"] { grid-column: 4; }
   }
 </style>
 <script src="mobile.js?v=20260927b" defer></script>
@@ -761,8 +848,8 @@
     <div class="segtools">
       <input type="search" id="q" placeholder="Search" autocomplete="off" spellcheck="false" aria-label="Search by symbol or name">
       <div class="switch" id="matoggles" role="group" aria-label="Column groups">
-        <button class="rangebtn" id="col-ma" type="button" aria-pressed="false">Moving averages</button>
-        <button class="rangebtn" id="col-rel" type="button" aria-pressed="false">Market signals</button>
+        <button class="rangebtn" id="col-ma" type="button" aria-pressed="false" data-short="MAs">Moving averages</button>
+        <button class="rangebtn" id="col-rel" type="button" aria-pressed="false" data-short="Signals">Market signals</button>
       </div>
     </div>
   </div>
@@ -919,7 +1006,8 @@
   try { const v = localStorage.getItem(SEG_KEY); if (v && SEG_LABELS[v]) SEG = v; } catch { /* private mode */ }
   // Cards expanded on a phone, kept across the re-render a price refresh does.
   const OPENROWS = new Set();
-  const NARROW = matchMedia("(max-width: 700px)");
+  // Same query as the card layout in the stylesheet: a phone either way up.
+  const NARROW = matchMedia("(max-width: 700px), (orientation: landscape) and (max-height: 500px)");
   const loadOverlay = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
     catch { return { added: [], over: {} }; }
@@ -1527,6 +1615,8 @@
   const SORT = { watch: ["gap", true], breakout: ["lfd", true], target: ["when", false],
                  failed: ["when", false], removed: ["gap", true] };
   const FILTERS = {};
+  const CARD_LABEL = { "Tight stop (LFD)": "Tight stop", "Reward : risk": "Reward : risk",
+                       "Trailing stop": "Trailing stop", "To trigger": "To trigger" };
   /* The fields a phone card shows before it is expanded: the price and the
      levels that decide the section's question. Symbol, direction and actions
      are always shown. */
@@ -1937,6 +2027,8 @@
           jump.title = "Latest earnings result — jump to the detail section below";
           symLine.appendChild(jump);
         }
+        // Shown beside the symbol in the phone card; the table has its own Dir column.
+        symLine.appendChild(h("span", "wdir symdir " + p.dir, p.dir));
         td.appendChild(symLine);
         if (p.note) td.appendChild(h("span", "wname", p.note));
         return td;
@@ -1945,6 +2037,8 @@
       case "live": {
         const td = h("td");
         td.textContent = r.live != null ? fmt(r.live) : "–";
+        if (r.dayPct != null) td.appendChild(h("span", "chg " + (r.dayPct >= 0 ? "up" : "down"),
+          (r.dayPct > 0 ? "+" : r.dayPct < 0 ? "−" : "") + fmt(Math.abs(pct1(r.dayPct))) + "%"));
         if (r.liveDate && r.liveDate !== r.prevDate) td.appendChild(h("span", "wname", "intraday " + fmtD(r.liveDate)));
         return td;
       }
@@ -2266,7 +2360,8 @@
         }
         const td = cellFor(key, state, r, tr);
         if (td) {
-          td.dataset.label = label;
+          // The phone card prints this over the value; a third of a phone is narrow.
+          td.dataset.label = CARD_LABEL[label] || label;
           if (key === "dir") td.classList.add("dircell");
           if ((PRI[state] || []).includes(key)) td.classList.add("pri");
           tr.appendChild(td);
@@ -2606,11 +2701,13 @@
     const fill = h("i"); fill.style.width = pctDown + "%";
     meter.appendChild(fill);
     pill.appendChild(meter);
-    pill.appendChild(h("strong", null, down + " of " + known.length));
-    pill.appendChild(document.createTextNode(" active names down today (" + pctDown + "%) — " +
-      (pctDown > 60 ? "broad risk-off: read individual weakness as market forces" :
-       pctDown > 40 ? "mixed tape: check Market signals (vs index, vs sector) before judging single names" :
-       "tape supportive: moves are mostly stock-specific")));
+    const txt = h("span", "gtxt");
+    txt.appendChild(h("strong", null, down + " of " + known.length + " down today"));
+    txt.appendChild(h("span", "gsub", pctDown + "% · " +
+      (pctDown > 60 ? "broad risk-off — read individual weakness as market forces" :
+       pctDown > 40 ? "mixed tape — check Market signals before judging single names" :
+       "tape supportive — moves are mostly stock-specific")));
+    pill.appendChild(txt);
     g.appendChild(pill);
   }
 
