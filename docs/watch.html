@@ -713,6 +713,7 @@
       font-weight: 600; padding: 1px 7px; border-radius: 6px; color: #fff; }
     table.wl.sect td[data-label="Live"] .chg.up { background: var(--up); }
     table.wl.sect td[data-label="Live"] .chg.down { background: var(--down); }
+    table.wl.sect td[data-label="Live"] .chg.flat { background: var(--fill-2); color: var(--text-secondary); }
     /* the day-move pill already says the price is live */
     table.wl.sect td[data-label="Live"] .wname { display: none; }
     table.wl.sect tbody td.act { position: absolute; top: 13px; right: 10px; }
@@ -2037,8 +2038,12 @@
       case "live": {
         const td = h("td");
         td.textContent = r.live != null ? fmt(r.live) : "–";
-        if (r.dayPct != null) td.appendChild(h("span", "chg " + (r.dayPct >= 0 ? "up" : "down"),
-          (r.dayPct > 0 ? "+" : r.dayPct < 0 ? "−" : "") + fmt(Math.abs(pct1(r.dayPct))) + "%"));
+        if (r.dayPct != null) {
+          // One decimal, as a move under a tenth is not "+0%" or "−0%".
+          const d1 = Math.round(r.dayPct * 10) / 10;
+          td.appendChild(h("span", "chg " + (d1 > 0 ? "up" : d1 < 0 ? "down" : "flat"),
+            (d1 > 0 ? "+" : d1 < 0 ? "−" : "") + Math.abs(d1).toFixed(1) + "%"));
+        }
         if (r.liveDate && r.liveDate !== r.prevDate) td.appendChild(h("span", "wname", "intraday " + fmtD(r.liveDate)));
         return td;
       }
