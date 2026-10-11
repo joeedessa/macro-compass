@@ -432,7 +432,8 @@
   "pattern": "Ascending triangle",
   "duration_m": 4,
   "exchange": "NSE",
-  "country": "India"
+  "country": "India",
+  "removed": "2026-10-10"
  },
  {
   "sym": "7278.T",
@@ -1350,7 +1351,8 @@
   "pattern": "Rectangle",
   "duration_m": 5,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-10-10"
  },
  {
   "sym": "MC",
@@ -1402,7 +1404,8 @@
   "pattern": "Rectangle (bottom reversal)",
   "duration_m": 5,
   "exchange": "DFM",
-  "country": "UAE"
+  "country": "UAE",
+  "removed": "2026-10-10"
  },
  {
   "sym": "NWH.AX",
@@ -1947,10 +1950,11 @@
   "breakthrough": 1684.0,
   "boundary": 1660.0,
   "target": 1756.0,
-  "negation": null,
+  "negation": 1612,
+  "lfd": 1634,
   "note": "Monks Investment Trust Plc",
   "created": "2026-09-27",
-  "state": "watch",
+  "confirmed": "2026-10-10",
   "pattern": "Rectangle",
   "duration_m": 4,
   "exchange": "LSE",
@@ -2109,5 +2113,73 @@
   "duration_m": 3,
   "exchange": "NSE",
   "country": "India"
+ },
+ {
+  "sym": "SDE.TO",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 14.55,
+  "breakthrough": 14.55,
+  "boundary": 14.11,
+  "target": 17.65,
+  "negation": null,
+  "note": "Spartan Delta Corp.",
+  "created": "2026-10-10",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 6,
+  "exchange": "TSX",
+  "country": "Canada"
+ },
+ {
+  "sym": "PEB",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 20.3,
+  "breakthrough": 20.3,
+  "boundary": 19.73,
+  "target": 21.9,
+  "negation": null,
+  "note": "Pebblebrook Hotel Trust",
+  "created": "2026-10-10",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 3,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
+ },
+ {
+  "sym": "ROKO-B.ST",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 2085,
+  "breakthrough": 2085,
+  "boundary": 2025,
+  "target": 2260,
+  "negation": null,
+  "note": "R\u00f6ko AB",
+  "created": "2026-10-10",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 4,
+  "exchange": "Nasdaq Stockholm",
+  "country": "Sweden"
+ },
+ {
+  "sym": "1038.HK",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 69.15,
+  "breakthrough": 69.15,
+  "boundary": 67.15,
+  "target": 78,
+  "negation": null,
+  "note": "CK Infrastructure Holdings Ltd.",
+  "created": "2026-10-10",
+  "state": "watch",
+  "pattern": "H&S continuation",
+  "duration_m": 7,
+  "exchange": "HKEX",
+  "country": "Hong Kong"
  }
 ]
