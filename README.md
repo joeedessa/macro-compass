@@ -28,6 +28,12 @@ columns), `pricefloor.js` (the price layer and the page stamp), `universe.js`,
 `?v=YYYYMMDDx`. Change a shared file without bumping it everywhere and browsers serve
 stale JS against fresh HTML, which fails silently and looks like a data bug.
 
+**Pages update themselves on return.** Opened from the Home Screen the site is a
+standalone app with no reload, and iOS keeps pages alive for days — a redesign went
+unseen on a phone for a week. `mobile.js` refetches the page when it is shown again
+and reloads if any inline script or stylesheet differs (at most once per ten minutes).
+Shared `.js` files still need the `?v=` bump; this only covers the page itself.
+
 **Don't duplicate shared logic.** The MA slope reached five pages and skipped the
 watchlist, because the watchlist built its own columns. The price stamp was written
 eight times and said the same untrue thing eight times. The Benchmarks board is
