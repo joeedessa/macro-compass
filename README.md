@@ -99,6 +99,23 @@ A probe timeout marks a proxy slow, not dead. Only a refusal counts.
 - The **LFD stop** is the tight stop: the low (long) or high (short) of the full daily bar *before the first close past the boundary* — the desk's rule. That close records the stop but confirms nothing; the row stays in the watchlist until the trigger closes. Tech Charts' own wording anchors to the confirming close instead; where the two differ the tooltip shows both. No boundary on file → the trigger is the anchor and the cell says so. A level typed in from the report (`lfd`) wins. Taking it out is not a failure — only the negation fails a pattern — so it marks the row and alerts, and never moves it.
 - A setup that already broke out needs `confirmed` set to the date it did. The replay starts at `confirmed || created` and ignores every bar before it — date it today and a live breakout sits in the watch list.
 
+## Weekly report sync
+
+The Tech Charts report (Part II, a PDF in ~/Downloads) drives the watchlist. The
+tools live in `scripts/report/`; the report itself never enters the repo.
+
+```bash
+swift scripts/report/pdftext.swift "<this week>.pdf" > /tmp/now.txt
+swift scripts/report/pdftext.swift "<last week>.pdf" > /tmp/prev.txt
+python3 scripts/report/watchlist.py /tmp/now.txt /tmp/prev.txt
+```
+
+It prints BREAKOUT / ADD / CHANGE / GONE lines and changes nothing. A breakout's
+negation and last full day are only on its chart: render the page with
+`swift scripts/report/pdfpage.swift "<pdf>" <page> out.png` and read them off.
+New rows need a Yahoo symbol that resolves (probe the chart endpoint first).
+Dropped setups get `removed: <report date>` rather than being deleted.
+
 ## Workflows
 
 `update-data.yml` (hourly-ish), `update-prices.yml` (a 15-minute loop inside one
