@@ -497,10 +497,11 @@
   /* One section on screen at a time. */
   .wrap[data-seg] .tablewrap.wl[id^="sec-"]:not([id^="sec-log"]),
   .wrap[data-seg] p[id^="empty-"] { display: none; }
-  .wrap[data-seg="watch"] #sec-watch, .wrap[data-seg="breakout"] #sec-breakout,
+  .wrap[data-seg="watch"] #sec-watch, .wrap[data-seg="breakout"] #sec-breakout, .wrap[data-seg="reentry"] #sec-reentry,
   .wrap[data-seg="target"] #sec-target, .wrap[data-seg="failed"] #sec-failed,
   .wrap[data-seg="removed"] #sec-removed { display: block; }
   .wrap[data-seg="watch"] #empty-watch:not([hidden]), .wrap[data-seg="breakout"] #empty-breakout:not([hidden]),
+  .wrap[data-seg="reentry"] #empty-reentry:not([hidden]),
   .wrap[data-seg="target"] #empty-target:not([hidden]), .wrap[data-seg="failed"] #empty-failed:not([hidden]),
   .wrap[data-seg="removed"] #empty-removed:not([hidden]) { display: block; }
   p[id^="empty-"] { margin: 18px 0 0; padding: 28px; text-align: center; border-radius: var(--radius);
@@ -548,6 +549,15 @@
   .wact button { font: inherit; font-size: 12.5px; font-weight: 500; color: var(--text-primary);
     background: var(--fill); border: 0; border-radius: 999px; padding: 4px 11px; }
   .wact button:hover { background: var(--fill-2); color: var(--text-primary); }
+
+  /* breakout type tags */
+  .btag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.01em;
+    padding: 2px 9px; border-radius: 999px; }
+  .btag.b1 { color: var(--up); background: var(--on-bg); }
+  .btag.b2 { color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+  .btag.b3 { color: var(--open); background: var(--open-bg); }
+  .btag.b4 { color: var(--down); background: var(--off-bg); }
+  td.goodcell { color: var(--up); font-weight: 600; }
 
   /* ---------- row actions: ⋯ menu ---------- */
   .rowmenu { position: relative; display: inline-block; }
@@ -672,7 +682,8 @@
     .segbar { margin: 22px -16px 0; padding: 8px 16px 10px; gap: 8px; }
     .seg { display: flex; width: 100%; overflow: visible; border-radius: 11px; }
     .seg button { flex: 1 1 0; min-width: 0; padding: 5px 2px 4px; border-radius: 9px;
-      display: flex; flex-direction: column; align-items: center; gap: 0; font-size: 12.5px; line-height: 1.25; }
+      display: flex; flex-direction: column; align-items: center; gap: 0; font-size: 12px; line-height: 1.25;
+      letter-spacing: -0.01em; }
     .seg button .n { margin: 0; font-size: 11px; }
     .segtools { width: 100%; margin: 0; padding: 0; gap: 6px; flex-wrap: nowrap; overflow: visible; }
     .segtools > * { flex: none; }
@@ -872,6 +883,11 @@
   <p id="empty-breakout" class="lede" hidden>No confirmed breakouts yet.</p>
   <div class="tablewrap wl" id="sec-breakout"></div>
 
+  <p id="empty-reentry" class="lede" hidden>Nothing to re-enter. A confirmed breakout lands here when
+    it takes out its last full day — the tight stop is gone, the pattern stands until the negation, and a
+    close back past the trigger is the re-entry signal.</p>
+  <div class="tablewrap wl" id="sec-reentry"></div>
+
   <p id="empty-target" class="lede" hidden>None yet.</p>
   <div class="tablewrap wl" id="sec-target"></div>
 
@@ -1001,7 +1017,7 @@
   /* One section on screen at a time, chosen from the segmented control.
      Remembered per browser and per list. */
   const SEG_KEY = "mc-seg-" + KEY;
-  const SEG_LABELS = { watch: "Watching", breakout: "Confirmed", target: "At target",
+  const SEG_LABELS = { watch: "Watching", breakout: "Confirmed", reentry: "Re-entry", target: "At target",
                        failed: "Failed", removed: "Removed" };
   let SEG = "watch", SEG_COUNTS = {};
   try { const v = localStorage.getItem(SEG_KEY); if (v && SEG_LABELS[v]) SEG = v; } catch { /* private mode */ }
@@ -1378,6 +1394,51 @@
     return out;
   }
 
+  /* Breakout type, Tech Charts' four (September 2026 quarterly review),
+     tagged while the trade is still open rather than only once it resolves:
+       B1  rallies without pulling back to the pattern boundary
+       B2  pulls back to the boundary (a retest) but holds the last full day
+       B3  takes out the last full day, not the negation — the tight-stop exit
+       B4  reaches the negation — already the Failed section
+     While a breakout is open the tag is "potential": a B1 can still retest and
+     become a B2, a B2 can still lose its stop. Once the target is reached the
+     type is fixed by what happened before that date.
+
+     Retest = a touch (low for a long, high for a short) of the boundary after
+     the confirming close; the trigger stands in where no boundary is on file.
+
+     After a B3 the setup is watched for re-entry: the first settled close back
+     past the trigger (the breakout level) after the stop was taken out. */
+  function typeOf(p, st, L, hist, bars) {
+    if (st.state === "failed") return { tag: "B4" };
+    if (st.state !== "breakout" && st.state !== "target") return null;
+    const long = p.dir === "long";
+    const dates = bars ? Object.keys(bars).sort() : [];
+    if (!dates.length) return { tag: null };
+    const lastSettled = hist && hist.settled.length ? hist.settled[hist.settled.length - 1][0] : null;
+    const from = (L && L.conf) || (st.breakout && st.breakout.when) || p.confirmed || p.created || "";
+    const end = st.state === "target" && st.targetHit ? st.targetHit.when : lastSettled;
+    const lvl = p.boundary != null ? p.boundary : p.breakthrough;
+    let retest = null;
+    for (const d of dates) {
+      if (d <= from || (end && d > end)) continue;
+      const x = bars[d][long ? 0 : 1];
+      if (long ? x <= lvl : x >= lvl) { retest = { when: d, at: x }; break; }
+    }
+    const stopHit = L && L.hit && (!end || L.hit.when <= end) ? L.hit : null;
+    let reentry = null;
+    if (stopHit && p.breakthrough != null) {
+      for (const d of dates) {
+        if (d <= stopHit.when || (lastSettled && d > lastSettled)) continue;
+        const c = bars[d][2];
+        if (c != null && (long ? c > p.breakthrough : c < p.breakthrough)) { reentry = { when: d, close: c }; break; }
+      }
+    }
+    return { tag: stopHit ? "B3" : retest ? "B2" : "B1", final: st.state === "target",
+             retest, stopHit, reentry, lvl, basis: p.boundary != null ? "boundary" : "trigger",
+             noStop: !L || L.at == null || !!L.looser || L.src === "none" };
+  }
+
   let OV = loadOverlay();
   let SHARED = [], HIST = {}, EVENTS = {};
   /* Daily highs and lows, keyed sym -> { 'YYYY-MM-DD': [low, high, close] }.
@@ -1491,6 +1552,7 @@
 
   function rowData(p, st) {
     const hist = HIST[p.sym];
+    const lfd = lfdOf(p, st, hist, BARS[p.sym]);
     const prev = hist && hist.settled.length ? hist.settled[hist.settled.length - 1] : null;
     // The session before the last settled one, so the table shows the last two
     // completed closes rather than only the most recent.
@@ -1539,7 +1601,8 @@
       risk: (st.state !== "watch" && live && p.negation)
         ? pct1((p.dir === "long" ? 1 - p.negation / live : p.negation / live - 1) * 100)
         : null,
-      lfd: lfdOf(p, st, hist, BARS[p.sym]),
+      lfd: lfd,
+      btype: typeOf(p, st, lfd, hist, BARS[p.sym]),
       earnings: ev.earnings || null,
       // A manually set ex-div (via Edit) outranks the feed and is shown as-is.
       exdiv: p.ex_div ? p.ex_div : ((ev.ex_div && ev.ex_div >= todayStr) ? ev.ex_div : null),
@@ -1582,10 +1645,13 @@
     watch:    [...ID, ["gap","To trigger"],["boundary","Boundary"],["breakthrough","Trigger"],
                ["lfd","Tight stop (LFD)"],["target","Target"],["upside","Payoff"],["rr","Reward : risk"],
                ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
-    breakout: [...ID, ["lfd","Tight stop (LFD)"],["negation","Negation"],["stop","Trailing stop"],["target","Target"],
+    breakout: [...ID, ["btype","Type"],["lfd","Tight stop (LFD)"],["negation","Negation"],["stop","Trailing stop"],["target","Target"],
                ["breakthrough","Trigger"],["boundary","Boundary"],["when","Broke out"],
                ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
-    target:   [...ID, ["when","Reached"],["stop","Trailing stop"],["target","Target"],
+    reentry:  [...ID, ["btype","Type"],["reentry","Re-entry"],["breakthrough","Trigger"],["lfd","Tight stop (LFD)"],
+               ["negation","Negation"],["target","Target"],["when","Broke out"],["boundary","Boundary"],
+               ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
+    target:   [...ID, ["btype","Type"],["when","Reached"],["stop","Trailing stop"],["target","Target"],
                ["breakthrough","Trigger"],["boundary","Boundary"],["negation","Negation"],
                ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
     failed:   [...ID, ["when","Failed"],["negation","Negation"],["","Reason","nosort"],
@@ -1613,7 +1679,7 @@
      close it came. */
   // Confirmed sorts by distance to the tight stop, nearest (or already
   // through it) first: the rows that need a decision come to the top.
-  const SORT = { watch: ["gap", true], breakout: ["lfd", true], target: ["when", false],
+  const SORT = { watch: ["gap", true], breakout: ["lfd", true], reentry: ["reentry", true], target: ["when", false],
                  failed: ["when", false], removed: ["gap", true] };
   const FILTERS = {};
   const CARD_LABEL = { "Tight stop (LFD)": "Tight stop", "Reward : risk": "Reward : risk",
@@ -1623,12 +1689,13 @@
      are always shown. */
   const PRI = {
     watch:    ["live", "gap", "breakthrough", "lfd", "target", "rr"],
-    breakout: ["live", "lfd", "negation", "stop", "target", "when"],
-    target:   ["live", "when", "stop", "target"],
+    breakout: ["live", "btype", "lfd", "negation", "stop", "target"],
+    reentry:  ["live", "btype", "reentry", "breakthrough", "negation", "target"],
+    target:   ["live", "btype", "when", "stop", "target"],
     failed:   ["live", "when", "negation"],
     removed:  ["live", "gap", "breakthrough", "target"],
   };
-  const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts",
+  const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts", reentry: "Re-entry watch",
                    target: "Reached price target", failed: "Failed breakouts",
                    removed: "Removed from watchlist" };
   // Local benchmark index per listing country (Yahoo symbols, all probed live).
@@ -1653,6 +1720,8 @@
     return (hist.live / base[1] - 1) * 100;
   }
   const HSUB = (state, key) =>
+    key === "btype" ? (state === "target" ? "how it got there" : state === "reentry" ? "stop taken out" : "so far") :
+    key === "reentry" ? "close back past trigger" :
     key === "upside" ? "trigger → target" :
     key === "rr" ? "payoff ÷ risk to the stop" :
     key === "lfd" ? (state === "watch" ? "set at the boundary close" : "last full day · live →") :
@@ -1722,6 +1791,12 @@
     if (key === "relm") return r.relm;
     if (key === "rels") return r.rels;
     if (key === "rr") { const x = rrOf(r); return x ? x.ratio : null; }
+    if (key === "btype") return r.btype && r.btype.tag ? r.btype.tag : "";
+    if (key === "reentry") {
+      // signals first, then nearest the trigger
+      if (r.btype && r.btype.reentry) return -1;
+      return (r.prevClose && r.p.breakthrough) ? Math.abs(r.p.breakthrough / r.prevClose - 1) : null;
+    }
     if (key === "lfd") return lfdRisk(r);
     if (key === "when") return r.when;
     if (key === "earnings") return r.earnings || "9999";
@@ -2071,7 +2146,7 @@
         if (p.hold && st && st.touched) {
           td.appendChild(h("span", "wname held",
             "touched " + fmt(st.touched.at) + " on " + fmtD(st.touched.when) + " · held"));
-        } else if (!editing && state === "breakout" && r.risk != null) {
+        } else if (!editing && (state === "breakout" || state === "reentry") && r.risk != null) {
           td.classList.add("riskcell");
           td.appendChild(h("span", "wname", "−" + fmt(Math.abs(r.risk)) + "% away"));
         }
@@ -2079,7 +2154,7 @@
       }
       case "target": {
         const td = levelCell(p, "target", editing);
-        if (!editing && state === "breakout" && r.upside != null)
+        if (!editing && (state === "breakout" || state === "reentry") && r.upside != null)
           td.appendChild(h("span", "wname", (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "% to go"));
         return td;
       }
@@ -2185,9 +2260,54 @@
         td.title = tip.join(" ");
         return td;
       }
+      case "btype": {
+        const T = r.btype;
+        if (!T || !T.tag) return h("td", null, "–");
+        const td = h("td");
+        td.appendChild(h("span", "btag " + T.tag.toLowerCase(), T.tag));
+        const lowHigh = p.dir === "long" ? "low" : "high";
+        let sub, tip;
+        if (T.tag === "B3") {
+          sub = "stop out " + fmtD(T.stopHit.when);
+          tip = "Took out its last full day " + lowHigh + " on " + T.stopHit.when + " (" + fmt(T.stopHit.at) +
+            ") without reaching the negation" + (T.final ? ", then reached the target." : ".");
+        } else if (T.tag === "B2") {
+          sub = (T.final ? "" : "potential · ") + "retest " + fmtD(T.retest.when);
+          tip = "Pulled back to the " + T.basis + " (" + fmt(T.lvl) + ") on " + T.retest.when +
+            " and has held its last full day" + (T.noStop ? " — no tight stop on file, so B3 cannot be told apart." : ".");
+        } else {
+          sub = T.final ? "no pullback" : "potential · no retest";
+          tip = "No pullback to the " + T.basis + " (" + fmt(T.lvl) + ") since the breakout" +
+            (T.final ? " — straight to target." : ". A touch of it makes this a B2.");
+        }
+        td.appendChild(h("span", "wname", sub));
+        td.title = tip;
+        return td;
+      }
+      case "reentry": {
+        const T = r.btype;
+        if (!T || !T.stopHit) return h("td", null, "–");
+        if (T.reentry) {
+          // A signal can be weeks old: say whether price is still past the trigger.
+          const holding = r.prevClose != null &&
+            (p.dir === "long" ? r.prevClose > p.breakthrough : r.prevClose < p.breakthrough);
+          const td = h("td", holding ? "goodcell" : null, holding ? "Signal · holding" : "Signal · back below");
+          td.appendChild(h("span", "wname", "closed " + fmt(T.reentry.close) + " · " + fmtD(T.reentry.when)));
+          td.title = "First close back " + (p.dir === "long" ? "above" : "below") + " the trigger (" +
+            fmt(p.breakthrough) + ") after the tight stop was taken out.";
+          return td;
+        }
+        const d = (r.prevClose && p.breakthrough)
+          ? (p.dir === "long" ? p.breakthrough / r.prevClose - 1 : 1 - p.breakthrough / r.prevClose) * 100 : null;
+        const td = h("td", null, "Waiting");
+        if (d != null) td.appendChild(h("span", "wname", (d > 0 ? "+" : "") + fmt(pct1(d)) + "% to trigger"));
+        td.title = "A close " + (p.dir === "long" ? "above " : "below ") + fmt(p.breakthrough) +
+          " re-takes the breakout level. The negation (" + fmt(p.negation) + ") still ends it.";
+        return td;
+      }
       case "upside": return h("td", null, r.upside == null ? "–" : (r.upside >= 0 ? "+" : "") + fmt(r.upside) + "%");
       case "when": {
-        if (state === "breakout") {
+        if (state === "breakout" || state === "reentry") {
           const td = h("td", null, st.breakout ? fmtD(st.breakout.when)
             : p.manualState === "breakout" ? "by hand" : "–");
           if (st.breakout && st.breakout.close != null) td.appendChild(h("span", "wname", "@ " + fmt(st.breakout.close)));
@@ -2535,13 +2655,22 @@
         items.push(["bad", p.sym + " " + p.dir + " — took out its last-full-day " +
           (p.dir === "long" ? "low" : "high") + " on " + r.lfd.hit.when + " (" + fmt(r.lfd.hit.at) +
           " vs " + fmt(r.lfd.at) + "): the tight stop is hit. The pattern stands until the negation at " +
-          fmt(p.negation)]);
+          fmt(p.negation) + (st.state === "breakout" ? " — moved to Re-entry watch" : "")]);
       else if (r.lfd && r.lfd.at != null && !r.lfd.hit && !r.lfd.looser && r.live != null &&
           r.liveDate !== r.prevDate && (st.state === "breakout" || st.state === "target") &&
           (p.dir === "long" ? r.live < r.lfd.at : r.live > r.lfd.at))
         items.push(["bad", p.sym + " " + p.dir + " — trading " + (p.dir === "long" ? "below" : "above") +
           " its last-full-day " + (p.dir === "long" ? "low" : "high") + " intraday (" + fmt(r.live) +
           " vs " + fmt(r.lfd.at) + ")"]);
+      if (r.btype && st.state === "breakout" && r.btype.tag === "B2" && r.btype.retest &&
+          r.btype.retest.when === lastSettledDate)
+        items.push(["warn", p.sym + " " + p.dir + " — retested its " + r.btype.basis + " (" + fmt(r.btype.lvl) +
+          ") on " + lastSettledDate + ": now a potential B2, the tight stop at " +
+          (r.lfd && r.lfd.at != null ? fmt(r.lfd.at) : "–") + " decides it"]);
+      if (r.btype && r.btype.reentry && r.btype.reentry.when === lastSettledDate && st.state === "breakout")
+        items.push(["new", p.sym + " " + p.dir + " — re-took its breakout level: closed " + fmt(r.btype.reentry.close) +
+          " " + (p.dir === "long" ? "above" : "below") + " the trigger " + fmt(p.breakthrough) + " on " +
+          lastSettledDate + ". Re-entry signal (B3); negation " + fmt(p.negation)]);
       /* The same warning on the other side of the trade, which matters more.
          A waiting setup trading through its trigger is an opportunity; a live
          position trading through its negation is money going wrong, and until
@@ -2926,7 +3055,7 @@
     }
   }
 
-  const SECTIONS = ["watch", "breakout", "target", "failed", "removed"];
+  const SECTIONS = ["watch", "breakout", "reentry", "target", "failed", "removed"];
   // ---------- calendar from the watchlist events feed ----------
   /* Originally this asked one question — is anything scheduled today or
      tomorrow — and printed "Nothing scheduled" three times when the answer was
@@ -3060,7 +3189,7 @@
     FREEZERS.length = 0;
     SIZERS.length = 0;
     const list = workingList();
-    const items = { watch: [], breakout: [], target: [], failed: [], removed: [] };
+    const items = { watch: [], breakout: [], reentry: [], target: [], failed: [], removed: [] };
     const all = [];
     for (const p of list) {
       const st = replay(p, HIST[p.sym], BARS[p.sym]);
@@ -3072,11 +3201,15 @@
          negation hit — the replay wins. Letting a manual promotion suppress a
          later failure would leave a negated trade sitting in Confirmed
          breakouts, which is the one outcome this page must never show. */
-      const state = (p.manualState === "failed" || p.manualState === "removed")
+      const r = rowData(p, st);
+      let state = (p.manualState === "failed" || p.manualState === "removed")
         ? p.manualState
         : (p.manualState === "breakout" && st.state === "watch") ? "breakout"
         : st.state;
-      const r = rowData(p, st);
+      /* A B3 is out of the trade — the tight stop is gone — but the pattern
+         stands until the negation, so it is watched for re-entry rather than
+         left among the live positions. */
+      if (state === "breakout" && r.btype && r.btype.tag === "B3") state = "reentry";
       r.section = state;
       items[state].push(r);
       all.push(r);
@@ -3111,7 +3244,8 @@
     const syms = [...new Set(list.map(p => p.sym))];
     const missing = syms.filter(s => !HIST[s]);
     $("#stamp").textContent = list.length + " setups · " + syms.length + " symbols, native currencies · " +
-      items.breakout.length + " confirmed · " + items.target.length + " at target · " +
+      items.breakout.length + " confirmed · " + (items.reentry.length ? items.reentry.length + " re-entry · " : "") +
+      items.target.length + " at target · " +
       items.failed.length + " failed" +
       (items.removed.length ? " · " + items.removed.length + " removed" : "") +
       (missing.length ? " · no quote: " + missing.join(", ") : "") +
