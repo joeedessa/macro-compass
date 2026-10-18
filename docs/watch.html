@@ -1404,8 +1404,11 @@
      become a B2, a B2 can still lose its stop. Once the target is reached the
      type is fixed by what happened before that date.
 
-     Retest = a touch (low for a long, high for a short) of the boundary after
-     the confirming close; the trigger stands in where no boundary is on file.
+     Retest = a pullback through the trigger — the breakout level, boundary plus
+     the 3% filter — after the confirming close: a touch, low for a long, high
+     for a short. Not the boundary itself: Tech Charts calls WAWI and PRK type 2
+     and neither got back to its boundary (WAWI 139.6 vs 137.5, PRK ~180 vs
+     178.65); both gave back the breakout level.
 
      After a B3 the setup is watched for re-entry: the first settled close back
      past the trigger (the breakout level) after the stop was taken out. */
@@ -1418,7 +1421,7 @@
     const lastSettled = hist && hist.settled.length ? hist.settled[hist.settled.length - 1][0] : null;
     const from = (L && L.conf) || (st.breakout && st.breakout.when) || p.confirmed || p.created || "";
     const end = st.state === "target" && st.targetHit ? st.targetHit.when : lastSettled;
-    const lvl = p.boundary != null ? p.boundary : p.breakthrough;
+    const lvl = p.breakthrough;
     let retest = null;
     for (const d of dates) {
       if (d <= from || (end && d > end)) continue;
@@ -1435,7 +1438,7 @@
       }
     }
     return { tag: stopHit ? "B3" : retest ? "B2" : "B1", final: st.state === "target",
-             retest, stopHit, reentry, lvl, basis: p.boundary != null ? "boundary" : "trigger",
+             retest, stopHit, reentry, lvl, basis: "trigger",
              noStop: !L || L.at == null || !!L.looser || L.src === "none" };
   }
 
@@ -2273,11 +2276,11 @@
             ") without reaching the negation" + (T.final ? ", then reached the target." : ".");
         } else if (T.tag === "B2") {
           sub = (T.final ? "" : "potential · ") + "retest " + fmtD(T.retest.when);
-          tip = "Pulled back to the " + T.basis + " (" + fmt(T.lvl) + ") on " + T.retest.when +
+          tip = "Pulled back through the trigger (" + fmt(T.lvl) + ") on " + T.retest.when +
             " and has held its last full day" + (T.noStop ? " — no tight stop on file, so B3 cannot be told apart." : ".");
         } else {
           sub = T.final ? "no pullback" : "potential · no retest";
-          tip = "No pullback to the " + T.basis + " (" + fmt(T.lvl) + ") since the breakout" +
+          tip = "No pullback through the trigger (" + fmt(T.lvl) + ") since the breakout" +
             (T.final ? " — straight to target." : ". A touch of it makes this a B2.");
         }
         td.appendChild(h("span", "wname", sub));
@@ -2587,6 +2590,7 @@
        them lets either be skimmed without reading the other. */
     const divs = [];
     for (const r of all) {
+      if (r.section === "removed") continue;     // off the list: no events
       const { p, st } = r;
       const lastSettledDate = r.prevDate;
 
@@ -2664,7 +2668,7 @@
           " vs " + fmt(r.lfd.at) + ")"]);
       if (r.btype && st.state === "breakout" && r.btype.tag === "B2" && r.btype.retest &&
           r.btype.retest.when === lastSettledDate)
-        items.push(["warn", p.sym + " " + p.dir + " — retested its " + r.btype.basis + " (" + fmt(r.btype.lvl) +
+        items.push(["warn", p.sym + " " + p.dir + " — pulled back through its trigger (" + fmt(r.btype.lvl) +
           ") on " + lastSettledDate + ": now a potential B2, the tight stop at " +
           (r.lfd && r.lfd.at != null ? fmt(r.lfd.at) : "–") + " decides it"]);
       if (r.btype && r.btype.reentry && r.btype.reentry.when === lastSettledDate && st.state === "breakout")
