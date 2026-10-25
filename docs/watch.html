@@ -653,7 +653,7 @@
          section's numbers, "More" for the rest
        · row actions as a bottom sheet
      ================================================================== */
-  @media (max-width: 700px), (orientation: landscape) and (max-height: 500px) {
+  @media (max-width: 700px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
     .wrap { padding: 14px 16px calc(64px + env(safe-area-inset-bottom)); }
 
     /* header */
@@ -774,7 +774,7 @@
     #totop { right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); }
   }
   /* A phone on its side has width to spare: four numbers a row. */
-  @media (orientation: landscape) and (max-height: 500px) {
+  @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
     /* height is what is short here: counts beside the labels, one line */
     .seg button { flex-direction: row; justify-content: center; gap: 6px; padding: 6px 4px; }
     .segbar { padding-top: 6px; padding-bottom: 6px; }
@@ -1049,7 +1049,7 @@
   // Cards expanded on a phone, kept across the re-render a price refresh does.
   const OPENROWS = new Set();
   // Same query as the card layout in the stylesheet: a phone either way up.
-  const NARROW = matchMedia("(max-width: 700px), (orientation: landscape) and (max-height: 500px)");
+  const NARROW = matchMedia("(max-width: 700px), (orientation: landscape) and (max-height: 500px) and (pointer: coarse)");
   const loadOverlay = () => {
     try { return JSON.parse(localStorage.getItem(KEY)) || { added: [], over: {} }; }
     catch { return { added: [], over: {} }; }
@@ -2357,7 +2357,8 @@
         const cls = x.used == null ? null : x.used >= 1 ? "riskcell" : x.used >= 0.5 ? "warmcell" : null;
         const td = h("td", cls, (x.past >= 0 ? "+" : "−") + fmt(Math.abs(pct1(x.past))) + "%");
         const bits = [];
-        if (x.used != null) bits.push(Math.round(x.used * 100) + "% of move");
+        if (x.past < 0) bits.push("back under trigger");
+        else if (x.used != null) bits.push(Math.round(x.used * 100) + "% of move");
         if (x.rr != null) bits.push(fmt(x.rr, 1) + ":1 now");
         if (bits.length) td.appendChild(h("span", "wname", bits.join(" · ")));
         td.title = (x.past >= 0 ? fmt(Math.abs(pct1(x.past))) + "% past" : fmt(Math.abs(pct1(x.past))) + "% back under") +
