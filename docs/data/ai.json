@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-25T06:10:29+00:00",
+ "generated_at": "2026-10-25T11:31:36+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -951,8 +951,8 @@
  },
  "fx": {
   "USD": 1.0,
-  "TWD": 0.0307031,
   "JPY": 0.00637698,
+  "TWD": 0.0307031,
   "KRW": 0.00075449
  },
  "names": [
@@ -1177,13 +1177,13 @@
    "capex_cfo_fwd": 15.6,
    "capex_growth": 13.9,
    "debt": 3735444000,
-   "net_debt": null,
+   "net_debt": -3701940000,
    "nd_ebitda": -0.17,
-   "cost_debt": null,
+   "cost_debt": 3.74,
    "capex_cover": 48.92,
    "pe": 34.24,
    "ps": 11.06,
-   "ev_ebitda": 28.27,
+   "ev_ebitda": 28.05,
    "gm": 51.05,
    "ytd": 29.38,
    "y1": 66.74,
@@ -1192,7 +1192,7 @@
    "ebitda_usd": 10116395000,
    "fcf_usd": 6537364000,
    "debt_usd": 3735444000,
-   "net_debt_usd": null
+   "net_debt_usd": -3701940000
   },
   {
    "tv": "NASDAQ:KLAC",
