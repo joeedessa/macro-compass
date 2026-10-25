@@ -2430,7 +2430,8 @@
            date alone does not make that obvious at a glance. */
         const days = -daysUntil(p.created);
         if (p.removed && state === "removed") {
-          td.appendChild(h("span", "wname", "dropped by source " + fmtD(p.removed)));
+          td.appendChild(h("span", "wname", "dropped by source " + fmtD(p.removed) +
+            (p.removed_reason ? " · " + p.removed_reason : "")));
         } else if (days >= 0) {
           td.appendChild(h("span", "wname", days === 0 ? "today"
             : days === 1 ? "1 day ago" : days + " days ago"));
