@@ -3360,6 +3360,15 @@
       items[state].push(r);
       all.push(r);
     }
+    /* Parity hook for the SwingTrader port (its docs/PLAN.md, D3). Call
+       window.__parity() in the console to dump this load's inputs (daily bars,
+       settled closes) and every row's outcome, keyed by sym + dir, so the new
+       engine can be checked field by field on the same data. A function, so
+       nothing is copied unless asked. */
+    window.__parity = () => ({ generated: new Date().toISOString(), set: KEY, BARS, HIST,
+      rows: all.map(r => ({ sym: r.p.sym, dir: r.p.dir, section: r.section,
+        btype: r.btype, lfd: r.lfd, breakout: r.st.breakout, targetHit: r.st.targetHit,
+        failed: r.st.failed })) });
     /* Market-forces pass: each name's day% vs its local index and vs the
        median of same-sector names across the whole universe (≥3 members). */
     const bySec = {};
