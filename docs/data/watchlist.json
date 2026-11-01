@@ -103,7 +103,11 @@
   "pattern": "Rectangle (bearish continuation)",
   "duration_m": 4,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "source_open": [
+   "2026-10-24",
+   "2026-10-31"
+  ]
  },
  {
   "sym": "NGVT",
@@ -489,7 +493,10 @@
   "pattern": "Rectangle",
   "duration_m": 6,
   "exchange": "ASX",
-  "country": "Australia"
+  "country": "Australia",
+  "source_open": [
+   "2026-10-24"
+  ]
  },
  {
   "sym": "6728.T",
@@ -1325,7 +1332,10 @@
   "pattern": "Ascending triangle",
   "duration_m": 4,
   "exchange": "TSX",
-  "country": "Canada"
+  "country": "Canada",
+  "source_open": [
+   "2026-10-24"
+  ]
  },
  {
   "sym": "AYA.TO",
@@ -2026,7 +2036,10 @@
   "pattern": "Rectangle",
   "duration_m": 4,
   "exchange": "LSE",
-  "country": "UK"
+  "country": "UK",
+  "source_open": [
+   "2026-10-24"
+  ]
  },
  {
   "sym": "ENI.MI",

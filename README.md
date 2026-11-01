@@ -95,6 +95,7 @@ A probe timeout marks a proxy slow, not dead. Only a refusal counts.
 - **Columns:** Trigger and Target sit beside Live / Last close in every section. **Run-up** (Confirmed, Re-entered) is how far price is past the trigger, the share of the trigger → target move used (amber from 50%, red past 100%), and the reward : risk of entering now against the tight stop.
 - **B3 is two lists:** **Re-entered** (back in on a close past the trigger; the original last full day is the stop) and **Stopped out** (out, not negated; a close past the trigger re-enters).
 - **Setup events are a weekly log**, Monday to Sunday local time, each dated, newest first, rebuilt from settled bars on every load; a **Last week** toggle shows the previous week. Intraday flags show as "Live" at the top of the current week.
+- `source_open: ["YYYY-MM-DD", …]` lists the weekly sheet dates on which Tech Charts still showed a setup as ongoing after it had hit its negation (it stays in Failed). Shown as **Still listed by source** in Failed: one sheet may be a lag, two or more means the analyst kept it. Append the sheet date each week for every Failed name still on the sheet.
 - `removed: "YYYY-MM-DD"` marks a setup the weekly report has dropped from its watchlist (`removed_reason`, e.g. "pattern morphing", is shown beside it). It moves to Removed on every browser, with the date shown; Restore still works per browser.
 - A row is `sym` + `dir`; the same symbol can carry a long and a short, so never key by symbol alone.
 - `breakthrough` is the **confirming close**, not the pattern boundary.

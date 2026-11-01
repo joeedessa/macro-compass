@@ -1693,7 +1693,8 @@
                 ["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
     target:    [...PX, ["btype","Type"],["when","Reached"],["stop","Trailing stop"],["boundary","Boundary"],
                 ["negation","Negation"],["earnings","Earnings"],["exdiv","Ex-div"], ...WHERE, ["","Actions","nosort"]],
-    failed:    [...PX, ["when","Failed"],["negation","Negation"],["","Reason","nosort"],["boundary","Boundary"],
+    failed:    [...PX, ["when","Failed"],["negation","Negation"],["","Reason","nosort"],["srcopen","Still listed by source"],
+                ["boundary","Boundary"],
                 ...WHERE, ["","Actions","nosort"]],
     /* Taken off the list by hand rather than by a rule, so the columns that
        describe how a trade resolved are dropped — there is no outcome to show.
@@ -1733,7 +1734,7 @@
     reentered: ["live", "breakthrough", "target", "runup", "reentry", "lfd"],
     stopped:   ["live", "breakthrough", "reentry", "breaches", "lfd", "negation"],
     target:    ["live", "breakthrough", "target", "btype", "when"],
-    failed:    ["live", "breakthrough", "when", "negation"],
+    failed:    ["live", "breakthrough", "when", "negation", "srcopen"],
     removed:   ["live", "breakthrough", "target", "gap"],
   };
   const TITLES = { watch: "Watchlist", breakout: "Confirmed breakouts", reentered: "Re-entered (B3)",
@@ -1765,6 +1766,7 @@
     key === "btype" ? (state === "target" ? "how it got there" : "so far") :
     key === "reentry" ? (state === "stopped" ? "close past trigger re-enters" : "back in, original stop") :
     key === "runup" ? "past trigger · move used" :
+    key === "srcopen" ? "negation hit, analyst kept it" :
     key === "pulls" ? "through the trigger" :
     key === "breaches" ? "exits at the last full day" :
     key === "upside" ? "trigger → target" :
@@ -1838,6 +1840,7 @@
     if (key === "rr") { const x = rrOf(r); return x ? x.ratio : null; }
     if (key === "btype") return r.btype && r.btype.tag ? r.btype.tag : "";
     if (key === "runup") { const x = runupOf(r); return x ? x.used : null; }
+    if (key === "srcopen") return r.p.source_open ? r.p.source_open.length : 0;
     if (key === "pulls") return r.btype && r.btype.pullbacks ? r.btype.pullbacks.length : null;
     if (key === "breaches") return r.btype && r.btype.breaches ? r.btype.breaches.length : null;
     if (key === "reentry") {
@@ -2349,6 +2352,18 @@
         }
         td.appendChild(h("span", "wname", sub));
         td.title = tip;
+        return td;
+      }
+      case "srcopen": {
+        /* `source_open` lists the weekly sheet dates on which Tech Charts still
+           showed this setup as ongoing after it had hit its negation. One sheet
+           can be a lag; two or more means the analyst kept it. */
+        const d = p.source_open;
+        if (!d || !d.length) return h("td", null, "–");
+        const td = h("td", d.length > 1 ? "warmcell" : null, d.length > 1 ? "Kept · " + d.length + " sheets" : "Listed once");
+        td.appendChild(h("span", "wname", fmtD(d[0]) + (d.length > 1 ? " → " + fmtD(d[d.length - 1]) : "")));
+        td.title = "Still on Tech Charts' ongoing-breakouts sheet after hitting its negation: " + d.join(", ") +
+          (d.length > 1 ? ". Not removed as per the plan." : ". Possibly a one-week lag.");
         return td;
       }
       case "runup": {
