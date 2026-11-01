@@ -1623,7 +1623,7 @@
   "duration_m": 7,
   "exchange": "TASE",
   "country": "Israel",
-  "removed": "2026-11-01",
+  "removed": "2026-10-31",
   "removed_reason": "pattern morphing"
  },
  {
@@ -1747,7 +1747,7 @@
   "duration_m": 4,
   "exchange": "NYSE/Nasdaq",
   "country": "US",
-  "removed": "2026-11-01",
+  "removed": "2026-10-31",
   "removed_reason": "pattern morphing"
  },
  {
@@ -2073,7 +2073,7 @@
   "duration_m": 2,
   "exchange": "NYSE/Nasdaq",
   "country": "US",
-  "removed": "2026-11-01",
+  "removed": "2026-10-31",
   "removed_reason": "pattern morphing"
  },
  {
@@ -2247,7 +2247,7 @@
   "duration_m": 3,
   "exchange": "NYSE/Nasdaq",
   "country": "US",
-  "removed": "2026-11-01",
+  "removed": "2026-10-31",
   "removed_reason": "breakout candle reached the price objective"
  },
  {
@@ -2300,7 +2300,7 @@
   "duration_m": 4,
   "exchange": "ASX",
   "country": "Australia",
-  "removed": "2026-11-01",
+  "removed": "2026-10-31",
   "removed_reason": "pattern morphing"
  },
  {
