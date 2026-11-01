@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-31T22:31:40+00:00",
+ "generated_at": "2026-11-01T02:16:21+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -952,8 +952,8 @@
  "fx": {
   "USD": 1.0,
   "JPY": 0.00633697,
-  "KRW": 0.00074901,
-  "TWD": 0.03070602
+  "TWD": 0.03070602,
+  "KRW": 0.00074901
  },
  "names": [
   {
@@ -1307,11 +1307,11 @@
    "ebitda": 18915000000,
    "fcf": 1617000000,
    "capex_ttm": 15855000000,
-   "capex_ntm": 27513673626,
+   "capex_ntm": 28006215933,
    "cfo": 17472000000,
    "capex_cfo": 90.7,
-   "capex_cfo_fwd": 157.5,
-   "capex_growth": 73.5,
+   "capex_cfo_fwd": 160.3,
+   "capex_growth": 76.6,
    "debt": 50134000000,
    "net_debt": -3871000000,
    "nd_ebitda": 0.73,
@@ -1511,11 +1511,11 @@
    "ebitda": 185647000000,
    "fcf": -46892000000,
    "capex_ttm": 215192000000,
-   "capex_ntm": 272821893144.99997,
+   "capex_ntm": 271866300628,
    "cfo": 168300000000,
    "capex_cfo": 127.9,
-   "capex_cfo_fwd": 162.1,
-   "capex_growth": 26.8,
+   "capex_cfo_fwd": 161.5,
+   "capex_growth": 26.3,
    "debt": 294735000000,
    "net_debt": 177578000000,
    "nd_ebitda": 0.31,
@@ -2259,11 +2259,11 @@
    "ebitda": 4621000000,
    "fcf": 17115000000,
    "capex_ttm": 2101000000,
-   "capex_ntm": 1405553570,
+   "capex_ntm": 1435429892,
    "cfo": 19216000000,
    "capex_cfo": 10.9,
-   "capex_cfo_fwd": 7.3,
-   "capex_growth": -33.1,
+   "capex_cfo_fwd": 7.5,
+   "capex_growth": -31.7,
    "debt": 2826000000,
    "net_debt": -13938000000,
    "nd_ebitda": -2.78,
@@ -2735,11 +2735,11 @@
    "ebitda": 21212000000,
    "fcf": 17365000000,
    "capex_ttm": 181000000,
-   "capex_ntm": 881933333.0000001,
+   "capex_ntm": 1153678250,
    "cfo": 17546000000,
    "capex_cfo": 1.0,
-   "capex_cfo_fwd": 5.0,
-   "capex_growth": 387.3,
+   "capex_cfo_fwd": 6.6,
+   "capex_growth": 537.4,
    "debt": 201000000,
    "net_debt": -5005000000,
    "nd_ebitda": -0.36,
@@ -2769,7 +2769,7 @@
    "ebitda": null,
    "fcf": null,
    "capex_ttm": null,
-   "capex_ntm": 105352944352667,
+   "capex_ntm": 108644611019333,
    "cfo": null,
    "capex_cfo": null,
    "capex_cfo_fwd": null,
@@ -3486,7 +3486,7 @@
  "funding": {
   "hyperscaler": {
    "capex_ttm": 691015000000,
-   "capex_ntm": 1087457857107.0,
+   "capex_ntm": 1086502264590.0,
    "cfo": 723756000000,
    "net_debt": 289658693000,
    "cap": 11847000442678.0,
@@ -3517,9 +3517,9 @@
    "CORZ"
   ],
   "hyper_gap_now": -32741000000,
-  "hyper_gap_fwd": 363701857107.0,
+  "hyper_gap_fwd": 362746264590.0,
   "hyper_ratio_now": 95.5,
-  "hyper_ratio_fwd": 150.3
+  "hyper_ratio_fwd": 150.1
  },
  "concentration": {
   "universe_n": 500,
