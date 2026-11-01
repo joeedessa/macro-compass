@@ -79,6 +79,12 @@ def main(path, prev_path=None):
     for e in alerts:
         side = "long" if e["long"] else "short"
         print(f"BREAKOUT {e['ticker']:12} {side:5} {e[side]}  |  {e['name']}")
+        # A confirmed signal reads "confirmed"; "will confirm" means the write-up
+        # was carried over from the watchlist and may describe the wrong side
+        # (Oct 31: OM's text was the old long, its chart a breakdown).
+        if re.search(r"will confirm", e["text"]):
+            print(f"  ! CHECK THE CHART: {e['ticker']} write-up still says 'will confirm' — "
+                  f"it may be the old watchlist text; take side and levels from the chart")
     seen = set()
     for e in wl:
         for side in ("long", "short"):
