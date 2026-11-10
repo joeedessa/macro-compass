@@ -22,6 +22,9 @@ def entries(text, start, stop=None):
     if stop and stop in body:
         body = body[:body.index(stop)]
     body = re.sub(r"=====PAGE \d+\n", "", body)
+    # A long heading wraps its tag onto the next line ("... (MOTILALOFS) – new addition to\nwatchlist"),
+    # which left the heading unmatched and its levels attached to the entry above.
+    body = re.sub(r"–\s*new\s+addition\s+to\s+watchlist", "– new addition to watchlist", body)
     out, cur, region = [], None, None
     for line in body.split("\n"):
         s = line.strip()
