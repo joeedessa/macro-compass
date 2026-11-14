@@ -1456,7 +1456,8 @@
   "exchange": "DFM",
   "country": "UAE",
   "lfd": 31.5,
-  "confirmed": "2026-11-14"
+  "confirmed": "2026-11-14",
+  "reached": "2026-11-12"
  },
  {
   "sym": "NWH.AX",
