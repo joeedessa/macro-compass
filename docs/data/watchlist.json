@@ -107,7 +107,8 @@
   "source_open": [
    "2026-10-24",
    "2026-10-31",
-   "2026-11-07"
+   "2026-11-07",
+   "2026-11-14"
   ]
  },
  {
@@ -428,7 +429,8 @@
   "exchange": "BIST",
   "country": "Turkey",
   "source_open": [
-   "2026-11-07"
+   "2026-11-07",
+   "2026-11-14"
   ]
  },
  {
@@ -1445,14 +1447,16 @@
   "breakthrough": 33.4,
   "boundary": 32.4,
   "target": 35.9,
-  "negation": null,
+  "negation": 30.65,
   "note": "Emirates NBD Bank PJSC (removed 10 Oct for pattern morphing; re-listed 7 Nov with new levels)",
   "created": "2026-11-07",
   "state": "watch",
   "pattern": "Rectangle",
   "duration_m": 4,
   "exchange": "DFM",
-  "country": "UAE"
+  "country": "UAE",
+  "lfd": 31.5,
+  "confirmed": "2026-11-14"
  },
  {
   "sym": "NWH.AX",
@@ -2101,7 +2105,10 @@
   "pattern": "Descending triangle",
   "duration_m": 6,
   "exchange": "NSE",
-  "country": "India"
+  "country": "India",
+  "source_open": [
+   "2026-11-14"
+  ]
  },
  {
   "sym": "6971.T",
@@ -2397,14 +2404,16 @@
   "breakthrough": 359,
   "boundary": 349,
   "target": 378,
-  "negation": null,
+  "negation": 334.5,
   "note": "FSN E-Commerce Ventures Ltd. (Nykaa)",
   "created": "2026-10-17",
   "state": "watch",
   "pattern": "Rectangle",
   "duration_m": 2,
   "exchange": "NSE",
-  "country": "India"
+  "country": "India",
+  "lfd": 342,
+  "confirmed": "2026-11-14"
  },
  {
   "sym": "WNC",
@@ -2667,14 +2676,16 @@
   "breakthrough": 134.0,
   "boundary": 138.75,
   "target": 89.75,
-  "negation": null,
+  "negation": 176.5,
   "note": "Coinbase Global Inc.",
   "created": "2026-11-07",
   "state": "watch",
   "pattern": "Rectangle",
   "duration_m": 9,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "lfd": 153.33,
+  "confirmed": "2026-11-14"
  },
  {
   "sym": "UI",
@@ -2691,7 +2702,9 @@
   "pattern": "H&S top reversal",
   "duration_m": 13,
   "exchange": "NYSE/Nasdaq",
-  "country": "US"
+  "country": "US",
+  "removed": "2026-11-14",
+  "removed_reason": "pattern morphing"
  },
  {
   "sym": "SUPREMEIND.NS",
@@ -2718,13 +2731,117 @@
   "breakthrough": 1127.0,
   "boundary": 1095.0,
   "target": 1665.0,
-  "negation": null,
+  "negation": 886.75,
   "note": "Motilal Oswal Financial Services Ltd.",
   "created": "2026-11-07",
   "state": "watch",
   "pattern": "Ascending triangle",
   "duration_m": 24,
   "exchange": "NSE",
-  "country": "India"
+  "country": "India",
+  "lfd": 1032,
+  "confirmed": "2026-11-14"
+ },
+ {
+  "sym": "MG.TO",
+  "dir": "short",
+  "alertOp": "<",
+  "alert": 84.7,
+  "breakthrough": 84.7,
+  "boundary": 87.3,
+  "target": 75.8,
+  "negation": null,
+  "note": "Magna International Inc.",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "H&S top",
+  "duration_m": 5,
+  "exchange": "TSX",
+  "country": "Canada"
+ },
+ {
+  "sym": "SGI",
+  "dir": "short",
+  "alertOp": "<",
+  "alert": 58.44,
+  "breakthrough": 58.44,
+  "boundary": 60.25,
+  "target": 42.7,
+  "negation": null,
+  "note": "Somnigroup International Inc.",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "Descending triangle",
+  "duration_m": 6,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
+ },
+ {
+  "sym": "SOLS",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 69.6,
+  "breakthrough": 69.6,
+  "boundary": 67.6,
+  "target": 80.6,
+  "negation": null,
+  "note": "Solstice Advanced Materials Inc.",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 4,
+  "exchange": "NYSE/Nasdaq",
+  "country": "US"
+ },
+ {
+  "sym": "SIE.DE",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 299.7,
+  "breakthrough": 299.7,
+  "boundary": 291.0,
+  "target": 326.0,
+  "negation": null,
+  "note": "Siemens AG",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 5,
+  "exchange": "XETRA",
+  "country": "Germany"
+ },
+ {
+  "sym": "REA.AX",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 187.25,
+  "breakthrough": 187.25,
+  "boundary": 181.8,
+  "target": 230.2,
+  "negation": null,
+  "note": "REA Group Ltd.",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "H&S bottom reversal",
+  "duration_m": 8,
+  "exchange": "ASX",
+  "country": "Australia"
+ },
+ {
+  "sym": "2181.T",
+  "dir": "long",
+  "alertOp": ">",
+  "alert": 313.0,
+  "breakthrough": 313.0,
+  "boundary": 304.0,
+  "target": 330.0,
+  "negation": null,
+  "note": "Persol Holdings Co. Ltd.",
+  "created": "2026-11-14",
+  "state": "watch",
+  "pattern": "Rectangle",
+  "duration_m": 2,
+  "exchange": "TSE",
+  "country": "Japan"
  }
 ]
