@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-15T09:30:12+00:00",
+ "generated_at": "2026-11-15T17:13:33+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -313,9 +313,9 @@
  },
  "fx": {
   "USD": 1.0,
+  "TWD": 0.03035915,
   "KRW": 0.00074839,
-  "JPY": 0.00625489,
-  "TWD": 0.03035915
+  "JPY": 0.00625489
  },
  "names": [
   {
@@ -538,14 +538,14 @@
    "capex_cfo": 13.7,
    "capex_cfo_fwd": 15.6,
    "capex_growth": 13.9,
-   "debt": 4121564999.9999995,
-   "net_debt": -1457606000,
+   "debt": 3735444000,
+   "net_debt": -3701940000,
    "nd_ebitda": -0.17,
-   "cost_debt": 3.48,
+   "cost_debt": 3.74,
    "capex_cover": 48.92,
    "pe": 33.62,
    "ps": 11.24,
-   "ev_ebitda": 27.75,
+   "ev_ebitda": 27.53,
    "gm": 51.05,
    "ytd": 27.03,
    "y1": 42.19,
@@ -553,8 +553,8 @@
    "rev_usd": 26127935000,
    "ebitda_usd": 10116395000,
    "fcf_usd": 6537364000,
-   "debt_usd": 4121565000,
-   "net_debt_usd": -1457606000
+   "debt_usd": 3735444000,
+   "net_debt_usd": -3701940000
   },
   {
    "tv": "NASDAQ:KLAC",
@@ -572,10 +572,10 @@
    "capex_cfo": 10.5,
    "capex_cfo_fwd": 13.9,
    "capex_growth": 31.7,
-   "debt": 6151713000,
-   "net_debt": 1249305000,
+   "debt": 5992644000,
+   "net_debt": 1251453000,
    "nd_ebitda": 0.21,
-   "cost_debt": 4.82,
+   "cost_debt": 4.52,
    "capex_cover": 19.63,
    "pe": 38.06,
    "ps": 14.23,
@@ -587,8 +587,8 @@
    "rev_usd": 14497263000,
    "ebitda_usd": 6586704000,
    "fcf_usd": 4037620000,
-   "debt_usd": 6151713000,
-   "net_debt_usd": 1249305000
+   "debt_usd": 5992644000,
+   "net_debt_usd": 1251453000
   },
   {
    "tv": "NASDAQ:MRVL",
@@ -810,14 +810,14 @@
    "capex_cfo": 69.4,
    "capex_cfo_fwd": 108.3,
    "capex_growth": 56.1,
-   "debt": 128813000000,
-   "net_debt": 51970000000,
+   "debt": 133931000000,
+   "net_debt": 69422000000,
    "nd_ebitda": 0.27,
-   "cost_debt": 2.64,
+   "cost_debt": 2.65,
    "capex_cover": 25.51,
    "pe": 27.36,
    "ps": 11.24,
-   "ev_ebitda": 19.2,
+   "ev_ebitda": 19.29,
    "gm": 67.66,
    "ytd": 8.15,
    "y1": 2.66,
@@ -825,8 +825,8 @@
    "rev_usd": 346445000000,
    "ebitda_usd": 205322000000,
    "fcf_usd": 59957000000,
-   "debt_usd": 128813000000,
-   "net_debt_usd": 51970000000
+   "debt_usd": 133931000000,
+   "net_debt_usd": 69422000000
   },
   {
    "tv": "NASDAQ:GOOGL",
@@ -1150,10 +1150,10 @@
    "capex_cfo": 358.0,
    "capex_cfo_fwd": 699.2,
    "capex_growth": 95.3,
-   "debt": 7839526000.03698,
-   "net_debt": 273683000.001283,
+   "debt": 10215000000.063799,
+   "net_debt": 4485000000.027989,
    "nd_ebitda": 7.17,
-   "cost_debt": 1.66,
+   "cost_debt": 3.23,
    "capex_cover": -74.3,
    "pe": null,
    "ps": 11.24,
@@ -1165,8 +1165,8 @@
    "rev_usd": 690712000,
    "ebitda_usd": -25077000,
    "fcf_usd": -6494277700,
-   "debt_usd": 7839526000,
-   "net_debt_usd": 273683000
+   "debt_usd": 10215000000,
+   "net_debt_usd": 4485000000
   },
   {
    "tv": "NASDAQ:CIFR",
@@ -1422,14 +1422,14 @@
    "capex_cfo": null,
    "capex_cfo_fwd": null,
    "capex_growth": 47.4,
-   "debt": 3554994000,
-   "net_debt": 1532820000,
+   "debt": 4346980000,
+   "net_debt": 2549475000,
    "nd_ebitda": 1.02,
-   "cost_debt": 4.71,
+   "cost_debt": 4.69,
    "capex_cover": 2.07,
    "pe": 45.17,
    "ps": 5.93,
-   "ev_ebitda": 25.75,
+   "ev_ebitda": 26.33,
    "gm": 38.94,
    "ytd": 16.04,
    "y1": 43.31,
@@ -1437,8 +1437,8 @@
    "rev_usd": 7907094000,
    "ebitda_usd": 1741273000,
    "fcf_usd": -1833632000,
-   "debt_usd": 3554994000,
-   "net_debt_usd": 1532820000
+   "debt_usd": 4346980000,
+   "net_debt_usd": 2549475000
   },
   {
    "tv": "NASDAQ:LITE",
@@ -1456,14 +1456,14 @@
    "capex_cfo": 62.9,
    "capex_cfo_fwd": 77.7,
    "capex_growth": 23.5,
-   "debt": 1671200000,
-   "net_debt": -1067200000,
+   "debt": 1430200000,
+   "net_debt": -549400000,
    "nd_ebitda": -1.32,
-   "cost_debt": 0.58,
+   "cost_debt": 0.62,
    "capex_cover": 16.44,
    "pe": null,
    "ps": 16.97,
-   "ev_ebitda": 45.88,
+   "ev_ebitda": 46.32,
    "gm": 44.39,
    "ytd": 57.26,
    "y1": 140.5,
@@ -1471,8 +1471,8 @@
    "rev_usd": 3742800000,
    "ebitda_usd": 1156300000,
    "fcf_usd": 356300000,
-   "debt_usd": 1671200000,
-   "net_debt_usd": -1067200000
+   "debt_usd": 1430200000,
+   "net_debt_usd": -549400000
   },
   {
    "tv": "NYSE:FN",
@@ -1490,14 +1490,14 @@
    "capex_cfo": 209.3,
    "capex_cfo_fwd": 280.1,
    "capex_growth": 33.9,
-   "debt": 4013000,
-   "net_debt": -871042000,
+   "debt": 78320000,
+   "net_debt": -677433000,
    "nd_ebitda": -1.62,
-   "cost_debt": 7.96,
+   "cost_debt": 2.24,
    "capex_cover": 3364.24,
    "pe": 24.77,
    "ps": 2.5,
-   "ev_ebitda": 16.68,
+   "ev_ebitda": 16.98,
    "gm": 12.13,
    "ytd": -29.43,
    "y1": -25.47,
@@ -1505,8 +1505,8 @@
    "rev_usd": 5137428000,
    "ebitda_usd": 649915000,
    "fcf_usd": -190491000,
-   "debt_usd": 4013000,
-   "net_debt_usd": -871042000
+   "debt_usd": 78320000,
+   "net_debt_usd": -677433000
   },
   {
    "tv": "NASDAQ:ALAB",
@@ -2103,13 +2103,13 @@
    "capex_cfo_fwd": 6.6,
    "capex_growth": 543.7,
    "debt": 201000000,
-   "net_debt": -4561000000,
+   "net_debt": -5005000000,
    "nd_ebitda": -0.36,
-   "cost_debt": 3.92,
+   "cost_debt": 3.98,
    "capex_cover": 170.41,
    "pe": 7.09,
    "ps": 4.98,
-   "ev_ebitda": 5.72,
+   "ev_ebitda": 5.7,
    "gm": 79.95,
    "ytd": 262.19,
    "y1": 230.23,
@@ -2118,7 +2118,7 @@
    "ebitda_usd": 21212000000,
    "fcf_usd": 17365000000,
    "debt_usd": 201000000,
-   "net_debt_usd": -4561000000
+   "net_debt_usd": -5005000000
   },
   {
    "tv": "KRX:005930",
@@ -2850,7 +2850,7 @@
    "capex_ttm": 691015000000,
    "capex_ntm": 1086341679677.0,
    "cfo": 723756000000,
-   "net_debt": 272206693000,
+   "net_debt": 289658693000,
    "cap": 12390439529793.0,
    "n": 5
   },
@@ -2858,7 +2858,7 @@
    "capex_ttm": 65825186558.21264,
    "capex_ntm": 113820256644.0,
    "cfo": 14749879452.65348,
-   "net_debt": 82446348000.00128,
+   "net_debt": 86657665000.02798,
    "cap": 87325186303.0,
    "n": 7
   },
