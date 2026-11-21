@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-21T17:36:32+00:00",
+ "generated_at": "2026-11-21T23:18:26+00:00",
  "credit": {
   "aaa": {
    "label": "AAA",
@@ -1425,7 +1425,7 @@
    "debt": 4346980000,
    "net_debt": 2549475000,
    "nd_ebitda": 1.02,
-   "cost_debt": 4.71,
+   "cost_debt": 4.69,
    "capex_cover": 2.07,
    "pe": 38.77,
    "ps": 5.49,
@@ -1493,7 +1493,7 @@
    "debt": 78320000,
    "net_debt": -677433000,
    "nd_ebitda": -1.62,
-   "cost_debt": 7.96,
+   "cost_debt": 2.24,
    "capex_cover": 3364.24,
    "pe": 21.52,
    "ps": 2.2,
